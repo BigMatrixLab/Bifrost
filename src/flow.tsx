@@ -164,9 +164,9 @@ function smoothPath(p: Pt[]): string {
   return d;
 }
 
-const DOT = 18; // background dot spacing
-const XH_W = DOT * 5; // crosshair every 5th dot across…
-const XH_H = DOT * 3; // …and every 3rd dot down
+const DOT = 6; // background dot spacing (a dense, stationary field)
+const XH_W = DOT; // pattern tile
+const XH_H = DOT;
 const CAP = 5; // cursor triangle caps
 const CAP_HALF = CAP / Math.sqrt(3);
 
@@ -237,8 +237,8 @@ export function LiveFlow() {
   // edge dots glide to it); the newest one is still off-screen.
   const last = visible[Math.max(0, visible.length - LEAD)];
 
-  // Background lattice, centred in the plot both ways: (gridX, gridY) is a
-  // crosshair, and every crosshair sits on a dot.
+  // Background dot field, centred in the plot both ways: (gridX, gridY) is
+  // a dot, so the field sits evenly between the edges.
   const plotTop = pad.t - 6;
   const plotH = H - pad.t - pad.b + 6;
   const gridX = pad.l + ((iw % XH_W) + XH_W) / 2;
@@ -319,9 +319,9 @@ export function LiveFlow() {
               <stop offset="0.85" style={{ stopColor: "var(--series-in)", stopOpacity: 0.07 }} />
               <stop offset="1" style={{ stopColor: "var(--series-in)", stopOpacity: 0.22 }} />
             </linearGradient>
-            {/* Stationary crosshair lattice centred in the plot. */}
+            {/* Stationary dense dot field centred in the plot. */}
             <pattern id={`${ids}-xhair`} patternUnits="userSpaceOnUse" x={gridX - XH_W / 2} y={gridY - XH_H / 2} width={XH_W} height={XH_H}>
-              <path d={`M${XH_W / 2 - 3},${XH_H / 2}h6M${XH_W / 2},${XH_H / 2 - 3}v6`} className="flow-xhair" />
+              <circle cx={XH_W / 2} cy={XH_H / 2} r={0.75} className="flow-dot" />
             </pattern>
             <linearGradient id={`${ids}-fade`} x1="0" x2="1" y1="0" y2="0">
               <stop offset="0" stopColor="#fff" stopOpacity={0} />
@@ -338,8 +338,7 @@ export function LiveFlow() {
             </clipPath>
           </defs>
 
-          {/* Background: dot matrix, fading out at both ends. */}
-          {/* Reference crosshairs only (no dot field), fading out at both ends. */}
+          {/* Background: dense dot field, fading out at both ends. */}
           <g mask={`url(#${ids}-fademask)`}>
             <rect x={pad.l} y={plotTop} width={iw} height={plotH} fill={`url(#${ids}-xhair)`} />
           </g>
