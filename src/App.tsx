@@ -4,17 +4,19 @@ import {
   CalendarDays,
   CheckCircle2,
   ChevronRight,
+  FolderDown,
   FolderOpen,
   FolderUp,
   Info,
-  KeyRound,
   LayoutGrid,
   ListChecks,
   Menu,
-  Monitor,
+  Moon,
   Settings as SettingsIcon,
+  Sun,
   XCircle,
 } from "lucide-react";
+import { useTheme } from "./theme";
 import { AccessRequests, ConnectDialog, Onboarding } from "./dialogs";
 import { FolderPickerHost } from "./android";
 import { isActive, speed } from "./format";
@@ -31,24 +33,16 @@ import Activity from "./pages/Activity";
 import History from "./pages/History";
 import Settings from "./pages/Settings";
 
-const TITLES: Record<Page, string> = {
-  overview: "Overview",
-  shares: "Shared folders",
-  devices: "Remote devices",
-  browse: "Browse",
-  transfers: "Transfers",
-  history: "History",
-  activity: "Activity",
-  settings: "Settings",
-};
+/** Quanta mark: a "Q" of 12 discrete ring segments with a solid tail. Same
+ * geometry as src-tauri/icons/app-icon.svg, cropped to the glyph. */
+const Q_RING =
+  "M735.4 442.3A250 250 0 0 1 735.4 537.7M726.4 571.4A250 250 0 0 1 704.3 618.8M618.8 704.3A250 250 0 0 1 571.4 726.4M537.7 735.4A250 250 0 0 1 442.3 735.4M408.6 726.4A250 250 0 0 1 326 678.7M301.3 654A250 250 0 0 1 253.6 571.4M244.6 537.7A250 250 0 0 1 244.6 442.3M253.6 408.6A250 250 0 0 1 301.3 326M326 301.3A250 250 0 0 1 408.6 253.6M442.3 244.6A250 250 0 0 1 537.7 244.6M571.4 253.6A250 250 0 0 1 654 301.3M678.7 326A250 250 0 0 1 726.4 408.6";
 
 function Logo() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="6" cy="12" r="3.6" fill="var(--accent)" />
-      <rect x="6" y="10.6" width="12" height="2.8" rx="1.4" fill="var(--accent)" />
-      <circle cx="18" cy="12" r="3.6" fill="var(--accent)" />
-      <circle cx="18" cy="12" r="1.7" fill="#121212" />
+    <svg width="16" height="16" viewBox="190 190 650 650" aria-hidden="true">
+      <path d={Q_RING} fill="none" style={{ stroke: "var(--accent)" }} strokeWidth={80} />
+      <path d="M605 605L795 795" style={{ stroke: "var(--accent)" }} strokeWidth={72} strokeLinecap="square" />
     </svg>
   );
 }
@@ -64,7 +58,7 @@ function MoreSheet({ onClose }: { onClose: () => void }) {
     onClose();
   };
   const items: { id: Page; label: string; sub: string; icon: React.ReactNode; count?: number }[] = [
-    { id: "shares", label: "Shared folders", sub: "Folders others can download from you", icon: <FolderUp size={20} />, count: s.shares.length || undefined },
+    { id: "shares", label: "Send", sub: "Folders others can download from you", icon: <FolderUp size={20} />, count: s.shares.length || undefined },
     { id: "history", label: "History", sub: "Calendar, totals and privacy receipts", icon: <CalendarDays size={20} /> },
     { id: "activity", label: "Activity", sub: "Everything that happened, newest first", icon: <ListChecks size={20} /> },
     { id: "settings", label: "Settings", sub: "Speed, privacy and this device", icon: <SettingsIcon size={20} /> },
@@ -97,6 +91,7 @@ export default function App() {
   const s = useStore();
   const phone = usePhone();
   const [moreOpen, setMoreOpen] = useState(false);
+  const [theme, toggleTheme] = useTheme();
   const navSlide = useSlide<HTMLElement>(".nav-item", ".nav-item.active");
   const jobs = useMemo(() => Object.values(s.jobs), [s.jobs]);
   const activeCount = jobs.filter((j) => isActive(j.status)).length + s.outgoing.filter((o) => o.status === "sending" || o.status === "waiting").length;
@@ -105,8 +100,8 @@ export default function App() {
 
   const nav: { id: Page; label: string; short: string; icon: React.ReactNode; count?: number; hot?: boolean; alert?: boolean }[] = [
     { id: "overview", label: "Overview", short: "Home", icon: <LayoutGrid size={17} /> },
-    { id: "shares", label: "Shared folders", short: "Shared", icon: <FolderUp size={17} />, count: s.shares.length || undefined },
-    { id: "devices", label: "Remote devices", short: "Devices", icon: <Monitor size={17} />, count: s.remotes.length || undefined },
+    { id: "shares", label: "Send", short: "Send", icon: <FolderUp size={17} />, count: s.shares.length || undefined },
+    { id: "devices", label: "Receive", short: "Receive", icon: <FolderDown size={17} />, count: s.remotes.length || undefined },
     { id: "transfers", label: "Transfers", short: "Transfers", icon: <ArrowDownUp size={17} />, count: attention || activeCount || undefined, hot: activeCount > 0, alert: attention > 0 },
     { id: "history", label: "History", short: "History", icon: <CalendarDays size={17} /> },
     { id: "activity", label: "Activity", short: "Activity", icon: <ListChecks size={17} /> },
@@ -143,7 +138,7 @@ export default function App() {
       <aside className="sidebar">
         <div className="brand">
           <span className="brand-mark"><Logo /></span>
-          Relayless
+          Quanta
         </div>
         <nav className="nav slides" aria-label="Main" ref={navSlide}>
           {shownNav.map((n) => (
@@ -172,17 +167,42 @@ export default function App() {
       </aside>
       <main className={`main page-${s.page}`}>
         <header className="topbar">
-          <h1>{s.page === "browse" && s.browse ? `${s.browse.shareName}` : phone && s.page === "overview" ? "Relayless" : TITLES[s.page]}</h1>
-          {s.page === "browse" && s.browse && <span className="faint">on {s.browse.peerName}</span>}
-          <span className="spacer" />
-          {s.settings?.connectionMode === "direct_only" ? (
-            <span className="pill pill-muted" title="File data only uses direct paths">Direct only</span>
-          ) : (
-            <span className="pill pill-muted" title="Uses a direct path when the routers allow it, otherwise an end-to-end encrypted relay">Direct first</span>
-          )}
-          <Button className={`topbar-connect ${phone && s.page === "overview" ? "hide-phone" : ""}`} variant="primary" icon={<KeyRound size={15} />} onClick={() => s.setConnectOpen(true)} aria-label="Connect with code">
-            Connect
-          </Button>
+          <div className="topbar-actions">
+            {/* The phone home screen has its own big Send and Receive buttons. */}
+            {!(phone && s.page === "overview") && (
+              <>
+                <Button
+                  variant="secondary"
+                  className={s.page === "shares" ? "topbar-on" : ""}
+                  icon={<FolderUp size={15} />}
+                  onClick={() => s.setPage("shares")}
+                  aria-current={s.page === "shares" ? "page" : undefined}
+                  title="Your shared folders"
+                >
+                  Send
+                </Button>
+                <Button
+                  variant="secondary"
+                  className={s.page === "devices" || s.page === "browse" ? "topbar-on" : ""}
+                  icon={<FolderDown size={15} />}
+                  onClick={() => s.setPage("devices")}
+                  aria-current={s.page === "devices" ? "page" : undefined}
+                  title="Devices that share with you"
+                >
+                  Receive
+                </Button>
+              </>
+            )}
+            <button
+              type="button"
+              className="theme-toggle"
+              onClick={toggleTheme}
+              aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+              title={theme === "dark" ? "Light theme" : "Dark theme"}
+            >
+              {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
+          </div>
         </header>
         <div className="content">
           {s.ready ? page : null}

@@ -5,7 +5,7 @@ import { CATEGORIES, categoryInfo, categoryOf, type Category } from "../categori
 import { SERIES } from "../flow";
 import { bytes, duration, speed } from "../format";
 import { useStore } from "../store";
-import { Button, Empty, IconButton, SafetyWords, Segmented, usePhone } from "../ui";
+import { Button, Empty, HudStrip, IconButton, SafetyWords, SectionHeader, Segmented, usePhone } from "../ui";
 
 export type Dir = "both" | "received" | "sent";
 
@@ -64,7 +64,7 @@ function receiptText(e: HistoryEntry) {
       ? "Direct, device to device (100%)"
       : `${bytes(e.directBytes)} direct, ${bytes(e.relayBytes)} through a relay (end-to-end encrypted)`;
   return [
-    `Relayless privacy receipt`,
+    `Quanta privacy receipt`,
     `File: ${fileLabel(e)} (${bytes(e.size)})`,
     `${e.direction === "received" ? "From" : "To"}: ${e.peerName}`,
     `Safety words: ${e.safetyWords.join(" ")}`,
@@ -179,42 +179,115 @@ function ReceiptRow({ e, open, onToggle }: { e: HistoryEntry; open: boolean; onT
 // ---------------------------------------------------------------- calendar
 
 /**
- * One day's mark. Area follows bytes moved. With both directions shown, the
- * disc splits into received and sent wedges. Days too small to draw at scale
- * get a hollow ring, so a 3 MB day never looks like a 1 GB one.
+ * One day's mark: the day fills up from the bottom like a gauge, received
+ * first and sent on top, to the share of the busiest day. The fill is drawn
+ * as fine scan lines with a bright edge on each level, so the cell's number
+ * and amount stay readable over it. A day with very little still gets a
+ * hairline, so it never looks empty.
  */
-export function DayDot({ d, inB, outB, tiny, dir, i = 0 }: { d: number; inB: number; outB: number; tiny: boolean; dir: Dir; i?: number }) {
-  const r = d / 2;
-  const style = { ["--i" as string]: i } as React.CSSProperties;
-  const main = dir === "sent" || (dir === "both" && outB > inB) ? SERIES.out : SERIES.in;
-  if (tiny) {
-    return (
-      <svg className="cal-dot" width={d} height={d} aria-hidden="true" style={style}>
-        <circle cx={r} cy={r} r={r - 1} fill="none" stroke={main} strokeWidth={1.75} />
-      </svg>
-    );
-  }
-  const total = inB + outB;
-  if (dir !== "both" || inB === 0 || outB === 0 || total === 0) {
-    return (
-      <svg className="cal-dot" width={d} height={d} aria-hidden="true" style={style}>
-        <circle cx={r} cy={r} r={r} fill={main} />
-      </svg>
-    );
-  }
-  // Received wedge from 12 o'clock clockwise, sent wedge for the rest.
-  const a = (inB / total) * Math.PI * 2;
-  const x = r + r * Math.sin(a);
-  const y = r - r * Math.cos(a);
-  const large = a > Math.PI ? 1 : 0;
-  const inPath = `M${r},${r}L${r},0A${r},${r} 0 ${large} 1 ${x},${y}Z`;
-  const outPath = `M${r},${r}L${x},${y}A${r},${r} 0 ${1 - large} 1 ${r},0Z`;
+export function DayLevel({ inB, outB, max, i = 0, className = "" }: { inB: number; outB: number; max: number; i?: number; className?: string }) {
+  const f = (b: number) => (max > 0 && b > 0 ? Math.min(1, b / max) : 0);
   return (
-    <svg className="cal-dot" width={d} height={d} aria-hidden="true" style={style}>
-      <path d={inPath} fill={SERIES.in} />
-      <path d={outPath} fill={SERIES.out} />
-      <path d={`M${r},0L${r},${r}L${x},${y}`} fill="none" stroke="#0B0B0D" strokeWidth={1.5} strokeLinejoin="miter" />
-    </svg>
+    <span
+      className={`day-level ${className}`}
+      aria-hidden="true"
+      style={{ ["--in" as string]: f(inB), ["--out" as string]: f(outB), ["--i" as string]: i } as React.CSSProperties}
+    >
+      {inB > 0 && <i className="lv-in" />}
+      {outB > 0 && <i className="lv-out" />}
+    </span>
+  );
+}
+/** A share as a whole percent, "<1%" for slivers. */
+function share(part: number, total: number) {
+  const p = total > 0 ? part / total : 0;
+  return p > 0 && p < 0.01 ? "<1%" : `${Math.round(p * 100)}%`;
+}
+
+/** A row's received and sent amounts, each with its arrow and colour. */
+function SplitVals({ inB, outB }: { inB: number; outB: number }) {
+  return (
+    <span className="who-vals num">
+      {inB > 0 && <span className="who-in" aria-label={`${bytes(inB)} received`}>↓ {bytes(inB)}</span>}
+      {outB > 0 && <span className="who-out" aria-label={`${bytes(outB)} sent`}>↑ {bytes(outB)}</span>}
+    </span>
+  );
+}
+
+/**
+ * The side lists' meter: the grey ticks are the whole period, the fill is
+ * this row's share of it (the same number as the percent beside it), split
+ * into received then sent. A sliver still shows as one tick.
+ */
+function SplitMeter({ inB, outB, max }: { inB: number; outB: number; max: number }) {
+  const total = inB + outB;
+  const w = max > 0 ? Math.min(1, total / max) : 0;
+  const a = total > 0 ? inB / total : 0;
+  return (
+    <span
+      className={`smeter ${outB > 0 && inB > 0 ? "split" : ""}`}
+      aria-hidden="true"
+      style={{ ["--w" as string]: w, ["--a" as string]: a } as React.CSSProperties}
+    >
+      <span className="smeter-fill">
+        {inB > 0 && <span className="smeter-in" />}
+        {outB > 0 && <span className="smeter-out" />}
+      </span>
+    </span>
+  );
+}
+
+/**
+ * The hover card shared by the calendar and the side lists: a title, the
+ * total, the received / sent split, the largest files and a footnote.
+ */
+function EntriesTip({
+  x,
+  y,
+  below,
+  title,
+  entries,
+  inB,
+  outB,
+  split,
+  foot,
+}: {
+  x: number;
+  y: number;
+  below: boolean;
+  title: string;
+  entries: HistoryEntry[];
+  inB: number;
+  outB: number;
+  split: boolean;
+  foot?: string;
+}) {
+  return (
+    <div className={`cal-tip ${below ? "below" : ""}`} style={{ left: x, top: y }} role="tooltip">
+      <span className="tip-title">{title}</span>
+      <span className="small muted">
+        {bytes(inB + outB)} in {entries.length} transfer{entries.length === 1 ? "" : "s"}
+      </span>
+      {split && (
+        <span className="tip-split">
+          <span className="tip-row"><i style={{ background: SERIES.in }} />Received<b className="num">{bytes(inB)}</b></span>
+          <span className="tip-row"><i style={{ background: SERIES.out }} />Sent<b className="num">{bytes(outB)}</b></span>
+        </span>
+      )}
+      <span className="tip-files">
+        {[...entries]
+          .sort((a, b) => b.size - a.size)
+          .slice(0, 3)
+          .map((e) => (
+            <span key={e.id} className="tip-file">
+              <span className="truncate">{fileLabel(e)}</span>
+              <span className="num faint">{bytes(e.size)}</span>
+            </span>
+          ))}
+        {entries.length > 3 && <span className="faint small">and {entries.length - 3} more</span>}
+      </span>
+      {foot && <span className="small faint truncate">{foot}</span>}
+    </div>
   );
 }
 
@@ -263,18 +336,6 @@ function MonthCalendar({
     [first, phone],
   );
   const todayKey = dayKey(Date.now());
-  const maxD = phone ? 30 : 40;
-  const minD = 7;
-  const size = (b: number) => (b <= 0 ? 0 : Math.max(minD, maxD * Math.sqrt(b / max)));
-  // Below this, a true-to-scale disc would be smaller than the minimum mark.
-  // Snapped up to a round size so the legend can name it.
-  const tinyBelow = useMemo(() => {
-    const raw = max * (minD / maxD) ** 2;
-    const MB = 1024 ** 2;
-    const steps = [MB, 10 * MB, 100 * MB, 250 * MB, 500 * MB, 1024 * MB, 2048 * MB, 5120 * MB, 10240 * MB, 25600 * MB, 51200 * MB];
-    return steps.find((x) => x >= raw) ?? raw;
-  }, [max, maxD]);
-
   const showTip = (key: string, el: HTMLElement) => {
     const g = grid.current?.getBoundingClientRect();
     const r = el.getBoundingClientRect();
@@ -286,20 +347,6 @@ function MonthCalendar({
     setHover({ key, x, y: below ? top + r.height : top, below });
   };
   const tip = hover ? days.get(hover.key) : null;
-
-  // Reference sizes for the legend, in round numbers under the current scale.
-  const refs = useMemo(() => {
-    if (max <= 0) return [];
-    const GB = 1024 ** 3;
-    const MB = 1024 ** 2;
-    const steps = [MB, 10 * MB, 100 * MB, GB, 5 * GB, 10 * GB, 25 * GB, 50 * GB, 100 * GB, 250 * GB, 500 * GB, 1024 * GB];
-    const fit = steps.filter((s) => s <= max);
-    if (fit.length === 0) return [max];
-    const top = fit[fit.length - 1];
-    const lo = fit.find((s) => s >= Math.max(top / 30, tinyBelow)) ?? top;
-    const mid = fit.find((s) => s >= Math.sqrt(top * lo)) ?? top;
-    return Array.from(new Set([lo, mid, top]));
-  }, [max, tinyBelow]);
 
   return (
     <div className="cal" ref={grid} onPointerLeave={() => setHover(null)}>
@@ -317,7 +364,6 @@ function MonthCalendar({
               const a = days.get(k);
               const total = a?.total ?? 0;
               const future = d.getTime() > Date.now();
-              const s = size(total);
               const label = `${d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}: ${total ? `${bytes(total)} in ${a!.entries.length} transfer${a!.entries.length === 1 ? "" : "s"}` : "nothing moved"}`;
               return (
                 <button
@@ -332,63 +378,41 @@ function MonthCalendar({
                   onFocus={(e) => total && showTip(k, e.currentTarget)}
                   onBlur={() => setHover(null)}
                 >
+                  {total > 0 && <DayLevel i={r * 7 + i} inB={a!.inBytes} outB={a!.outBytes} max={max} />}
                   <span className="cal-num num">{d.getDate()}</span>
-                  {s > 0 && <DayDot i={r * 7 + i} d={s} inB={a!.inBytes} outB={a!.outBytes} tiny={total < tinyBelow} dir={dir} />}
+                  {total > 0 && <span className="cal-amt num">{bytes(total)}</span>}
                 </button>
               );
             })}
           </div>
         ))}
       </div>
-      {refs.length > 0 && (
+      {max > 0 && (
         <div className="cal-scale" aria-hidden="true">
-          <span className="faint small">Dot area shows how much moved</span>
-          <span className="cal-refs">
-            <span className="cal-ref">
-              <DayDot d={minD} inB={1} outB={0} tiny dir={dir} />
-              <span className="small faint num">under {bytes(tinyBelow)}</span>
+          <span className="cal-keys">
+            {dir !== "sent" && <span className="cal-key in"><i />Received</span>}
+            {dir !== "received" && <span className="cal-key out"><i />Sent</span>}
+          </span>
+          <span className="cal-scale-note small">
+            <span className="cal-gauge" aria-hidden="true"><i /></span>
+            <span>
+              A full day is <b className="num">{bytes(max)}</b>, your busiest
             </span>
-            {refs.map((r) => (
-              <span key={r} className="cal-ref">
-                <DayDot d={size(r)} inB={dir === "sent" ? 0 : r} outB={dir === "sent" ? r : 0} tiny={false} dir={dir} />
-                <span className="small faint num">{bytes(r)}</span>
-              </span>
-            ))}
-            {dir === "both" && (
-              <span className="cal-ref">
-                <DayDot d={22} inB={2} outB={1} tiny={false} dir="both" />
-                <span className="small faint">received and sent</span>
-              </span>
-            )}
           </span>
         </div>
       )}
       {tip && hover && (
-        <div className={`cal-tip ${hover.below ? "below" : ""}`} style={{ left: hover.x, top: hover.y }} role="tooltip">
-          <span className="tip-title">{fmtDay(tip.date.getTime(), { weekday: "long", month: "short", day: "numeric" })}</span>
-          <span className="small muted">
-            {bytes(tip.total)} in {tip.entries.length} transfer{tip.entries.length === 1 ? "" : "s"}
-          </span>
-          {dir === "both" && (
-            <span className="tip-split">
-              <span className="tip-row"><i style={{ background: SERIES.in }} />Received<b className="num">{bytes(tip.inBytes)}</b></span>
-              <span className="tip-row"><i style={{ background: SERIES.out }} />Sent<b className="num">{bytes(tip.outBytes)}</b></span>
-            </span>
-          )}
-          <span className="tip-files">
-            {[...tip.entries]
-              .sort((a, b) => b.size - a.size)
-              .slice(0, 3)
-              .map((e) => (
-                <span key={e.id} className="tip-file">
-                  <span className="truncate">{fileLabel(e)}</span>
-                  <span className="num faint">{bytes(e.size)}</span>
-                </span>
-              ))}
-            {tip.entries.length > 3 && <span className="faint small">and {tip.entries.length - 3} more</span>}
-          </span>
-          <span className="small faint truncate">With {Array.from(new Set(tip.entries.map((e) => e.peerName))).join(", ")}</span>
-        </div>
+        <EntriesTip
+          x={hover.x}
+          y={hover.y}
+          below={hover.below}
+          title={fmtDay(tip.date.getTime(), { weekday: "long", month: "short", day: "numeric" })}
+          entries={tip.entries}
+          inB={tip.inBytes}
+          outB={tip.outBytes}
+          split={dir === "both"}
+          foot={`With ${Array.from(new Set(tip.entries.map((e) => e.peerName))).join(", ")}`}
+        />
       )}
     </div>
   );
@@ -446,27 +470,31 @@ export default function History() {
 
   // With whom: per device, both directions (the bar shows the split).
   const pairs = useMemo(() => {
-    const m = new Map<string, { id: string; name: string; inB: number; outB: number; n: number; words: string[] }>();
+    const m = new Map<string, { id: string; name: string; inB: number; outB: number; n: number; words: string[]; entries: HistoryEntry[] }>();
     for (const e of scopeAll) {
       if (dir !== "both" && e.direction !== dir) continue;
-      const p = m.get(e.peerId) ?? { id: e.peerId, name: e.peerName, inB: 0, outB: 0, n: 0, words: e.safetyWords };
+      const p = m.get(e.peerId) ?? { id: e.peerId, name: e.peerName, inB: 0, outB: 0, n: 0, words: e.safetyWords, entries: [] as HistoryEntry[] };
       if (e.direction === "received") p.inB += e.size;
       else p.outB += e.size;
       p.n++;
+      p.entries.push(e);
       p.name = e.peerName;
       m.set(e.peerId, p);
     }
     return [...m.values()].sort((a, b) => b.inB + b.outB - (a.inB + a.outB));
   }, [scopeAll, dir]);
-  const pairMax = Math.max(1, ...pairs.map((p) => p.inB + p.outB));
+  const pairTotal = pairs.reduce((a, p) => a + p.inB + p.outB, 0) || 1;
 
   const cats = useMemo(() => {
-    const m = new Map<Category, { b: number; n: number }>();
+    const m = new Map<Category, { b: number; n: number; inB: number; outB: number; entries: HistoryEntry[] }>();
     for (const e of scope) {
       const c = categoryOf(e.ext);
-      const v = m.get(c) ?? { b: 0, n: 0 };
+      const v = m.get(c) ?? { b: 0, n: 0, inB: 0, outB: 0, entries: [] as HistoryEntry[] };
       v.b += e.size;
+      if (e.direction === "received") v.inB += e.size;
+      else v.outB += e.size;
       v.n++;
+      v.entries.push(e);
       m.set(c, v);
     }
     return CATEGORIES.filter((c) => m.has(c.id))
@@ -474,6 +502,29 @@ export default function History() {
       .sort((a, b) => b.b - a.b);
   }, [scope]);
   const catTotal = cats.reduce((a, c) => a + c.b, 0) || 1;
+
+  // Hover cards on the side lists, placed like the calendar's: centred on
+  // the card, above the row, or below it when there isn't room above.
+  const whoRef = useRef<HTMLElement>(null);
+  const whatRef = useRef<HTMLElement>(null);
+  const [sideTip, setSideTip] = useState<{ list: "who" | "what"; id: string; x: number; y: number; below: boolean } | null>(null);
+  const showSideTip = (list: "who" | "what", id: string, el: HTMLElement) => {
+    const host = (list === "who" ? whoRef : whatRef).current?.getBoundingClientRect();
+    if (!host) return;
+    const r = el.getBoundingClientRect();
+    const below = r.top < 230;
+    const x = Math.min(Math.max(r.left - host.left + r.width / 2, 126), host.width - 126);
+    setSideTip({ list, id, x, y: below ? r.bottom - host.top : r.top - host.top, below });
+  };
+  const rowTip = (list: "who" | "what", id: string) => ({
+    tabIndex: 0,
+    onPointerEnter: (e: React.PointerEvent<HTMLElement>) => e.pointerType === "mouse" && showSideTip(list, id, e.currentTarget),
+    onFocus: (e: React.FocusEvent<HTMLElement>) => showSideTip(list, id, e.currentTarget),
+    onBlur: () => setSideTip(null),
+  });
+  useEffect(() => setSideTip(null), [selected, month, dir]);
+  const tipPair = sideTip?.list === "who" ? pairs.find((p) => p.id === sideTip.id) : undefined;
+  const tipCat = sideTip?.list === "what" ? cats.find((c) => c.id === sideTip.id) : undefined;
 
   const receipts = useMemo(() => [...scope].sort((a, b) => b.finishedAt - a.finishedAt), [scope]);
 
@@ -493,8 +544,37 @@ export default function History() {
   const files = scopeAll.length;
   const when = selected ? `On ${fmtDay(days.get(selected)!.date.getTime(), { weekday: "long", month: "long", day: "numeric" })}` : isCurrent ? "This month" : `In ${monthName}`;
 
+  const summary =
+    files === 0 ? (
+      <>
+        {when}, nothing {dir === "sent" ? "was sent" : dir === "received" ? "was received" : "moved"}.
+        {history.length === 0 && " Finished transfers show up here, with a privacy receipt for each one."}
+      </>
+    ) : relay === 0 ? (
+      <>{when}: every byte went directly between devices and was verified block by block.</>
+    ) : (
+      <>{when}: {bytes(relay)} went through a relay, encrypted end to end so the relay couldn't read it. The rest went directly.</>
+    );
+
   return (
     <div className="page history">
+      <HudStrip
+        label="History summary"
+        stats={[
+          { label: "Received", value: inB > 0 ? bytes(inB) : "–", tone: inB > 0 ? "live" : undefined },
+          { label: "Sent", value: outB > 0 ? bytes(outB) : "–" },
+          { label: "Files", value: files.toLocaleString() },
+          { label: "Through a relay", value: relay > 0 ? bytes(relay) : "None", tone: relay > 0 ? "warn" : undefined },
+        ]}
+        note={summary}
+        action={
+          selected ? (
+            <Button size="sm" variant="ghost" onClick={() => setSelected(null)}>
+              Show all of {monthName}
+            </Button>
+          ) : undefined
+        }
+      />
       {historyOff && (
         <div className="notice">
           <Lock size={16} />
@@ -535,36 +615,12 @@ export default function History() {
         </section>
 
         <aside className="history-side">
-          <div className="summary">
-            {files === 0 ? (
-              <p className="summary-text">
-                {when}, nothing {dir === "sent" ? "was sent" : dir === "received" ? "was received" : "moved"}.
-                {history.length === 0 && " Finished transfers show up here, with a privacy receipt for each one."}
-              </p>
-            ) : (
-              <p className="summary-text">
-                {when} you {inB > 0 && <>received <b>{bytes(inB)}</b></>}
-                {inB > 0 && outB > 0 && " and "}
-                {outB > 0 && <>sent <b>{bytes(outB)}</b></>} across {files} file{files === 1 ? "" : "s"}.{" "}
-                {relay === 0 ? (
-                  <>Every byte went <b>directly</b> between devices and was verified block by block.</>
-                ) : (
-                  <>
-                    <b>{bytes(relay)}</b> went through a relay, encrypted end to end so the relay couldn't read it. The rest went directly.
-                  </>
-                )}
-              </p>
-            )}
-            {selected && (
-              <button className="link small" onClick={() => setSelected(null)}>
-                Show all of {monthName}
-              </button>
-            )}
-          </div>
-
-          <section className="side-block" aria-label="With whom">
+          <section className="side-block hud-side" aria-label="With whom" ref={whoRef} onPointerLeave={() => setSideTip(null)}>
             <div className="side-head">
-              <h3>With whom</h3>
+              <h3>
+                With whom
+                {pairs.length > 0 && <span className="side-count num">{String(pairs.length).padStart(2, "0")}</span>}
+              </h3>
               {dir === "both" && pairs.length > 0 && (
                 <span className="side-legend">
                   <span><i style={{ background: SERIES.in }} />Received</span>
@@ -575,79 +631,107 @@ export default function History() {
             {pairs.length === 0 ? (
               <span className="small faint">No devices in this period.</span>
             ) : (
-              pairs.map((p) => (
-                <div className="pair" key={p.id} title={`Safety words: ${p.words.join(" ")}`}>
-                  <div className="pair-top">
-                    <span className="truncate pair-name">{p.name}</span>
-                    <span className="num small muted pair-val">
-                      {p.inB > 0 && <>{bytes(p.inB)} in</>}
-                      {p.inB > 0 && p.outB > 0 && ", "}
-                      {p.outB > 0 && <>{bytes(p.outB)} out</>}
+              <div className="who-list">
+                {pairs.map((p, k) => (
+                  <div className="who" key={p.id} {...rowTip("who", p.id)}>
+                    <span className="who-idx num" aria-hidden="true">{String(k + 1).padStart(2, "0")}</span>
+                    <span className="who-top">
+                    <span className="who-name truncate">{p.name}</span>
+                    <SplitVals inB={p.inB} outB={p.outB} />
                     </span>
+                    <SplitMeter inB={p.inB} outB={p.outB} max={pairTotal} />
+                    <span className="who-pct num">{share(p.inB + p.outB, pairTotal)}</span>
                   </div>
-                  <div className="pair-bar" aria-hidden="true" style={{ width: `${((p.inB + p.outB) / pairMax) * 100}%` }}>
-                    {p.inB > 0 && <span style={{ flexGrow: p.inB, background: SERIES.in }} />}
-                    {p.outB > 0 && <span style={{ flexGrow: p.outB, background: SERIES.out }} />}
-                  </div>
-                </div>
-              ))
+                ))}
+              </div>
+            )}
+            {tipPair && sideTip && (
+              <EntriesTip
+                x={sideTip.x}
+                y={sideTip.y}
+                below={sideTip.below}
+                title={tipPair.name}
+                entries={tipPair.entries}
+                inB={tipPair.inB}
+                outB={tipPair.outB}
+                split={tipPair.inB > 0 && tipPair.outB > 0}
+                foot={tipPair.words.length ? `Safety words: ${tipPair.words.join(" ")}` : undefined}
+              />
             )}
           </section>
 
-          <section className="side-block" aria-label="What moved">
+          <section className="side-block hud-side" aria-label="What moved" ref={whatRef} onPointerLeave={() => setSideTip(null)}>
             <div className="side-head">
-              <h3>What</h3>
+              <h3>
+                What
+                {cats.length > 0 && <span className="side-count num">{String(cats.length).padStart(2, "0")}</span>}
+              </h3>
+              {cats.length > 0 && <span className="side-sum num">{bytes(catTotal)} · {scope.length} file{scope.length === 1 ? "" : "s"}</span>}
             </div>
             {cats.length === 0 ? (
               <span className="small faint">No files in this period.</span>
             ) : (
-              cats.map((c) => {
-                const Icon = c.icon;
-                return (
-                  <div className="cat" key={c.id}>
-                    <Icon size={15} className="faint" aria-hidden="true" />
-                    <span className="cat-name truncate">{c.label}</span>
-                    <span className="cat-track" aria-hidden="true">
-                      <span className={c.b / cats[0].b < 0.03 ? "tiny" : ""} style={{ width: `${Math.max(1, (c.b / cats[0].b) * 100)}%` }} />
-                    </span>
-                    <span className="num small cat-val">{bytes(c.b)}</span>
-                    <span className="num small faint cat-pct">{c.b / catTotal < 0.01 ? "<1%" : `${Math.round((c.b / catTotal) * 100)}%`}</span>
-                  </div>
-                );
-              })
+              <div className="what-list">
+                {cats.map((c) => {
+                  const Icon = c.icon;
+                  return (
+                    <div className="what" key={c.id} {...rowTip("what", c.id)}>
+                      <span className="what-ico" aria-hidden="true"><Icon size={14} /></span>
+                      <span className="who-top">
+                        <span className="what-name truncate">{c.label}</span>
+                        <SplitVals inB={c.inB} outB={c.outB} />
+                      </span>
+                      <SplitMeter inB={c.inB} outB={c.outB} max={catTotal} />
+                      <span className="who-pct num">{share(c.b, catTotal)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {tipCat && sideTip && (
+              <EntriesTip
+                x={sideTip.x}
+                y={sideTip.y}
+                below={sideTip.below}
+                title={tipCat.label}
+                entries={tipCat.entries}
+                inB={tipCat.inB}
+                outB={tipCat.outB}
+                split={tipCat.inB > 0 && tipCat.outB > 0}
+                foot={`With ${Array.from(new Set(tipCat.entries.map((e) => e.peerName))).join(", ")}`}
+              />
             )}
           </section>
         </aside>
-      </div>
 
-      <section aria-label="Receipts">
-        <div className="section-head">
-          <h3>Receipts</h3>
-          <span className="faint small">{receipts.length > 0 && `${receipts.length} in ${selected ? "this day" : "this month"}`}</span>
-        </div>
-        <div className="panel">
-          {receipts.length === 0 ? (
-            <Empty icon={<HistoryIcon size={20} />} title={history.length === 0 ? "No finished transfers yet" : "Nothing in this period"}>
-              {history.length === 0
-                ? "Each finished transfer gets a privacy receipt here: the route it took, how it was encrypted and verified, and what servers kept (nothing)."
-                : "Pick another month or day on the calendar."}
-            </Empty>
-          ) : (
-            <>
-              {receipts.slice(0, limit).map((e) => (
-                <ReceiptRow key={e.id} e={e} open={open === e.id} onToggle={() => setOpen(open === e.id ? null : e.id)} />
-              ))}
-              {receipts.length > limit && (
-                <div className="more">
-                  <Button size="sm" variant="ghost" onClick={() => setLimit((l) => l + 40)}>
-                    Show {Math.min(40, receipts.length - limit)} more
-                  </Button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </section>
+        <section className="history-receipts" aria-label="Receipts">
+          <SectionHeader title="Receipts">
+            {receipts.length > 0 && <span className="sec-stat num">{receipts.length} in {selected ? "this day" : "this month"}</span>}
+          </SectionHeader>
+          <div className="panel">
+            {receipts.length === 0 ? (
+              <Empty icon={<HistoryIcon size={20} />} title={history.length === 0 ? "No finished transfers yet" : "Nothing in this period"}>
+                {history.length === 0
+                  ? "Each finished transfer gets a privacy receipt here: the route it took, how it was encrypted and verified, and what servers kept (nothing)."
+                  : "Pick another month or day on the calendar."}
+              </Empty>
+            ) : (
+              <>
+                {receipts.slice(0, limit).map((e) => (
+                  <ReceiptRow key={e.id} e={e} open={open === e.id} onToggle={() => setOpen(open === e.id ? null : e.id)} />
+                ))}
+                {receipts.length > limit && (
+                  <div className="more">
+                    <Button size="sm" variant="ghost" onClick={() => setLimit((l) => l + 40)}>
+                      Show {Math.min(40, receipts.length - limit)} more
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </section>
+      </div>
 
       {!historyOff && (
         <p className="history-foot small faint">

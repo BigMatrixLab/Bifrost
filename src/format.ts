@@ -39,7 +39,12 @@ export function ago(ms: number): string {
   return new Date(ms).toLocaleDateString();
 }
 
+/** Invitations that never expire carry this date (core: NEVER_EXPIRES_MS, year 9999). */
+export const NEVER_EXPIRES_MS = 253_402_300_799_000;
+export const neverExpires = (ms: number) => ms >= NEVER_EXPIRES_MS;
+
 export function until(ms: number): string {
+  if (neverExpires(ms)) return "never";
   const d = (ms - Date.now()) / 1000;
   if (d <= 0) return "expired";
   return `in ${duration(d)}`;
@@ -66,18 +71,20 @@ export const STATUS_TEXT: Record<JobStatus, string> = {
 
 export type Tone = "accent" | "ok" | "warn" | "err" | "muted" | "info" | "out";
 
+/** Traffic light for operations: green = running or done, yellow = waiting
+ * or paused, red = needs attention or failed. */
 export function statusTone(s: JobStatus): Tone {
   switch (s) {
     case "downloading":
     case "verifying":
-      return "accent";
     case "completed":
       return "ok";
     case "waiting_peer":
     case "waiting_direct":
     case "reconnecting":
     case "connecting":
-      return "info";
+    case "paused":
+      return "warn";
     case "needs_attention":
     case "failed":
       return "err";

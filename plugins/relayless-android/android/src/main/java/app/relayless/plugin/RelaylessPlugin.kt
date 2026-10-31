@@ -25,7 +25,7 @@ import java.io.File
 
 @InvokeArg
 class ServiceArgs {
-    var title: String = "Relayless"
+    var title: String = "Quanta"
     var text: String = ""
 }
 
@@ -117,7 +117,7 @@ class RelaylessPlugin(private val activity: Activity) : Plugin(activity) {
     @Command
     fun requestIgnoreBatteryOptimizations(invoke: Invoke) {
         // Opens the battery optimization list (no special permission needed);
-        // the user picks Relayless and chooses "Don't optimize" / "Unrestricted".
+        // the user picks Quanta and chooses "Don't optimize" / "Unrestricted".
         if (!unrestricted()) {
             try {
                 activity.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))

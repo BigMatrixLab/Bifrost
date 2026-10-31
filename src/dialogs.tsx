@@ -15,9 +15,9 @@ import {
 } from "lucide-react";
 import { android, api, errorText, on, type CreatedInvitation, type JoinResult, type Share } from "./api";
 import { isAndroid } from "./platform";
-import { until } from "./format";
+import { neverExpires, until } from "./format";
 import { useStore } from "./store";
-import { Button, Modal, SafetyWords, Segmented, Toggle } from "./ui";
+import { Button, CodeCells, Modal, Progress, SafetyWords, Segmented, Toggle } from "./ui";
 
 function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) {
   const [done, setDone] = useState(false);
@@ -44,7 +44,6 @@ export function InviteDialog({ share, onClose }: { share: Share; onClose: () => 
   const [expires, setExpires] = useState(86400);
   const [uses, setUses] = useState<number>(1);
   const [approval, setApproval] = useState(true);
-  const [withCode, setWithCode] = useState(true);
   const [busy, setBusy] = useState(false);
   const [created, setCreated] = useState<CreatedInvitation | null>(null);
   const [, tick] = useState(0);
@@ -58,7 +57,8 @@ export function InviteDialog({ share, onClose }: { share: Share; onClose: () => 
   const create = async () => {
     setBusy(true);
     try {
-      setCreated(await api.createInvitation(share.id, expires, uses === 0 ? null : uses, approval, withCode));
+      // The 16-character code is the invitation people share; it lives as long as the invitation.
+      setCreated(await api.createInvitation(share.id, expires, uses === 0 ? null : uses, approval, true));
     } catch (e) {
       toast(errorText(e), "err");
     } finally {
@@ -67,41 +67,67 @@ export function InviteDialog({ share, onClose }: { share: Share; onClose: () => 
   };
 
   if (created) {
+    const inv = created.invitation;
+    const now = Date.now();
+    const never = neverExpires(inv.expiresAt);
+    // Share of the invitation's lifetime left; the meter turns from green
+    // through yellow to red as it runs out.
+    const left = never ? 1 : Math.max(0, Math.min(1, (inv.expiresAt - now) / Math.max(1, inv.expiresAt - inv.createdAt)));
+    const tone = left > 0.5 ? "ok" : left > 0.2 ? "warn" : "err";
+    const usesText = inv.maxUses != null ? `${inv.useCount} / ${inv.maxUses} uses` : "Unlimited uses";
     return (
-      <Modal title={`Invite to “${share.name}”`} onClose={onClose} width={620} footer={<Button variant="primary" onClick={onClose}>Done</Button>}>
-        <div className="hstack invite-layout" style={{ alignItems: "flex-start", gap: 18 }}>
-          <div className="qr" dangerouslySetInnerHTML={{ __html: created.qrSvg }} aria-label="Invitation QR code" />
-          <div className="stack grow" style={{ gap: 14 }}>
-            {created.shortCode && (
-              <div className="stack">
-                <span className="label">Short code</span>
-                <div className="hstack">
-                  <span className="short-code">{created.shortCode}</span>
-                  <CopyButton text={created.shortCode} />
-                </div>
-                <span className="hint">
-                  Easy to read out over the phone. Works {created.shortCodeExpiresAt ? until(created.shortCodeExpiresAt) : "for 30 minutes"}, only while Relayless stays open here.
-                </span>
-              </div>
-            )}
-            <div className="stack">
-              <span className="label">Invitation</span>
-              <div className="code-box">
-                <span className="val selectable">{created.invite}</span>
-                <CopyButton text={created.invite} />
-              </div>
-              <span className="hint">
-                Send this in any chat app. It contains this computer's identity and a one-time access key, never your files.
+      <Modal title={`Invite to “${share.name}”`} onClose={onClose} width={680} footer={<Button variant="primary" onClick={onClose}>Done</Button>}>
+        <div className="inv-chips" aria-label="Invitation settings">
+          <span className="inv-chip">{usesText}</span>
+          <span className={`inv-chip ${inv.requireApproval ? "on" : ""}`}>{inv.requireApproval ? "Approval on" : "No approval"}</span>
+        </div>
+
+        <div className="inv-grid">
+          <figure className="qr-scan" aria-label="Invitation QR code">
+            <span className="qr-frame">
+              {/* The beam lives inside the QR box, which clips it to the code. */}
+              <span className="qr-box">
+                <span className="qr" dangerouslySetInnerHTML={{ __html: created.qrSvg }} />
+                <span className="qr-beam" aria-hidden="true" />
               </span>
+            </span>
+            <figcaption>Scan to get the code</figcaption>
+          </figure>
+
+          <div className="inv-code">
+            <span className="lab">Invitation code</span>
+            {created.shortCode ? (
+              <>
+                <CodeCells code={created.shortCode} />
+                <CopyButton text={created.shortCode} label="Copy code" />
+              </>
+            ) : (
+              // Only without a lookup service (offline test mode): the full invitation.
+              <>
+                <div className="code-box inv-long">
+                  <span className="val selectable">{created.invite}</span>
+                </div>
+                <CopyButton text={created.invite} label="Copy invitation" />
+              </>
+            )}
+            <div className={`inv-life tone-${never ? "ok" : tone}`}>
+              <div className="inv-life-head">
+                <span className="lab">{never ? "Valid" : "Valid for"}</span>
+                <span className="num">{never ? "Until you revoke it" : until(inv.expiresAt).replace(/^in /, "")}</span>
+              </div>
+              <Progress value={left} tone={never ? "ok" : tone} />
             </div>
+            <span className="hint">
+              Send it in any chat app, read it out, or let them scan it. They enter it in Quanta under Receive. It works while Quanta is open and online here.
+            </span>
           </div>
         </div>
-        <div className="notice accent">
-          <Monitor size={16} />
+
+        <div className="inv-status">
+          <span className="inv-pulse" aria-hidden="true" />
           <span>
-            <b>Keep this computer on and Relayless running</b> while they download. If either side goes offline, the
-            transfer pauses and continues from where it stopped.
-            {approval && " You'll be asked to approve their device when they connect."}
+            <b>Waiting for them to connect.</b> Keep this computer on and Quanta open while they download.
+            {inv.requireApproval && " You'll approve their device first."}
           </span>
         </div>
       </Modal>
@@ -124,6 +150,7 @@ export function InviteDialog({ share, onClose }: { share: Share; onClose: () => 
       <div className="field">
         <span className="label">Invitation expires</span>
         <Segmented
+          full
           label="Expiry"
           value={expires}
           onChange={setExpires}
@@ -131,12 +158,20 @@ export function InviteDialog({ share, onClose }: { share: Share; onClose: () => 
             { value: 3600, label: "1 hour" },
             { value: 86400, label: "24 hours" },
             { value: 7 * 86400, label: "7 days" },
+            { value: 0, label: "Never" },
           ]}
         />
+        {expires === 0 && (
+          <span className="hint warn-text">
+            The invitation keeps working until you revoke it on the Send page. Anyone who gets hold of it can ask for access
+            {approval ? ", but you still approve each device." : ". Turn on approval below to stay in control."}
+          </span>
+        )}
       </div>
       <div className="field">
         <span className="label">Can be used by</span>
         <Segmented
+          full
           label="Uses"
           value={uses}
           onChange={setUses}
@@ -150,7 +185,6 @@ export function InviteDialog({ share, onClose }: { share: Share; onClose: () => 
       </div>
       <div>
         <Toggle checked={approval} onChange={setApproval} label="Ask me to approve each device" hint="Recommended. You'll see the device name before it can browse anything." />
-        <Toggle checked={withCode} onChange={setWithCode} label="Also create a short code" hint="A 12-character code they can type instead of pasting the invitation. Valid 30 minutes." />
       </div>
       <div className="notice">
         <Lock size={16} />
@@ -248,12 +282,13 @@ export function ConnectDialog({ onClose }: { onClose: () => void }) {
       }
     >
       <div className="field">
-        <label htmlFor="inv">Invitation or short code</label>
+        <label htmlFor="inv">Invitation code</label>
+        {/* Still accepts full RL1-… invitations and 12-character codes from older versions. */}
         <textarea
           id="inv"
-          className="input mono"
-          rows={4}
-          placeholder="Paste the invitation (RL1-…) or type a code like K7QM-9XRT-4HWD"
+          className="input mono code-input"
+          rows={1}
+          placeholder="Enter the 16-character code, like K7QM-9XRT-4HWD-P2NA"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
@@ -353,7 +388,7 @@ export function Onboarding() {
     return saveSettings({ ...settings, deviceName: name.trim() || settings.deviceName, onboarded: true });
   };
   return (
-    <Modal title="Welcome to Relayless" onClose={done} width={560} footer={<Button variant="primary" onClick={done}>Get started</Button>}>
+    <Modal title="Welcome to Quanta" onClose={done} width={560} footer={<Button variant="primary" onClick={done}>Get started</Button>}>
       <div className="onboard-points">
         <div className="onboard-point">
           <span className="i"><Zap size={16} /></span>

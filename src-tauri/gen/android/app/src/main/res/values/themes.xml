@@ -1,5 +1,5 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Relayless is dark-only for now; match the UI so there is no white flash. -->
+    <!-- Quanta is dark-only for now; match the UI so there is no white flash. -->
     <style name="Theme.relayless" parent="Theme.Material3.Dark.NoActionBar">
         <item name="android:windowBackground">@color/rl_background</item>
         <item name="android:statusBarColor">@color/rl_background</item>

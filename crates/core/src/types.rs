@@ -125,6 +125,8 @@ pub struct InvitationDto {
     /// "active", "expired", "used_up", "revoked"
     pub state: String,
     pub has_short_code: bool,
+    /// The 16-character code while it is published (shown on the sender only).
+    pub short_code: Option<String>,
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -319,7 +321,7 @@ pub struct Settings {
     #[serde(default)]
     pub congestion_v2: bool,
     /// The user's own relay servers (empty = n0's public relays, which are
-    /// rate-limited). Applies after restarting Relayless.
+    /// rate-limited). Applies after restarting Quanta.
     pub relay_urls: String,
 }
 

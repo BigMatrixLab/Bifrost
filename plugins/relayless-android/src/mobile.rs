@@ -20,7 +20,7 @@ pub fn init<R: Runtime, C: DeserializeOwned>(
     Ok(RelaylessAndroid(handle))
 }
 
-/// Android APIs Relayless needs.
+/// Android APIs Quanta needs.
 pub struct RelaylessAndroid<R: Runtime>(PluginHandle<R>);
 
 impl<R: Runtime> RelaylessAndroid<R> {

@@ -17,7 +17,7 @@ pub struct DeviceInfo {
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BatteryStatus {
-    /// True when Android won't restrict Relayless in the background (Doze).
+    /// True when Android won't restrict Quanta in the background (Doze).
     pub unrestricted: bool,
 }
 

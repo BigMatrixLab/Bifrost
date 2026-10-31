@@ -1,10 +1,14 @@
-//! Relayless core: direct, encrypted, resumable, verified file transfer.
+//! Quanta core: direct, encrypted, resumable, verified file transfer.
 
 mod db;
 pub mod diag;
 pub mod flow;
 mod inner;
 pub mod mmc;
+
+/// `expires_at` of an invitation that never expires: 9999-12-31T23:59:59Z.
+/// Still below 2^53, so it survives JSON in the UI as an exact number.
+pub const NEVER_EXPIRES_MS: i64 = 253_402_300_799_000;
 pub mod invite;
 mod net;
 pub mod proto;
@@ -186,6 +190,9 @@ impl Core {
         tokio::spawn(sender::accept_loop(inner.clone()));
         tokio::spawn(ticker(inner.clone()));
         tokio::spawn(network_watch(inner.clone()));
+        if !inner.local_mode {
+            tokio::spawn(republish_codes(inner.clone()));
+        }
         let core = Core { inner };
         for job in core.inner.db.list_jobs()? {
             if job.status.auto_runs() {
@@ -286,7 +293,7 @@ impl Core {
             invitations: invs
                 .iter()
                 .filter(|i| i.share_id == s.id)
-                .map(|i| inv_dto(i, now, codes.contains_key(&i.id)))
+                .map(|i| inv_dto(i, now, codes.get(&i.id).map(|c| c.code.clone())))
                 .collect(),
             device_count: grants.iter().filter(|g| g.share_id == s.id).count() as u32,
         }
@@ -395,7 +402,13 @@ impl Core {
             relay_url: self.inner.endpoint.addr().relay_urls().next().cloned(),
         };
         let now = now_ms();
-        let expires_at = now + (expires_in_secs.clamp(300, 30 * 24 * 3600) as i64) * 1000;
+        // 0 = no expiry: stored as a far-future date, so every existing check
+        // (`expires_at <= now`) keeps working and no schema change is needed.
+        let expires_at = if expires_in_secs == 0 {
+            NEVER_EXPIRES_MS
+        } else {
+            now + (expires_in_secs.clamp(300, 30 * 24 * 3600) as i64) * 1000
+        };
         let row = InvitationRow {
             id: random_id(),
             share_id: share.id.clone(),
@@ -410,63 +423,44 @@ impl Core {
         self.inner.db.insert_invitation(&row)?;
         let encoded = invite.encode();
         let mut short_code = None;
-        let mut code_exp = None;
         if with_code && !self.inner.local_mode {
-            match self.publish_code(&invite, &row.id, expires_at).await {
-                Ok((c, e)) => {
-                    short_code = Some(c);
-                    code_exp = Some(e);
+            // The code is the invitation people share, so without it the
+            // invitation is useless: undo it and report the error.
+            match self.new_code(&invite, &row.id).await {
+                Ok(c) => short_code = Some(c),
+                Err(e) => {
+                    let _ = self.inner.db.revoke_invitation(&row.id);
+                    warn!("invitation code unavailable: {e:#}");
+                    bail!("Couldn't create the invitation code. Check that this computer is online and try again.");
                 }
-                Err(e) => warn!("short code unavailable: {e:#}"),
             }
         }
         self.inner.log("info", &format!("Created an invitation for \"{}\"", share.name), None);
         self.inner.emit(CoreEvent::SharesChanged);
         Ok(CreatedInvitation {
-            invitation: inv_dto(&row, now, short_code.is_some()),
-            qr_svg: invite::qr_svg(&encoded),
+            invitation: inv_dto(&row, now, short_code.clone()),
+            // The QR carries the code when there is one: short, and scannable anywhere.
+            qr_svg: invite::qr_svg(short_code.as_deref().unwrap_or(&encoded)),
             invite: encoded,
+            short_code_expires_at: short_code.as_ref().map(|_| expires_at),
             short_code,
-            short_code_expires_at: code_exp,
         })
     }
 
-    async fn publish_code(&self, invite: &Invite, invitation_id: &str, invite_expires: i64) -> Result<(String, i64)> {
+    /// Creates the 16-character code for an invitation, saves it so it can be
+    /// published again after a restart, and starts publishing it.
+    async fn new_code(&self, invite: &Invite, invitation_id: &str) -> Result<String> {
         let code = invite::new_short_code();
         let c2 = code.clone();
-        let (sk, key) = tokio::task::spawn_blocking(move || invite::derive_code_keys(&c2)).await??;
+        let (_, key) = tokio::task::spawn_blocking(move || invite::derive_code_keys(&c2)).await??;
         let sealed = invite::seal_for_code(invite, &key)?;
-        let user_data: iroh::address_lookup::UserData =
-            sealed.parse().map_err(|_| anyhow!("code record too large"))?;
-        let ep = Endpoint::builder(presets::N0)
-            .secret_key(sk)
-            .user_data_for_address_lookup(user_data)
-            .bind()
-            .await?;
-        let _ = tokio::time::timeout(Duration::from_secs(8), ep.online()).await;
-        let expires_at = invite_expires.min(now_ms() + 30 * 60 * 1000);
-        self.inner
-            .short_codes
-            .lock()
-            .insert(invitation_id.to_string(), ShortCode { endpoint: ep });
-        let inner = self.inner.clone();
-        let id = invitation_id.to_string();
-        tokio::spawn(async move {
-            let wait = (expires_at - now_ms()).max(0) as u64;
-            tokio::select! {
-                _ = tokio::time::sleep(Duration::from_millis(wait)) => {}
-                _ = inner.shutdown.cancelled() => {}
-            }
-            let sc = inner.short_codes.lock().remove(&id);
-            if let Some(sc) = sc {
-                sc.endpoint.close().await;
-                inner.emit(CoreEvent::SharesChanged);
-            }
-        });
-        Ok((code, expires_at))
+        publish_code(&self.inner, invitation_id, &code, &sealed).await?;
+        self.inner.db.save_invitation_code(invitation_id, &code, &sealed)?;
+        Ok(code)
     }
 
     fn drop_code(&self, invitation_id: &str) {
+        let _ = self.inner.db.delete_invitation_code(invitation_id);
         if let Some(sc) = self.inner.short_codes.lock().remove(invitation_id) {
             tokio::spawn(async move { sc.endpoint.close().await });
         }
@@ -571,7 +565,7 @@ impl Core {
                 tokio::time::sleep(Duration::from_secs(3)).await;
             }
         }
-        bail!("No invitation found for that code. Codes expire after 30 minutes and only work while Relayless is open on the sender's computer.")
+        bail!("No invitation found for that code. Check it with the sender: codes only work while Quanta is open and online on their computer, and until the invitation expires or is revoked.")
     }
 
     pub async fn join(&self, input: &str) -> Result<JoinResult> {
@@ -600,7 +594,7 @@ impl Core {
         self.inner.emit(CoreEvent::JoinStatus { message: "Connecting to the sender…".into(), safety_words: Some(words.clone()) });
         let conn = tokio::time::timeout(Duration::from_secs(40), self.inner.endpoint.connect(addr, proto::ALPN))
             .await
-            .map_err(|_| anyhow!("Couldn't reach the sender. Make sure Relayless is open on their computer and both of you are online."))?
+            .map_err(|_| anyhow!("Couldn't reach the sender. Make sure Quanta is open on their computer and both of you are online."))?
             .map_err(|e| anyhow!("Couldn't reach the sender: {e}"))?;
         let device = self.inner.settings.read().device_name.clone();
         let inner = self.inner.clone();
@@ -1008,7 +1002,78 @@ impl Core {
     }
 }
 
-fn inv_dto(i: &InvitationRow, now: i64, has_code: bool) -> InvitationDto {
+/// Publishes an invitation code: a lookup endpoint keyed by the code carries
+/// the sealed invitation. It stays up while the invitation is active (checked
+/// every minute: expiry, use limit, revocation) and stops on shutdown.
+async fn publish_code(inner: &Arc<Inner>, invitation_id: &str, code: &str, sealed: &str) -> Result<()> {
+    let c2 = code.to_string();
+    let (sk, _) = tokio::task::spawn_blocking(move || invite::derive_code_keys(&c2)).await??;
+    let user_data: iroh::address_lookup::UserData = sealed.parse().map_err(|_| anyhow!("code record too large"))?;
+    let ep = Endpoint::builder(presets::N0)
+        .secret_key(sk)
+        .user_data_for_address_lookup(user_data)
+        .bind()
+        .await?;
+    let _ = tokio::time::timeout(Duration::from_secs(8), ep.online()).await;
+    inner
+        .short_codes
+        .lock()
+        .insert(invitation_id.to_string(), ShortCode { code: code.to_string(), endpoint: ep });
+    let inner = inner.clone();
+    let id = invitation_id.to_string();
+    tokio::spawn(async move {
+        loop {
+            tokio::select! {
+                _ = tokio::time::sleep(Duration::from_secs(60)) => {}
+                _ = inner.shutdown.cancelled() => return,
+            }
+            // Revoked in the meantime: drop_code already closed it.
+            if !inner.short_codes.lock().contains_key(&id) {
+                return;
+            }
+            let active = matches!(inner.db.get_invitation(&id), Ok(Some(r)) if r.state(now_ms()) == "active");
+            if !active {
+                let _ = inner.db.delete_invitation_code(&id);
+                let sc = inner.short_codes.lock().remove(&id);
+                if let Some(sc) = sc {
+                    sc.endpoint.close().await;
+                }
+                inner.emit(CoreEvent::SharesChanged);
+                return;
+            }
+        }
+    });
+    Ok(())
+}
+
+/// After a restart, publishes the codes of invitations that are still active
+/// again and forgets the rest.
+async fn republish_codes(inner: Arc<Inner>) {
+    let codes = match inner.db.list_invitation_codes() {
+        Ok(c) => c,
+        Err(e) => {
+            warn!("can't read invitation codes: {e:#}");
+            return;
+        }
+    };
+    let mut changed = false;
+    for (id, code, sealed) in codes {
+        let active = matches!(inner.db.get_invitation(&id), Ok(Some(r)) if r.state(now_ms()) == "active");
+        if !active {
+            let _ = inner.db.delete_invitation_code(&id);
+            continue;
+        }
+        match publish_code(&inner, &id, &code, &sealed).await {
+            Ok(()) => changed = true,
+            Err(e) => warn!("invitation code {id} not republished: {e:#}"),
+        }
+    }
+    if changed {
+        inner.emit(CoreEvent::SharesChanged);
+    }
+}
+
+fn inv_dto(i: &InvitationRow, now: i64, code: Option<String>) -> InvitationDto {
     InvitationDto {
         id: i.id.clone(),
         share_id: i.share_id.clone(),
@@ -1018,7 +1083,8 @@ fn inv_dto(i: &InvitationRow, now: i64, has_code: bool) -> InvitationDto {
         require_approval: i.require_approval,
         created_at: i.created_at,
         state: i.state(now).into(),
-        has_short_code: has_code,
+        has_short_code: code.is_some(),
+        short_code: code,
     }
 }
 

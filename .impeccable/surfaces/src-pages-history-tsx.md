@@ -5,7 +5,7 @@ primary_target: "src/pages/History.tsx"
 related_targets: ["src/pages/Overview.tsx"]
 ---
 
-# History screen (Relayless app)
+# History screen (Quanta app)
 
 Scope: new History page in the desktop/Android app, plus the live flow graph (Overview, Transfers), privacy receipts, safety words and privacy settings that feed it. Mode: Operate. Extends the incumbent glass dark world; no DESIGN.md change.
 

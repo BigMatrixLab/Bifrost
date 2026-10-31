@@ -388,7 +388,7 @@ async fn dial(inner: &Arc<Inner>, peer: EndpointId) -> Result<Connection, JobErr
     match tokio::time::timeout(CONNECT_TIMEOUT, inner.endpoint.connect(addr, ALPN)).await {
         Ok(Ok(c)) => Ok(c),
         Ok(Err(e)) => Err(JobError::Network(format!(
-            "Can't reach the sender right now. Relayless must be open on their computer. ({e})"
+            "Can't reach the sender right now. Quanta must be open on their computer. ({e})"
         ))),
         Err(_) => Err(JobError::Network(
             "Timed out reaching the sender. They may be offline, or a firewall is blocking the connection.".into(),
@@ -1122,7 +1122,7 @@ async fn run_job(inner: &Arc<Inner>, h: &Arc<JobHandle>) {
 
 fn notify_attention(inner: &Inner, h: &JobHandle) {
     let name = h.row.lock().display_name.clone();
-    inner.notify("Transfer needs attention", &format!("{name} stopped. Open Relayless for details."));
+    inner.notify("Transfer needs attention", &format!("{name} stopped. Open Quanta for details."));
 }
 
 /// Opens (or creates) the partial file and reconciles it with stored progress.

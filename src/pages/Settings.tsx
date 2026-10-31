@@ -6,7 +6,7 @@ import { isAndroid, pickFolder } from "../platform";
 import { useStorageAccess } from "../android";
 import { mbit } from "../format";
 import { useStore } from "../store";
-import { Button, Modal, Segmented, Toggle } from "../ui";
+import { Button, HudStrip, Modal, SectionHeader, Segmented, Toggle } from "../ui";
 
 function Row({ label, hint, children }: { label: string; hint?: React.ReactNode; children: React.ReactNode }) {
   return (
@@ -80,10 +80,23 @@ export default function Settings() {
   };
   const streamsCap = (settings.parallelStreams * 1_000_000) / 0.2; // bytes/s at 200 ms RTT
 
+  const limitText = (kib: number) => (kib ? `${Number((kib / 1024).toFixed(2))} MB/s` : "Unlimited");
+
   return (
     <div className="page page-settings">
+      <HudStrip
+        label="This device"
+        stats={[
+          { label: isAndroid() ? "This device" : "This computer", value: settings.deviceName },
+          { label: "Network", value: network?.online ? "Online" : "Connecting", tone: network?.online ? "live" : "warn" },
+          { label: "Route mode", value: settings.connectionMode === "direct_only" ? "Direct only" : "Direct first" },
+          { label: "Download limit", value: limitText(settings.downloadLimitKbps) },
+          { label: "Upload limit", value: limitText(settings.uploadLimitKbps) },
+        ]}
+        note={`Quanta ${version}. Settings are stored only on this device.`}
+      />
       <section>
-        <div className="sub-title">General</div>
+        <SectionHeader title="General" />
         <div className="panel settings-group">
           <Row label={isAndroid() ? "Device name" : "Computer name"} hint="Shown to devices you share with or connect to.">
             <input className="input" defaultValue={settings.deviceName} maxLength={64} onBlur={(e) => e.target.value.trim() && e.target.value !== settings.deviceName && save({ deviceName: e.target.value })} />
@@ -105,7 +118,7 @@ export default function Settings() {
           <Toggle
             checked={!!autostart}
             disabled={autostart === null}
-            label="Start Relayless when I sign in"
+            label="Start Quanta when I sign in"
             hint="Starts quietly in the tray so shared folders stay available and downloads resume after a reboot."
             onChange={async (v) => {
               try {
@@ -130,16 +143,16 @@ export default function Settings() {
 
       {isAndroid() && (
         <section>
-          <div className="sub-title">Android</div>
+          <SectionHeader title="Android" />
           <div className="panel settings-group">
-            <Row label="All files access" hint="Needed to share folders and save downloads to real folders such as Download/Relayless.">
+            <Row label="All files access" hint="Needed to share folders and save downloads to real folders such as Download/Quanta.">
               {storage.granted ? (
                 <span className="pill pill-ok"><FolderLock size={12} /> Allowed</span>
               ) : (
                 <Button variant="primary" onClick={storage.request}>Allow</Button>
               )}
             </Row>
-            <Row label="Run in the background" hint="Lets transfers continue with the screen off. Tap Allow, pick Relayless in the list and choose “Don't optimize” or “Unrestricted”.">
+            <Row label="Run in the background" hint="Lets transfers continue with the screen off. Tap Allow, pick Quanta in the list and choose “Don't optimize” or “Unrestricted”.">
               {battery ? (
                 <span className="pill pill-ok"><BatteryCharging size={12} /> Unrestricted</span>
               ) : (
@@ -154,17 +167,29 @@ export default function Settings() {
       )}
 
       <section>
-        <div className="sub-title">Speed and resources</div>
+        <SectionHeader title="Speed and resources" />
         <div className="panel settings-group">
           <Row
-            label={`Parallel streams per file: ${settings.parallelStreams}`}
+            label="Parallel streams per file"
             hint={<>More streams fill long, high-latency links (like Bangladesh to Europe). {settings.parallelStreams} streams can carry about {mbit(streamsCap)} at 200 ms latency.</>}
           >
-            <input type="range" min={1} max={32} value={settings.parallelStreams} onChange={(e) => save({ parallelStreams: Number(e.target.value) })} aria-label="Parallel streams" />
+            <div className="range-field">
+              <input
+                type="range"
+                className="range-meter"
+                min={1}
+                max={32}
+                value={settings.parallelStreams}
+                onChange={(e) => save({ parallelStreams: Number(e.target.value) })}
+                aria-label="Parallel streams per file"
+                style={{ ["--p" as string]: (settings.parallelStreams - 1) / 31 } as React.CSSProperties}
+              />
+              <span className="range-value num" aria-hidden="true">{String(settings.parallelStreams).padStart(2, "0")}</span>
+            </div>
           </Row>
           <Row
             label="Connections per sender"
-            hint="On long or lossy direct links, several connections carry more than one. Relayless adds them only while each one raises the speed, and never over a relay."
+            hint="On long or lossy direct links, several connections carry more than one. Quanta adds them only while each one raises the speed, and never over a relay."
           >
             <Segmented
               label="Connections per sender"
@@ -190,10 +215,10 @@ export default function Settings() {
             checked={settings.lowPriority}
             disabled={isAndroid()}
             label="Yield CPU to other apps"
-            hint="Runs Relayless at below-normal priority. Network speed is unaffected; your other programs stay responsive."
+            hint="Runs Quanta at below-normal priority. Network speed is unaffected; your other programs stay responsive."
             onChange={(v) => save({ lowPriority: v })}
           />
-          <Row label="Congestion control" hint="CUBIC gives the steadiest speed and is recommended. BBR (experimental) can help on very lossy links but sometimes stalls at a few KB/s. Matters most on the sending computer. Applies after restarting Relayless.">
+          <Row label="Congestion control" hint="CUBIC gives the steadiest speed and is recommended. BBR (experimental) can help on very lossy links but sometimes stalls at a few KB/s. Matters most on the sending computer. Applies after restarting Quanta.">
             <Segmented
               label="Congestion control"
               value={settings.congestion}
@@ -214,13 +239,13 @@ export default function Settings() {
         {restartNote && (
           <div className="notice" style={{ marginTop: 10 }}>
             <Info size={16} />
-            <span>Quit Relayless from the tray and open it again to use the new congestion control.</span>
+            <span>Quit Quanta from the tray and open it again to use the new congestion control.</span>
           </div>
         )}
       </section>
 
       <section>
-        <div className="sub-title">Connection</div>
+        <SectionHeader title="Connection" />
         <div className="panel settings-group">
           <Row
             label="Route mode"
@@ -245,7 +270,7 @@ export default function Settings() {
             hint={
               <>
                 Leave empty to use the free public relays, which are rate-limited (often around 1 Mbit/s). For fast transfers when routers block a
-                direct path, run your own relay and enter its address on both devices. Setup guide: docs/RELAY.md on the Relayless GitHub page.
+                direct path, run your own relay and enter its address on both devices. Setup guide: docs/RELAY.md on the Quanta GitHub page.
               </>
             }
           >
@@ -267,18 +292,18 @@ export default function Settings() {
         {relayNote && (
           <div className="notice" style={{ marginTop: 10 }}>
             <Info size={16} />
-            <span>Quit Relayless and open it again to use the new relay server. Set the same relay on the other device too.</span>
+            <span>Quit Quanta and open it again to use the new relay server. Set the same relay on the other device too.</span>
           </div>
         )}
       </section>
 
       <section>
-        <div className="sub-title">Privacy</div>
+        <SectionHeader title="Privacy" />
         <div className="panel settings-group">
           <div className="privacy-facts">
             <Lock size={16} aria-hidden="true" />
             <span>
-              Relayless has no account and sends no analytics. Transfer history, receipts and these settings are stored only in this device's
+              Quanta has no account and sends no analytics. Transfer history, receipts and these settings are stored only in this device's
               database. The coordination service sees that two devices want to connect, never file names or contents.
             </span>
           </div>
@@ -342,7 +367,7 @@ export default function Settings() {
       </section>
 
       <section>
-        <div className="sub-title">About</div>
+        <SectionHeader title="About" />
         <div className="panel settings-group">
           <Row label="Device ID" hint="Your cryptographic identity. Others verify it on every connection.">
             <div className="hstack">
@@ -358,7 +383,7 @@ export default function Settings() {
             </span>
           </Row>
           <Row label="Version">
-            <span className="muted small">Relayless {version}</span>
+            <span className="muted small">Quanta {version}</span>
           </Row>
           <Row label="App data">
             <span className="mono small faint selectable" style={{ overflowWrap: "anywhere" }}>{dataDir}</span>

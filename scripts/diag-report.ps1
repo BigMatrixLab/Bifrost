@@ -1,4 +1,4 @@
-# Prints one row per transfer summary from a Relayless transfers.jsonl file.
+# Prints one row per transfer summary from a Quanta transfers.jsonl file.
 # Usage:
 #   powershell -File scripts\diag-report.ps1 [path\to\transfers.jsonl] [-Last 20] [-Json]
 # Default path: %APPDATA%\app.relayless.desktop\diagnostics\transfers.jsonl

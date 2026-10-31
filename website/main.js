@@ -1,4 +1,4 @@
-// Relayless website: live transfer demo, latest-release download links.
+// Quanta website: live transfer demo, latest-release download links.
 (() => {
   const REPO = "MisbahKhan0009/Relayless";
   const $ = (s, r = document) => r.querySelector(s);
@@ -196,7 +196,7 @@
       const win = find(/x64\.exe$/i);
       const apk = find(/android\.apk$/i);
       const date = rel.published_at ? new Date(rel.published_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" }) : "";
-      const ver = (rel.name || rel.tag_name || "").replace(/^Relayless\s*/i, "");
+      const ver = (rel.name || rel.tag_name || "").replace(/^(Quanta|Relayless)\s*/i, "");
       const v = $("[data-version]");
       if (v && ver) v.textContent = `Version ${ver}${date ? `, released ${date}` : ""}`;
       const apply = (key, asset, label) => {

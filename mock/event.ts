@@ -25,13 +25,31 @@ function start() {
       j.verifiedBytes = j.doneBytes;
       emit("job-updated", { ...j });
     }
+    const r = data.list_jobs.find((x: any) => x.id === "j2");
+    if (r) {
+      const bps = (0.9 + 0.12 * Math.sin(i / 3)) * 1024 * 1024;
+      r.speedBps = bps;
+      r.doneBytes = Math.min(r.size, r.doneBytes + bps);
+      r.verifiedBytes = r.doneBytes;
+      r.etaSecs = Math.round((r.size - r.doneBytes) / bps);
+      emit("job-updated", { ...r });
+    }
     const up = (3.1 + 0.9 * Math.sin(i / 5) + 0.3 * Math.cos(i / 1.7)) * 1024 * 1024;
-    const o = data.list_outgoing[0];
-    o.sentBytes = Math.min(o.size, o.sentBytes + up);
-    o.bps = up;
-    o.updatedAt = Date.now();
+    const relayUp = (0.8 + 0.1 * Math.sin(i / 4)) * 1024 * 1024;
+    const step = (id: string, bps: number) => {
+      const o = data.list_outgoing.find((x: any) => x.id === id);
+      if (!o) return;
+      o.sentBytes = Math.min(o.size, o.sentBytes + bps);
+      o.bps = bps;
+      o.updatedAt = Date.now();
+    };
+    step("o1", up);
+    step("o4", relayUp);
     emit("outgoing", data.list_outgoing.map((x: any) => ({ ...x })));
-    emit("uploads", [{ peerId: "77aa88bb99", deviceName: "Lena's laptop", bps: up, totalSent: 4.2 * 1024 ** 3 + i * up, files: ["color-grade-notes.pdf", "scene-014-take-2.mov"] }]);
+    emit("uploads", [
+      { peerId: "77aa88bb99", deviceName: "Lena's laptop", bps: up, totalSent: 4.2 * 1024 ** 3 + i * up, files: ["scene-014-take-2.mov"] },
+      { peerId: "55cc66dd77", deviceName: "Studio-iMac", bps: relayUp, totalSent: 0.7 * 1024 ** 3 + i * relayUp, files: ["proxy-edit-v3.mp4"] },
+    ]);
   }, 1000);
 }
 

@@ -174,6 +174,14 @@ CREATE TABLE IF NOT EXISTS history(
 CREATE INDEX IF NOT EXISTS history_finished ON history(finished_at);
 "#;
 
+/// The 16-character code of each invitation and its sealed record (the
+/// invitation encrypted under the code), so the code can be published again
+/// after a restart. Stays on this device, like the identity key.
+const SCHEMA_V4: &str = r#"
+CREATE TABLE IF NOT EXISTS invitation_codes(
+  invitation_id TEXT PRIMARY KEY, code TEXT NOT NULL, sealed TEXT NOT NULL);
+"#;
+
 /// Verified prefix of a chunk: (chunk index, bytes done, block hashes).
 pub type Partial = (u64, u64, Vec<[u8; 32]>);
 
@@ -209,6 +217,10 @@ impl Db {
         if version < 3 {
             conn.execute_batch(SCHEMA_V3)?;
             conn.pragma_update(None, "user_version", 3)?;
+        }
+        if version < 4 {
+            conn.execute_batch(SCHEMA_V4)?;
+            conn.pragma_update(None, "user_version", 4)?;
         }
         Ok(Db { conn: Mutex::new(conn) })
     }
@@ -356,6 +368,40 @@ impl Db {
             "UPDATE invitations SET revoked_at=?2 WHERE id=?1 AND revoked_at IS NULL",
             params![id, now_ms()],
         )?;
+        Ok(())
+    }
+
+    pub fn get_invitation(&self, id: &str) -> Result<Option<InvitationRow>> {
+        let c = self.conn.lock();
+        Ok(c.query_row(
+            "SELECT id,share_id,token_hash,expires_at,max_uses,use_count,require_approval,revoked_at,created_at
+             FROM invitations WHERE id=?1",
+            params![id],
+            Self::map_invitation,
+        )
+        .optional()?)
+    }
+
+    pub fn save_invitation_code(&self, invitation_id: &str, code: &str, sealed: &str) -> Result<()> {
+        self.conn.lock().execute(
+            "INSERT OR REPLACE INTO invitation_codes(invitation_id,code,sealed) VALUES(?1,?2,?3)",
+            params![invitation_id, code, sealed],
+        )?;
+        Ok(())
+    }
+
+    /// (invitation id, code, sealed record) for every saved code.
+    pub fn list_invitation_codes(&self) -> Result<Vec<(String, String, String)>> {
+        let c = self.conn.lock();
+        let mut st = c.prepare("SELECT invitation_id,code,sealed FROM invitation_codes")?;
+        let rows = st
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        Ok(rows)
+    }
+
+    pub fn delete_invitation_code(&self, invitation_id: &str) -> Result<()> {
+        self.conn.lock().execute("DELETE FROM invitation_codes WHERE invitation_id=?1", params![invitation_id])?;
         Ok(())
     }
 

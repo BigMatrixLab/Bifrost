@@ -54,6 +54,8 @@ export interface Invitation {
   createdAt: number;
   state: "active" | "expired" | "used_up" | "revoked";
   hasShortCode: boolean;
+  /** The 16-character code while it is published (sender only). */
+  shortCode: string | null;
 }
 
 export interface CreatedInvitation {

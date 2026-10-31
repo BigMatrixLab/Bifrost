@@ -9,8 +9,8 @@ deaths="$(echo "$log" | grep -E "Killing [0-9]+:$pkg|Process $pkg .*has died|ANR
 echo "---- process ----"; echo "pidof=$pid"; echo "ps=$ps_line"
 echo "---- death / crash lines ----"; echo "$deaths"
 echo "---- relevant logcat ----"
-echo "$log" | grep -E "Relayless|AndroidRuntime|$pkg|panicked|tauri|DEBUG" | tail -150
-started=no; echo "$log" | grep -q "Relayless engine started" && started=yes
+echo "$log" | grep -E "Quanta|AndroidRuntime|$pkg|panicked|tauri|DEBUG" | tail -150
+started=no; echo "$log" | grep -q "Quanta engine started" && started=yes
 alive=no; { [ -n "$pid" ] || [ -n "$ps_line" ]; } && alive=yes
 crashed=no; echo "$deaths" | grep -qiE "fatal|signal|panick|abort|backtrace|ANR" && crashed=yes
 mem="$(adb shell dumpsys meminfo "$pkg" 2>/dev/null | tr -d '\r' | grep -m1 'TOTAL PSS' | awk '{print $3}')"
@@ -21,5 +21,5 @@ if [ "$alive" = yes ] && [ "$started" = yes ] && [ "$crashed" = no ]; then
   exit 0
 fi
 enc() { sed 's/%/%25/g; s/\r//g' | awk '{printf "%s%%0A", $0}'; }
-echo "::error title=Android smoke test failed ($summary)::$( { echo "DEATHS:"; echo "$deaths"; echo "PS: $ps_line"; echo "TAIL:"; echo "$log" | grep -E "$pkg|AndroidRuntime|DEBUG|Relayless" | tail -25; } | enc)"
+echo "::error title=Android smoke test failed ($summary)::$( { echo "DEATHS:"; echo "$deaths"; echo "PS: $ps_line"; echo "TAIL:"; echo "$log" | grep -E "$pkg|AndroidRuntime|DEBUG|Quanta" | tail -25; } | enc)"
 exit 1

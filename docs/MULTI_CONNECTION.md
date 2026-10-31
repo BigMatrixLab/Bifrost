@@ -1,6 +1,6 @@
 # Multi-connection transfers (MMCFTP-style)
 
-Relayless can download from one sender over several QUIC connections at once and adjusts how many it uses, following the idea of MMCFTP (Massively Multi-Connection File Transfer Protocol, NII Japan): split the data, send it over many connections, balance the load, and change the number of connections to the network conditions.
+Quanta can download from one sender over several QUIC connections at once and adjusts how many it uses, following the idea of MMCFTP (Massively Multi-Connection File Transfer Protocol, NII Japan): split the data, send it over many connections, balance the load, and change the number of connections to the network conditions.
 
 Code: `crates/core/src/mmc.rs` (pool and controller), wired into `crates/core/src/receiver.rs`. Tests: unit tests in `mmc.rs`, `crates/core/tests/multiconn.rs`.
 
@@ -15,7 +15,7 @@ Each QUIC connection has its own congestion controller. On a long path with rand
 
 N connections each get that share, and a loss slows only 1/N of the transfer. Parallel streams inside one connection (the 12 chunk workers) don't help here, because they share one congestion controller.
 
-It does **not** help on a relay (relays limit per device, so extra connections only add queueing) or on a clean link that one connection already fills. In both cases Relayless stays at one connection.
+It does **not** help on a relay (relays limit per device, so extra connections only add queueing) or on a clean link that one connection already fills. In both cases Quanta stays at one connection.
 
 ## How it works
 
@@ -51,7 +51,7 @@ Goodput counts only bytes on lanes that take new work (`Pool::active_rx`). A rem
 
 ## Differences from MMCFTP
 
-| | MMCFTP | Relayless |
+| | MMCFTP | Quanta |
 |---|---|---|
 | Transport | Many TCP connections | Up to 8 QUIC connections (encrypted, NAT-traversing) |
 | Scale | Hundreds of connections on 10–100 Gbit/s research links | At most 8, to stay fair to other traffic on home and office links |

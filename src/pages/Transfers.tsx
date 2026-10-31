@@ -20,17 +20,17 @@ import { isAndroid } from "../platform";
 import { bytes, dateTime, duration, isActive, mbit, speed, statusTone } from "../format";
 import { useStore } from "../store";
 import { LiveFlow, useFlowActive } from "../flow";
-import { Button, Empty, IconButton, Modal, Progress, RouteBadge, StatusIcon, StatusPill } from "../ui";
+import { Button, Empty, HudStrip, IconButton, Modal, Progress, RouteBadge, SectionHeader, StatusIcon, StatusPill } from "../ui";
 import { useSlide } from "../slide";
 
 function explain(job: Job): string | null {
   switch (job.status) {
     case "waiting_peer":
-      return "The sender's computer isn't reachable right now. Relayless keeps trying automatically and continues from the verified progress when it's back.";
+      return "The sender's computer isn't reachable right now. Quanta keeps trying automatically and continues from the verified progress when it's back.";
     case "reconnecting":
       return "The connection dropped. Every verified piece is saved on disk, so only the missing pieces will be fetched again.";
     case "waiting_direct":
-      return "The routers between you block a direct path and direct-only mode is on, so no file data is sent. Relayless keeps trying. To continue now, choose Direct first in Settings on both devices; data then goes through an end-to-end encrypted relay.";
+      return "The routers between you block a direct path and direct-only mode is on, so no file data is sent. Quanta keeps trying. To continue now, choose Direct first in Settings on both devices; data then goes through an end-to-end encrypted relay.";
     case "downloading":
       return job.route === "relay"
         ? "The routers between the two devices didn't allow a direct path, so this goes through an encrypted relay. The free public relays are rate-limited; for full speed, set your own relay server in Settings on both devices, or enable UPnP on your router."
@@ -70,7 +70,7 @@ export function JobRow({ job, compact = false }: { job: Job; compact?: boolean }
   const timeline = open ? activity.filter((a) => a.jobId === job.id).slice(0, 12) : [];
 
   return (
-    <div className={`job ${job.status === "needs_attention" || job.status === "failed" ? "attn" : ""}`}>
+    <div className={`job tone-${tone} ${job.status === "needs_attention" || job.status === "failed" ? "attn" : ""}`}>
       <div className={`job-ico tone-${tone}`}>
         <StatusIcon status={job.status} size={17} />
       </div>
@@ -130,7 +130,7 @@ export function JobRow({ job, compact = false }: { job: Job; compact?: boolean }
         <div className="job-progress">
           <Progress
             value={job.status === "verifying" && integ ? integ.checked / Math.max(1, integ.total) : frac}
-            tone={tone === "info" ? "info" : tone === "err" ? "err" : job.status === "paused" ? "muted" : "accent"}
+            tone={tone}
             indeterminate={job.status === "connecting" || (job.status === "verifying" && !integ)}
           />
         </div>
@@ -138,7 +138,7 @@ export function JobRow({ job, compact = false }: { job: Job; compact?: boolean }
       {sourceChanged && (
         <div className="job-details">
           <span className="small">
-            The file was modified on the sender's computer after this download started. To avoid mixing two versions, Relayless stopped. You can start over with the new version.
+            The file was modified on the sender's computer after this download started. To avoid mixing two versions, Quanta stopped. You can start over with the new version.
           </span>
           <div className="hstack">
             <Button size="sm" variant="primary" loading={busy} icon={<Download size={14} />} onClick={() => run(() => api.restartJob(job.id))}>
@@ -243,10 +243,11 @@ const SEND_TEXT: Record<Outgoing["status"], string> = {
 /** A file this device is sending, shown like a download. */
 export function SendRow({ o, compact = false }: { o: Outgoing; compact?: boolean }) {
   const done = o.status === "verified" || o.status === "delivered";
-  const tone = o.status === "verified" ? "ok" : o.status === "waiting" ? "info" : "out";
+  // Traffic light, as for downloads: waiting yellow, sending and delivered green.
+  const tone = o.status === "waiting" ? "warn" : "ok";
   const left = o.bps > 1 && !done ? (o.size - o.sentBytes) / o.bps : null;
   return (
-    <div className="job">
+    <div className={`job tone-${tone}`}>
       <div className={`job-ico tone-${tone}`}>
         {o.status === "verified" ? <ShieldCheck size={17} /> : o.status === "waiting" ? <Clock size={17} /> : <UploadIcon size={17} />}
       </div>
@@ -255,7 +256,7 @@ export function SendRow({ o, compact = false }: { o: Outgoing; compact?: boolean
           <span className="job-title truncate selectable" title={o.path.join(" / ")}>{o.name}</span>
         </div>
         <div className="job-meta">
-          <span className={`pill pill-${tone === "out" ? "out" : tone}`}>
+          <span className={`pill pill-${tone}`}>
             {o.status === "verified" ? <ShieldCheck size={13} /> : o.status === "waiting" ? <Clock size={13} /> : <UploadIcon size={13} />}
             {o.status === "waiting" ? `Waiting for ${o.deviceName}` : SEND_TEXT[o.status]}
           </span>
@@ -270,7 +271,7 @@ export function SendRow({ o, compact = false }: { o: Outgoing; compact?: boolean
       <div className="job-actions" />
       {!done && (
         <div className="job-progress">
-          <Progress value={o.size ? o.sentBytes / o.size : 0} tone={o.status === "waiting" ? "muted" : "out"} />
+          <Progress value={o.size ? o.sentBytes / o.size : 0} tone={tone} />
         </div>
       )}
     </div>
@@ -280,7 +281,7 @@ export function SendRow({ o, compact = false }: { o: Outgoing; compact?: boolean
 type Filter = "all" | "receiving" | "sending" | "done" | "attention";
 
 export default function Transfers() {
-  const { jobs, outgoing, setPage, toast } = useStore();
+  const { jobs, outgoing, uploads, setPage, toast } = useStore();
   const flowActive = useFlowActive();
   const [filter, setFilter] = useState<Filter>("all");
   const tabSlide = useSlide<HTMLDivElement>(".tab", ".tab.on");
@@ -310,26 +311,22 @@ export default function Transfers() {
   const total = list.filter((j) => j.status === "downloading").reduce((s, j) => s + j.speedBps, 0);
   const remaining = list.filter((j) => isActive(j.status)).reduce((s, j) => s + (j.size - j.doneBytes), 0);
 
+  const upBps = uploads.reduce((s, u) => s + u.bps, 0);
+
   return (
     <div className="page">
+      <HudStrip
+        label="Transfer summary"
+        stats={[
+          { label: "Receiving", value: total > 0 ? speed(total) : counts.receiving || "–", tone: total > 0 ? "live" : undefined },
+          { label: "Sending", value: upBps > 0 ? speed(upBps) : counts.sending || "–", tone: upBps > 0 ? "live" : undefined },
+          { label: "Left to receive", value: remaining > 0 ? bytes(remaining) : "–", of: total > 0 && remaining > 0 ? duration(remaining / total) : undefined },
+          { label: "Left to send", value: sendLeft > 0 ? bytes(sendLeft) : "–" },
+          { label: "Needs attention", value: counts.attention, tone: counts.attention > 0 ? "err" : undefined },
+        ]}
+        note={`${counts.done} completed and verified end to end. Downloads keep their verified progress through disconnects, app restarts and reboots.`}
+      />
       {(flowActive || total > 0) && <LiveFlow />}
-      {(list.length > 0 || outgoing.length > 0) && (
-        <p className="transfers-sum muted">
-          {counts.receiving > 0 && (
-            <>
-              Receiving: <b className="num">{bytes(remaining)}</b> left across {counts.receiving} file{counts.receiving === 1 ? "" : "s"}
-              {total > 0 && remaining > 0 ? <>, about <b className="num">{duration(remaining / total)}</b> at the current speed</> : null}.{" "}
-            </>
-          )}
-          {counts.sending > 0 && (
-            <>
-              Sending: <b className="num">{bytes(sendLeft)}</b> still to go across {counts.sending} file{counts.sending === 1 ? "" : "s"}.{" "}
-            </>
-          )}
-          {counts.receiving === 0 && counts.sending === 0 && "Nothing is in progress. "}
-          {counts.done} completed and verified end to end.
-        </p>
-      )}
       <div>
         <div className="tabs slides" role="tablist" ref={tabSlide}>
           {(
@@ -347,20 +344,19 @@ export default function Transfers() {
           ))}
         </div>
         {sends.length > 0 && (
-          <div className="panel send-panel">
-            {filter !== "done" && (
-              <div className="send-head">
-                <span className="small muted">Sending from this device</span>
-                {sentDone.length > 0 && filter === "sending" && (
-                  <Button size="sm" variant="ghost" onClick={() => api.clearOutgoing().catch((e) => toast(errorText(e), "err"))}>
-                    Clear finished
-                  </Button>
-                )}
-              </div>
-            )}
-            {sends.map((o) => (
-              <SendRow key={o.id} o={o} />
-            ))}
+          <div className="tr-section">
+            <SectionHeader title="Send">
+              {sentDone.length > 0 && (filter === "sending" || filter === "all") && (
+                <Button size="sm" variant="ghost" onClick={() => api.clearOutgoing().catch((e) => toast(errorText(e), "err"))}>
+                  Clear finished
+                </Button>
+              )}
+            </SectionHeader>
+            <div className="panel job-list">
+              {sends.map((o) => (
+                <SendRow key={o.id} o={o} />
+              ))}
+            </div>
           </div>
         )}
         {shown.length === 0 && sends.length === 0 ? (
@@ -373,27 +369,24 @@ export default function Transfers() {
               {filter !== "sending" && list.length === 0 && outgoing.length === 0 && (
                 <>
                   Connect to someone who shared a folder with you, then pick files to download.{" "}
-                  <a href="#" onClick={(e) => { e.preventDefault(); setPage("devices"); }}>Go to remote devices</a>
+                  <a href="#" onClick={(e) => { e.preventDefault(); setPage("devices"); }}>Go to Receive</a>
                 </>
               )}
             </Empty>
           </div>
         ) : shown.length > 0 ? (
-          <div className={`panel ${sends.length > 0 ? "recv-panel" : ""}`}>
-            {sends.length > 0 && filter !== "done" && (
-              <div className="send-head">
-                <span className="small muted">Receiving on this device</span>
-              </div>
-            )}
-            {shown.map((j) => (
-              <JobRow key={j.id} job={j} />
-            ))}
+          <div className="tr-section">
+            <SectionHeader title="Receive">
+              <span className="sec-stat num">{shown.length} file{shown.length === 1 ? "" : "s"}</span>
+            </SectionHeader>
+            <div className="panel job-list">
+              {shown.map((j) => (
+                <JobRow key={j.id} job={j} />
+              ))}
+            </div>
           </div>
         ) : null}
       </div>
-      <span className="hint">
-        Downloads keep their verified progress through disconnects, app restarts and reboots.
-      </span>
     </div>
   );
 }

@@ -75,7 +75,10 @@ impl OutgoingFile {
     }
 }
 
+/// A published invitation code: the code and the lookup endpoint that
+/// publishes its sealed record while the invitation is active.
 pub struct ShortCode {
+    pub code: String,
     pub endpoint: Endpoint,
 }
 

@@ -1,6 +1,6 @@
 # Security Policy
 
-Relayless moves people's files between their devices, so security reports are taken seriously and handled first.
+Quanta moves people's files between their devices, so security reports are taken seriously and handled first.
 
 ## Reporting a vulnerability
 

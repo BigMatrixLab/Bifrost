@@ -415,7 +415,7 @@ async fn handle_hello(
     };
 
     if v != PROTOCOL_VERSION {
-        write_frame(send, &reply(HelloStatus::Unsupported, vec![], Some("Version mismatch. Update Relayless on both computers."))).await?;
+        write_frame(send, &reply(HelloStatus::Unsupported, vec![], Some("Version mismatch. Update Quanta on both computers."))).await?;
         return Ok(());
     }
     let peer_s = peer.to_string();
@@ -494,7 +494,7 @@ async fn handle_hello(
         inner.emit(CoreEvent::AccessRequested(req.clone()));
         inner.notify(
             "New device wants access",
-            &format!("{} is asking to open \"{}\". Open Relayless to approve.", device_name, share.name),
+            &format!("{} is asking to open \"{}\". Open Quanta to approve.", device_name, share.name),
         );
         let decision = tokio::select! {
             r = rx => r.unwrap_or(false),

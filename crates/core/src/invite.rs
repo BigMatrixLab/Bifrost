@@ -4,13 +4,14 @@
 //! handshake, so the receiver always knows it reached the right machine) plus a
 //! random 128-bit access token. Only a BLAKE3 hash of the token is stored.
 //!
-//! A short code (e.g. `K7QM-9XRT-4HWD`, ~59 bits) is an optional convenience:
+//! The code people share is 16 characters (`K7QM-9XRT-4HWD-P2NA`, ~78 bits).
 //! Argon2id stretches it into an Ed25519 key and an AEAD key. The sender
 //! publishes the encrypted invitation under that derived key through the iroh
-//! address-lookup service, and the receiver derives the same key to fetch and
-//! decrypt it. The lookup service only ever sees ciphertext, the code expires,
-//! and new devices still need the sender's approval by default, so the short
-//! code is never the only secret protecting file access.
+//! address-lookup service for the invitation's whole lifetime, and the
+//! receiver derives the same key to fetch and decrypt it. The lookup service
+//! only ever sees ciphertext, and new devices still need the sender's approval
+//! by default. Older senders made 12-character codes (~59 bits, 30 minutes);
+//! those are still accepted when joining.
 
 use std::str::FromStr;
 
@@ -24,7 +25,9 @@ use crate::util::random_bytes;
 
 pub const INVITE_PREFIX: &str = "RL1-";
 const CODE_ALPHABET: &[u8] = b"ABCDEFGHJKMNPQRSTVWXYZ23456789";
-const CODE_LEN: usize = 12;
+/// Length of new codes; `LEGACY_CODE_LEN` codes from older senders still resolve.
+const CODE_LEN: usize = 16;
+const LEGACY_CODE_LEN: usize = 12;
 
 #[derive(Clone, Debug)]
 pub struct Invite {
@@ -49,7 +52,7 @@ impl Invite {
         let upper = cleaned.to_ascii_uppercase();
         let body = upper
             .strip_prefix(INVITE_PREFIX)
-            .ok_or_else(|| anyhow!("This doesn't look like a Relayless invitation."))?;
+            .ok_or_else(|| anyhow!("This doesn't look like a Quanta invitation."))?;
         let bytes = BASE32_NOPAD
             .decode(body.as_bytes())
             .map_err(|_| anyhow!("The invitation is damaged. Copy it again from the sender."))?;
@@ -85,8 +88,7 @@ pub fn token_hash(token_hex: &str) -> String {
 }
 
 pub fn is_short_code(s: &str) -> bool {
-    normalize_code(s).is_some_and(|c| c.len() == CODE_LEN)
-        && !s.trim().to_ascii_uppercase().starts_with(INVITE_PREFIX)
+    normalize_code(s).is_some() && !s.trim().to_ascii_uppercase().starts_with(INVITE_PREFIX)
 }
 
 fn normalize_code(s: &str) -> Option<String> {
@@ -95,13 +97,14 @@ fn normalize_code(s: &str) -> Option<String> {
         .filter(|c| c.is_ascii_alphanumeric())
         .map(|c| c.to_ascii_uppercase())
         .collect();
-    if c.len() == CODE_LEN && c.bytes().all(|b| CODE_ALPHABET.contains(&b)) {
+    if (c.len() == CODE_LEN || c.len() == LEGACY_CODE_LEN) && c.bytes().all(|b| CODE_ALPHABET.contains(&b)) {
         Some(c)
     } else {
         None
     }
 }
 
+/// A new 16-character code in four groups, e.g. `K7QM-9XRT-4HWD-P2NA`.
 pub fn new_short_code() -> String {
     let raw: String = (0..CODE_LEN)
         .map(|_| {
@@ -109,12 +112,12 @@ pub fn new_short_code() -> String {
             CODE_ALPHABET[i] as char
         })
         .collect();
-    format!("{}-{}-{}", &raw[0..4], &raw[4..8], &raw[8..12])
+    format!("{}-{}-{}-{}", &raw[0..4], &raw[4..8], &raw[8..12], &raw[12..16])
 }
 
 /// Derived material for a short code: (lookup key, encryption key).
 pub fn derive_code_keys(code: &str) -> Result<(SecretKey, [u8; 32])> {
-    let norm = normalize_code(code).ok_or_else(|| anyhow!("That code isn't valid. Codes look like K7QM-9XRT-4HWD."))?;
+    let norm = normalize_code(code).ok_or_else(|| anyhow!("That code isn't valid. Codes look like K7QM-9XRT-4HWD-P2NA."))?;
     let params = argon2::Params::new(32 * 1024, 2, 1, Some(64)).map_err(|e| anyhow!("{e}"))?;
     let argon = argon2::Argon2::new(argon2::Algorithm::Argon2id, argon2::Version::V0x13, params);
     let mut out = [0u8; 64];
@@ -173,7 +176,9 @@ pub fn qr_svg(text: &str) -> String {
         Ok(code) => code
             .render::<svg::Color>()
             .min_dimensions(200, 200)
-            .quiet_zone(true)
+            // The UI adds a slim white margin itself; the standard 4-module
+            // quiet zone left the short code's QR mostly white space.
+            .quiet_zone(false)
             .dark_color(svg::Color("#0e0f11"))
             .light_color(svg::Color("#ffffff"))
             .build(),
@@ -203,7 +208,10 @@ mod tests {
     #[test]
     fn code_roundtrip() {
         let code = new_short_code();
+        assert_eq!(code.len(), 19, "16 characters in four groups");
         assert!(is_short_code(&code));
+        assert!(is_short_code("K7QM-9XRT-4HWD"), "older 12-character codes still resolve");
+        assert!(!is_short_code("K7QM-9XRT-4HW"));
         assert!(is_short_code(&code.to_lowercase().replace('-', " ")));
         let (k1, e1) = derive_code_keys(&code).unwrap();
         let (k2, e2) = derive_code_keys(&code.to_lowercase()).unwrap();

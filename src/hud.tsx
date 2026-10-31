@@ -4,10 +4,11 @@ import createGlobe, { type COBEOptions } from "cobe";
 const SEGMENTS = 96;
 
 /**
- * Segmented progress ring. Each of the 96 segments stands for 1/96 of the
- * file: white once that share is verified on disk, red while it is arriving,
- * dim while still to fetch. Counts are by amount, not position, because
- * chunks arrive in parallel.
+ * Progress dial in the style of the bar meter: grey segments for what is
+ * left, a solid glowing arc for what is verified on disk, a translucent arc
+ * ahead of it for what is arriving, and a marker on the fill's end. The fill
+ * sweeps round on first appearance and eases to new values. Amounts, not
+ * positions, because chunks arrive in parallel.
  */
 export function ChunkRing({
   verified,
@@ -39,21 +40,39 @@ export function ChunkRing({
 
   const v = clamp01(verified);
   const d = Math.max(v, clamp01(done));
-  const lit = Math.floor(v * SEGMENTS + 1e-9);
-  let arriving = Math.floor(d * SEGMENTS + 1e-9) - lit;
-  if (state === "active" && d > v && arriving < 1 && lit < SEGMENTS) arriving = 1;
+  // Like the bar meter: the fill ends on a whole segment, so none is cut in half.
+  const snap = (x: number) => (x >= 1 ? 1 : Math.round(x * SEGMENTS) / SEGMENTS);
+  const pv = snap(v);
+  const pd = Math.max(pv, snap(d));
 
   const ticks = 60;
   const tickLen = (2 * Math.PI * inner) / ticks;
+  const mark = w * 0.95; // the marker reaches this far past the fill on each side
 
   return (
-    <div className={`ring ring-${state}`} style={{ width: size, height: size }} role="img" aria-label={label}>
+    <div
+      className={`ring ring-${state}`}
+      style={{ width: size, height: size, ["--pv" as string]: pv, ["--pd" as string]: pd, ["--deg" as string]: `${pv * 360}deg` }}
+      role="img"
+      aria-label={label}
+    >
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
         <circle cx={c} cy={c} r={outer} className="ring-outer" />
         <circle cx={c} cy={c} r={inner} className="ring-ticks" strokeWidth={w * 0.42} strokeDasharray={`0.8 ${(tickLen - 0.8).toFixed(3)}`} />
+        {/* What is left: grey segments all the way round. */}
         {segs.map((p, i) => (
-          <path key={i} d={p} strokeWidth={w} className={i < lit ? "seg-v" : i < lit + arriving ? "seg-a" : "seg-o"} />
+          <path key={i} d={p} strokeWidth={w} className="seg-o" />
         ))}
+        {/* Arriving (received, not yet verified): a translucent fill ahead of the solid one. */}
+        <circle cx={c} cy={c} r={r} pathLength={1} strokeWidth={w} transform={`rotate(-90 ${c} ${c})`} className="ring-fill arriving" />
+        {/* Verified: one solid, glowing arc, like the bar's fill. */}
+        <circle cx={c} cy={c} r={r} pathLength={1} strokeWidth={w} transform={`rotate(-90 ${c} ${c})`} className="ring-fill verified" />
+        {/* The marker on the fill's end; it rides round with the fill. */}
+        {pv > 0 && pv < 1 && (
+          <g className="ring-mark" style={{ transformOrigin: `${c}px ${c}px` }}>
+            <rect x={c - 1.5} y={c - r - w / 2 - mark / 2} width={3} height={w + mark} className="ring-mark-bar" style={{ transformOrigin: `${c}px ${c - r}px` }} />
+          </g>
+        )}
         <path d={`M${c - 4} ${c - outer - 7}h8l-4 5z`} className="ring-cursor" />
         <path d={`M${c} ${c + outer - 5}v10M${c - outer - 5} ${c}h10M${c + outer - 5} ${c}h10`} className="ring-cross" />
       </svg>
@@ -87,28 +106,52 @@ export function LinkLine({
   local: string;
   peer: string;
   kind: string;
-  caption: string;
+  /** Optional text above the line; the line itself already shows the route. */
+  caption?: string;
   incoming?: boolean;
   moving?: boolean;
 }) {
   const k = kind === "direct" ? "direct" : kind === "relay" ? "relay" : "none";
+  const live = moving && k !== "none";
   return (
-    <div className={`link-line link-${k} ${incoming ? "in" : "out"} ${moving && k !== "none" ? "moving" : ""}`}>
-      <span className="ll-cap">{caption}</span>
-      <span className="ll-track" aria-hidden="true">
-        <i className="ll-node" />
-        <span className="ll-wire">
-          <b />
-          <b />
-          <b />
-          <b />
-          {k === "relay" && <i className="ll-relay" />}
+    <div className={`link-line link-${k} ${incoming ? "in" : "out"} ${live ? "moving" : ""}`}>
+      {caption && (
+        <span className="ll-cap">
+          <i className="ll-cap-dot" aria-hidden="true" />
+          {caption}
         </span>
-        <i className="ll-node hollow" />
+      )}
+      <span className="ll-track" aria-hidden="true">
+        <i className="ll-node local">
+          <i className="ll-halo" />
+        </i>
+        <span className="ll-wire">
+          {/* Tick rail under the wire. */}
+          <span className="ll-rail" />
+          {/* A light beam that keeps flowing toward the receiver. */}
+          <span className="ll-beam" />
+          <b />
+          <b />
+          <b />
+          {k === "relay" && (
+            <i className="ll-relay">
+              <i className="ll-halo" />
+            </i>
+          )}
+        </span>
+        <i className="ll-node peer">
+          <i className="ll-halo" />
+        </i>
       </span>
       <span className="ll-ends">
-        <span className="truncate">{local}</span>
-        <span className="truncate">{peer}</span>
+        <span className="ll-end">
+          <span className="ll-role">{incoming ? "RX" : "TX"}</span>
+          <span className="truncate">{local}</span>
+        </span>
+        <span className="ll-end right">
+          <span className="truncate">{peer}</span>
+          <span className="ll-role">{incoming ? "TX" : "RX"}</span>
+        </span>
       </span>
     </div>
   );
@@ -144,12 +187,16 @@ export function Globe({ size = 164, online }: { size?: number; online: boolean }
 
 /**
  * Colours for cobe, as 0..1 RGB. Dots are pewter-to-white on a black sphere,
- * with a faint signal-red halo; offline drops the halo to grey. Kept in step
+ * with a faint green halo; offline drops the halo to grey. Kept in step
  * with --text, --text-3 and --accent in styles.css.
  */
 const GLOBE_LOOK = {
-  online: { baseColor: [0.34, 0.34, 0.36], glowColor: [0.26, 0.06, 0.07], mapBrightness: 9, diffuse: 2.4, opacity: 0.95 },
-  offline: { baseColor: [0.24, 0.24, 0.25], glowColor: [0.1, 0.1, 0.11], mapBrightness: 5, diffuse: 1.8, opacity: 0.7 },
+  online: { dark: 1, baseColor: [0.34, 0.34, 0.36], glowColor: [0.08, 0.25, 0.05], mapBrightness: 9, diffuse: 2.4, opacity: 0.95 },
+  offline: { dark: 1, baseColor: [0.24, 0.24, 0.25], glowColor: [0.1, 0.1, 0.11], mapBrightness: 5, diffuse: 1.8, opacity: 0.7 },
+  // Light theme: a pale sphere with dark land dots and a soft green halo, so
+  // it sits on the white panel instead of punching a black hole in it.
+  lightOnline: { dark: 0, baseColor: [0.93, 0.94, 0.93], glowColor: [0.8, 0.92, 0.82], mapBrightness: 2.2, diffuse: 1.2, opacity: 0.9 },
+  lightOffline: { dark: 0, baseColor: [0.92, 0.92, 0.92], glowColor: [0.88, 0.88, 0.88], mapBrightness: 1.6, diffuse: 1.1, opacity: 0.75 },
 } satisfies Record<string, Partial<COBEOptions>>;
 
 let webgl: boolean | null = null;
@@ -166,7 +213,7 @@ function hasWebGL(): boolean {
 }
 
 /**
- * The public relay regions Relayless can use: iroh's default relay map
+ * The public relay regions Quanta can use: iroh's default relay map
  * (`iroh::defaults::prod`, hostnames `<region>-1.relay.n0.iroh.link`).
  * Positions are approximate, at the metro area each region code names, and
  * are only used to place the markers. Update this list together with iroh.
@@ -189,8 +236,24 @@ export function relayRegion(url: string | null | undefined): string | null {
   }
 }
 
-const RED: [number, number, number] = [1, 0.23, 0.28];
+/** Home relay marker: --accent (#4ade80). */
+const HOME: [number, number, number] = [0.29, 0.87, 0.5];
 const DOT: [number, number, number] = [0.92, 0.92, 0.93];
+/** Light theme: --accent (#15803d) and dark relay dots on a pale sphere. */
+const HOME_LIGHT: [number, number, number] = [0.08, 0.5, 0.24];
+const DOT_LIGHT: [number, number, number] = [0.25, 0.25, 0.28];
+
+/** True while the light theme is on; follows the toggle live. */
+function useLightTheme(): boolean {
+  const read = () => document.documentElement.dataset.theme === "light";
+  const [light, setLight] = useState(read);
+  useEffect(() => {
+    const mo = new MutationObserver(() => setLight(read()));
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => mo.disconnect();
+  }, []);
+  return light;
+}
 
 /** Rotation that puts a longitude in the middle of the globe's face. */
 const facing = (lon: number) => (3 * Math.PI) / 2 - (lon * Math.PI) / 180;
@@ -198,11 +261,11 @@ const facing = (lon: number) => (3 * Math.PI) / 2 - (lon * Math.PI) / 180;
 /**
  * The Network panel's globe, after cobe's "CDN" showcase: a slowly turning
  * dotted Earth (WebGL) with a labelled dot at each public relay region,
- * the home relay in red. These are the servers that help devices find each
+ * the home relay in green. These are the servers that help devices find each
  * other and, when routers block a direct path, forward encrypted packets.
  *
  * Unlike the showcase it draws no arcs: relays don't send data to each
- * other, and Relayless never knows where a peer is, so any line between
+ * other, and Quanta never knows where a peer is, so any line between
  * places would be made up. No device is ever placed on the globe.
  *
  * It only animates while it's on screen, the device is online and the user
@@ -213,6 +276,7 @@ export function DotGlobe({ size = 170, online, home }: { size?: number; online: 
   const ref = useRef<HTMLCanvasElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const [ok] = useState(hasWebGL);
+  const light = useLightTheme();
   // Starts with the home relay (or Europe) facing you; keeps the rotation
   // across re-creations.
   const phi = useRef(facing(RELAY_REGIONS.find((r) => r.code === home)?.location[1] ?? 8.68));
@@ -221,23 +285,26 @@ export function DotGlobe({ size = 170, online, home }: { size?: number; online: 
     const canvas = ref.current;
     const gl = canvas?.parentElement;
     if (!canvas || !gl || !ok) return;
-    const look = online ? GLOBE_LOOK.online : GLOBE_LOOK.offline;
+    const look = light ? (online ? GLOBE_LOOK.lightOnline : GLOBE_LOOK.lightOffline) : online ? GLOBE_LOOK.online : GLOBE_LOOK.offline;
     const globe = createGlobe(canvas, {
       width: size,
       height: size,
       devicePixelRatio: Math.min(2, window.devicePixelRatio || 1),
       phi: phi.current,
       theta: 0.24,
-      dark: 1,
-      mapSamples: 14000,
-      mapBaseBrightness: 0.02,
-      markerColor: DOT,
+      // Dense dot grid (cobe's default is 10,000). Keep it below 32,768: cobe's
+      // shader decodes a sample's index with bits up to 16,384 only, so higher
+      // indices (the southern part of the sphere) land in the wrong place and
+      // the map breaks up at the bottom.
+      mapSamples: 32000,
+      mapBaseBrightness: light ? 0 : 0.02,
+      markerColor: light ? DOT_LIGHT : DOT,
       markerElevation: 0.02,
       markers: RELAY_REGIONS.map((r) => ({
         location: [...r.location] as [number, number],
         size: r.code === home ? 0.045 : 0.032,
         id: `rl-relay-${r.code}`,
-        ...(r.code === home && online ? { color: RED } : {}),
+        ...(r.code === home && online ? { color: light ? HOME_LIGHT : HOME } : {}),
       })),
       scale: 1,
       ...look,
@@ -336,7 +403,7 @@ export function DotGlobe({ size = 170, online, home }: { size?: number; online: 
         wrap.remove();
       }
     };
-  }, [ok, size, online, home]);
+  }, [ok, size, online, home, light]);
 
   if (!ok) return <Globe size={size} online={online} />;
   // A HUD frame around the globe: a tick scale, in SVG.

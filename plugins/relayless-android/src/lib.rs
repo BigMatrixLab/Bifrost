@@ -1,4 +1,4 @@
-//! Android integration for Relayless. On desktop every call is a harmless no-op.
+//! Android integration for Quanta. On desktop every call is a harmless no-op.
 
 use tauri::{
     plugin::{Builder, TauriPlugin},

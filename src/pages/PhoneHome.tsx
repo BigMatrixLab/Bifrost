@@ -7,7 +7,7 @@ import { StorageAccessNotice } from "../android";
 import { Button, RouteBadge } from "../ui";
 import { JobRow, SendRow } from "./Transfers";
 import { useShareFolder } from "./Shares";
-import { DayDot } from "./History";
+import { DayLevel } from "./History";
 import { FocusTransfer, useFocusJob } from "../focus";
 
 const DAY = 86_400_000;
@@ -17,7 +17,7 @@ function startOfDay(ms: number) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 }
 
-/** The last seven days as dots, the same marks the History calendar uses. */
+/** The last seven days as level gauges, the same marks the History calendar uses. */
 function WeekStrip() {
   const { history, setPage } = useStore();
   const days = useMemo(() => {
@@ -38,9 +38,6 @@ function WeekStrip() {
   const outB = days.reduce((a, d) => a + d.outB, 0);
   const files = days.reduce((a, d) => a + d.n, 0);
   const relayed = history.some((e) => e.finishedAt >= days[0].t && e.relayBytes > 0);
-  const maxD = 30;
-  const minD = 7;
-  const tinyBelow = max * (minD / maxD) ** 2;
 
   return (
     <button className="panel week" onClick={() => setPage("history")} aria-label="Open history">
@@ -51,10 +48,9 @@ function WeekStrip() {
       <span className="week-days" aria-hidden="true">
         {days.map((d, i) => {
           const total = d.inB + d.outB;
-          const s = total ? Math.max(minD, maxD * Math.sqrt(total / max)) : 0;
           return (
             <span key={d.t} className={`week-day ${i === 6 ? "today" : ""}`}>
-              <span className="week-dot">{s > 0 ? <DayDot i={i} d={s} inB={d.inB} outB={d.outB} tiny={total < tinyBelow} dir="both" /> : <span className="week-empty" />}</span>
+              <span className="week-dot">{total > 0 ? <DayLevel i={i} inB={d.inB} outB={d.outB} max={max} /> : <span className="week-empty" />}</span>
               <span className="week-wd">{new Date(d.t).toLocaleDateString(undefined, { weekday: "narrow" })}</span>
             </span>
           );
@@ -91,7 +87,7 @@ export default function PhoneHome() {
     <div className="page phome">
       <StorageAccessNotice />
 
-      {focus.job && <FocusTransfer job={focus.job} index={focus.index} count={focus.count} compact />}
+      {focus.job && <FocusTransfer job={focus.job} index={focus.index} count={focus.count} onPrev={focus.prev} onNext={focus.next} compact />}
 
       <div className="phome-actions">
         <button className="pact pact-send" onClick={shareFolder}>

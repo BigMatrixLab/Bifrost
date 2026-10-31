@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { api, errorText, type Job } from "./api";
 import { isActive, bytes, duration, speed, STATUS_TEXT } from "./format";
 import { useStore } from "./store";
@@ -19,13 +20,41 @@ const FOCUS_ORDER: Job["status"][] = [
   "paused",
 ];
 
-export function useFocusJob(): { job: Job | null; index: number; count: number } {
+export interface Focus {
+  job: Job | null;
+  /** 1-based position of `job` in the list, 0 when empty. */
+  index: number;
+  count: number;
+  prev: () => void;
+  next: () => void;
+}
+
+/**
+ * The unfinished downloads in focus order, and which one the card shows.
+ * The choice is kept by job id, so the card stays on the same file when the
+ * order changes (a speed change, a status change); it falls back to the
+ * first one when that job finishes.
+ */
+export function useFocusJob(): Focus {
   const { jobs } = useStore();
-  return useMemo(() => {
-    const list = Object.values(jobs).filter((j) => FOCUS_ORDER.includes(j.status));
-    list.sort((a, b) => FOCUS_ORDER.indexOf(a.status) - FOCUS_ORDER.indexOf(b.status) || b.speedBps - a.speedBps || b.updatedAt - a.updatedAt);
-    return { job: list[0] ?? null, index: list.length ? 1 : 0, count: list.length };
+  const [picked, setPicked] = useState<string | null>(null);
+  const list = useMemo(() => {
+    const l = Object.values(jobs).filter((j) => FOCUS_ORDER.includes(j.status));
+    // Order by status, then name: speed changes every second and must not reshuffle the pager.
+    l.sort((a, b) => FOCUS_ORDER.indexOf(a.status) - FOCUS_ORDER.indexOf(b.status) || a.displayName.localeCompare(b.displayName));
+    return l;
   }, [jobs]);
+  const at = Math.max(0, list.findIndex((j) => j.id === picked));
+  const step = useCallback(
+    (d: number) => {
+      if (!list.length) return;
+      setPicked(list[(at + d + list.length) % list.length].id);
+    },
+    [list, at],
+  );
+  const prev = useCallback(() => step(-1), [step]);
+  const next = useCallback(() => step(1), [step]);
+  return { job: list[at] ?? null, index: list.length ? at + 1 : 0, count: list.length, prev, next };
 }
 
 function two(n: number) {
@@ -33,7 +62,21 @@ function two(n: number) {
 }
 
 /** The download that matters most right now, as a chunk ring with its facts. */
-export function FocusTransfer({ job, index, count, compact = false }: { job: Job; index: number; count: number; compact?: boolean }) {
+export function FocusTransfer({
+  job,
+  index,
+  count,
+  onPrev,
+  onNext,
+  compact = false,
+}: {
+  job: Job;
+  index: number;
+  count: number;
+  onPrev?: () => void;
+  onNext?: () => void;
+  compact?: boolean;
+}) {
   const { settings, integrity, setPage, toast } = useStore();
   const [busy, setBusy] = useState(false);
   const size = Math.max(1, job.size);
@@ -45,7 +88,7 @@ export function FocusTransfer({ job, index, count, compact = false }: { job: Job
   const checking = job.status === "verifying" && integ ? integ.checked / Math.max(1, integ.total) : null;
   const pctShown = (checking ?? verified) * 100;
   const moving = job.status === "downloading";
-  const routeCaption = job.route === "direct" ? "Direct · no relay" : job.route === "relay" ? "Relay · end-to-end encrypted" : "No path yet";
+  const paged = count > 1 && !!onPrev && !!onNext;
   const head = moving ? `Receiving · from ${job.peerName}` : `${STATUS_TEXT[job.status]} · ${job.peerName}`;
 
   const run = async (f: () => Promise<void>) => {
@@ -61,12 +104,41 @@ export function FocusTransfer({ job, index, count, compact = false }: { job: Job
 
   return (
     <div className={`focus-wrap ${compact ? "compact" : ""}`}>
-      <section className={`panel focus ${attention ? "attn" : ""}`} aria-label="Active transfer">
+      <section
+        className={`panel focus ${attention ? "attn" : ""}`}
+        aria-label="Active transfer"
+        onKeyDown={(e) => {
+          if (!paged || (e.target as HTMLElement).closest("input, textarea")) return;
+          if (e.key === "ArrowLeft") onPrev!();
+          else if (e.key === "ArrowRight") onNext!();
+        }}
+      >
         <div className="focus-head">
           <span className="lab">Active transfer</span>
-          <span className="num faint">{two(index)} / {two(count)}</span>
+          {paged ? (
+            <span className="focus-pager">
+              <button type="button" className="pager-btn" onClick={onPrev} aria-label="Previous transfer" title="Previous (←)">
+                <ChevronLeft size={14} />
+              </button>
+              <span className="num" aria-live="polite">
+                {two(index)} <span className="faint">/ {two(count)}</span>
+              </span>
+              <button type="button" className="pager-btn" onClick={onNext} aria-label="Next transfer" title="Next (→)">
+                <ChevronRight size={14} />
+              </button>
+            </span>
+          ) : (
+            <span className="num faint">{two(index)} / {two(count)}</span>
+          )}
         </div>
-        <div className="focus-body">
+        {paged && (
+          <div className="focus-dots" role="presentation">
+            {Array.from({ length: count }, (_, i) => (
+              <i key={i} className={i === index - 1 ? "on" : ""} />
+            ))}
+          </div>
+        )}
+        <div className="focus-body" key={job.id}>
           <ChunkRing
             verified={verified}
             done={done}
@@ -122,7 +194,7 @@ export function FocusTransfer({ job, index, count, compact = false }: { job: Job
               )}
             </dl>
             <div className="focus-foot">
-              <LinkLine local={settings?.deviceName || "This device"} peer={job.peerName} kind={job.route} caption={routeCaption} moving={moving} />
+              <LinkLine local={settings?.deviceName || "This device"} peer={job.peerName} kind={job.route} moving={moving} />
               <div className="focus-actions">
                 {isActive(job.status) && (
                   <Button size="sm" loading={busy} onClick={() => run(() => api.pauseJob(job.id))}>Pause</Button>

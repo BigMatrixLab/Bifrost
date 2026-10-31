@@ -7,13 +7,18 @@ import "@fontsource-variable/figtree";
 import "@fontsource-variable/oxanium";
 import "@fontsource-variable/jetbrains-mono";
 import "./styles.css";
+import { applyTheme, storedTheme } from "./theme";
+
+applyTheme(storedTheme());
 
 // Desktop app: no browser context menu or accidental reloads.
 window.addEventListener("contextmenu", (e) => {
   const t = e.target as HTMLElement;
   if (!t.closest("input, textarea, .selectable")) e.preventDefault();
 });
+// Reload stays available in development (npm run dev:ui / tauri dev).
 window.addEventListener("keydown", (e) => {
+  if (import.meta.env.DEV) return;
   if (e.key === "F5" || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "r")) e.preventDefault();
 });
 

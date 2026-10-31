@@ -1,33 +1,41 @@
-/* Relayless design tokens: "Signal HUD". Black ground, white at three
+/* Quanta design tokens: "Signal HUD". Black ground, white at three
    strengths, one signal red, thin lines, corner marks. See DESIGN.md. */
 :root {
   --bg: #050506;
   --elev: #0b0b0d;
   --raised: #141417;
   --surface: #0b0b0d;
-  --surface-2: rgba(255, 255, 255, 0.04);
-  --surface-3: rgba(255, 255, 255, 0.075);
-  --hover: rgba(255, 255, 255, 0.05);
-  --border: rgba(255, 255, 255, 0.1);
-  --border-strong: rgba(255, 255, 255, 0.24);
+  --surface-2: rgba(var(--ink-rgb), 0.04);
+  --surface-3: rgba(var(--ink-rgb), 0.075);
+  --hover: rgba(var(--ink-rgb), 0.05);
+  --border: rgba(var(--ink-rgb), 0.1);
+  --border-strong: rgba(var(--ink-rgb), 0.24);
   --text: #f2f2f2;
   --text-2: #a3a3a3;
   --text-3: #6a6a6a;
-  --accent: #ff3b47;
-  --accent-strong: #ff5a64;
-  --accent-ink: #0a0a0a;
-  --accent-soft: rgba(255, 59, 71, 0.1);
-  --ok: #f2f2f2;
-  --ok-soft: rgba(255, 255, 255, 0.07);
-  --warn: #ffb020;
-  --warn-soft: rgba(255, 176, 32, 0.1);
-  --err: #ff3b47;
-  --err-soft: rgba(255, 59, 71, 0.12);
+  --accent: #4ade80;
+  --accent-strong: #86efac;
+  --accent-ink: #052e16;
+  --accent-rgb: 74, 222, 128;
+  --accent-soft: rgba(74, 222, 128, 0.12);
+  --ok: #4ade80;
+  --ok-rgb: 74, 222, 128;
+  --ok-soft: rgba(74, 222, 128, 0.14);
+  --warn: #fbbf24;
+  --warn-rgb: 251, 191, 36;
+  --warn-soft: rgba(251, 191, 36, 0.14);
+  --err: #f87171;
+  --err-rgb: 248, 113, 113;
+  --err-soft: rgba(248, 113, 113, 0.14);
+  --ok-fill: var(--ok);
+  --warn-fill: var(--warn);
+  --err-fill: var(--err);
   --info: #c9c9c9;
-  --info-soft: rgba(255, 255, 255, 0.06);
-  --series-in: #f2f2f2;
-  --series-out: #e5323f;
-  --hazard: repeating-linear-gradient(135deg, var(--accent) 0 4px, transparent 4px 8px);
+  --info-soft: rgba(var(--ink-rgb), 0.06);
+  --series-in: #4ade80;
+  --series-out: #cbd5e1;
+  --out-rgb: 203, 213, 225;
+  --hazard: repeating-linear-gradient(135deg, var(--err-fill) 0 4px, transparent 4px 8px);
   --radius: 0px;
   --radius-lg: 0px;
   --glass-blur: none;
@@ -37,6 +45,8 @@
   --font-display: "Oxanium Variable", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
   --mono: "JetBrains Mono Variable", "Cascadia Mono", Consolas, ui-monospace, monospace;
   --sidebar: 224px;
+  --ink-rgb: 255, 255, 255;
+  --bg-rgb: 5, 5, 6;
   color-scheme: dark;
 }
 
@@ -52,10 +62,7 @@ body,
 
 body {
   margin: 0;
-  /* A faint 24px dot grid, the instrument's graph paper. */
-  background:
-    radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.06) 0.8px, transparent 1.2px) 0 0 / 24px 24px,
-    var(--bg);
+  background: var(--bg);
   color: var(--text);
   font: 14px/1.45 var(--font);
   -webkit-font-smoothing: antialiased;
@@ -107,7 +114,7 @@ a {
   height: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #2a2f36;
+  background: var(--border-strong);
   border-radius: 10px;
   border: 3px solid var(--bg);
 }
@@ -165,7 +172,7 @@ a {
   width: 26px;
   height: 26px;
   border-radius: 7px;
-  background: #15181c;
+  background: var(--raised);
   border: 1px solid var(--border-strong);
   display: grid;
   place-items: center;
@@ -215,7 +222,7 @@ a {
 
 .nav-count.alert {
   color: #2a0505;
-  background: var(--err);
+  background: var(--err-fill);
   border-radius: 999px;
   padding: 0 7px;
   font-weight: 600;
@@ -260,11 +267,11 @@ a {
   flex: none;
 }
 .dot.ok {
-  background: var(--ok);
+  background: var(--ok-fill);
   box-shadow: 0 0 0 3px var(--ok-soft);
 }
 .dot.warn {
-  background: var(--warn);
+  background: var(--warn-fill);
 }
 
 .main {
@@ -353,7 +360,7 @@ a {
   color: var(--text);
 }
 .btn-secondary:hover:not(:disabled) {
-  background: #252a30;
+  background: var(--surface-3);
 }
 .btn-ghost {
   background: transparent;
@@ -365,7 +372,7 @@ a {
 }
 .btn-danger {
   background: transparent;
-  border-color: rgba(248, 113, 113, 0.35);
+  border-color: rgba(var(--err-rgb), 0.35);
   color: var(--err);
 }
 .btn-danger:hover:not(:disabled) {
@@ -447,17 +454,17 @@ a {
   background: var(--accent);
 }
 .bar-ok {
-  background: var(--ok);
+  background: var(--ok-fill);
 }
 .bar-warn,
 .bar-info {
   background: var(--info);
 }
 .bar-err {
-  background: var(--err);
+  background: var(--err-fill);
 }
 .bar-muted {
-  background: #4b525c;
+  background: var(--text-3);
 }
 .progress.indeterminate .progress-bar {
   width: 30%;
@@ -593,14 +600,14 @@ a {
   margin-top: 2px;
 }
 .notice.warn {
-  border-color: rgba(251, 191, 36, 0.3);
+  border-color: rgba(var(--warn-rgb), 0.3);
   background: var(--warn-soft);
 }
 .notice.warn svg {
   color: var(--warn);
 }
 .notice.err {
-  border-color: rgba(248, 113, 113, 0.3);
+  border-color: rgba(var(--err-rgb), 0.3);
   background: var(--err-soft);
 }
 .notice.err svg {
@@ -938,7 +945,7 @@ a {
   background: var(--hover);
 }
 .trow.sel {
-  background: rgba(255, 59, 71, 0.08);
+  background: rgba(var(--accent-rgb), 0.08);
 }
 .trow .name {
   display: flex;
@@ -1368,14 +1375,14 @@ h3 {
   border-radius: 0;
 }
 ::-webkit-scrollbar-thumb {
-  background: #26262a;
+  background: var(--border-strong);
   border-radius: 0;
   border: 3px solid var(--bg);
 }
 
 /* Chrome */
 .sidebar {
-  background: #08080a;
+  background: var(--elev);
   border-right-color: var(--border);
   /* Edge to edge: rows span the full width and carry their own inset. */
   padding: 16px 0 0;
@@ -1384,7 +1391,7 @@ h3 {
   padding: 14px 20px 16px;
 }
 .topbar {
-  background: rgba(5, 5, 6, 0.86);
+  background: rgba(var(--bg-rgb), 0.86);
 }
 .topbar h1 {
   font-size: 17px;
@@ -1449,13 +1456,13 @@ h3 {
 .nav-count.hot {
   color: var(--accent);
   background: transparent;
-  box-shadow: inset 0 0 0 1px rgba(255, 59, 71, 0.6);
+  box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.6);
   border-radius: 0;
   padding: 1px 6px;
 }
 .nav-count.alert {
   color: var(--accent-ink);
-  background: var(--accent);
+  background: var(--err-fill);
   border-radius: 0;
   padding: 1px 6px;
   font-weight: 700;
@@ -1498,7 +1505,7 @@ h3 {
   box-shadow: none;
 }
 .hero-tile:hover {
-  background-color: #101013;
+  background-color: var(--raised);
   border-color: var(--border-strong);
 }
 .hero-tile .t {
@@ -1526,14 +1533,14 @@ h3 {
 }
 .thead,
 .m-thead {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(var(--ink-rgb), 0.02);
 }
 .trow:hover {
   background: var(--hover);
 }
 .trow.sel,
 .mrow.sel {
-  background: rgba(255, 59, 71, 0.08) !important;
+  background: rgba(var(--accent-rgb), 0.08) !important;
 }
 
 /* Buttons: square blocks, uppercase labels. Outlined buttons carry small
@@ -1576,8 +1583,8 @@ h3 {
   background-color: var(--hover);
 }
 .btn-danger {
-  border-color: rgba(255, 59, 71, 0.5);
-  color: var(--accent);
+  border-color: rgba(var(--err-rgb), 0.5);
+  color: var(--err);
 }
 .btn-danger:hover:not(:disabled) {
   background-color: var(--err-soft);
@@ -1593,13 +1600,13 @@ select.input,
 .search,
 .dest-box,
 .code-box {
-  background: rgba(255, 255, 255, 0.035);
+  background: rgba(var(--ink-rgb), 0.035);
   border-color: var(--border);
 }
 .input:focus {
   border-color: var(--text-2);
   box-shadow: inset 2px 0 0 var(--accent);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--ink-rgb), 0.05);
 }
 .search:focus-within {
   border-color: var(--text-2);
@@ -1628,7 +1635,7 @@ select.input,
   box-shadow: none;
 }
 .switch {
-  background: rgba(255, 255, 255, 0.16);
+  background: rgba(var(--ink-rgb), 0.16);
 }
 .switch::after {
   background: var(--text-2);
@@ -1643,7 +1650,7 @@ select.input,
 /* Progress: a row of 6px cells. The leading cell of an active download is red. */
 .progress {
   height: 6px;
-  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.09) 0 6px, transparent 6px 8px);
+  background: repeating-linear-gradient(90deg, rgba(var(--ink-rgb), 0.09) 0 6px, transparent 6px 8px);
 }
 .progress-bar {
   -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 8px);
@@ -1657,13 +1664,13 @@ select.input,
 }
 .bar-warn,
 .bar-info {
-  background: rgba(255, 255, 255, 0.45);
+  background: rgba(var(--ink-rgb), 0.45);
 }
 .bar-err {
-  background: var(--accent);
+  background: var(--err-fill);
 }
 .bar-muted {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(var(--ink-rgb), 0.3);
 }
 
 /* Status tags */
@@ -1679,7 +1686,7 @@ select.input,
 }
 .pill-accent {
   background: var(--accent-soft);
-  border-color: rgba(255, 59, 71, 0.45);
+  border-color: rgba(var(--accent-rgb), 0.45);
   color: var(--accent);
 }
 .pill-ok {
@@ -1689,13 +1696,13 @@ select.input,
 }
 .pill-warn {
   background: var(--warn-soft);
-  border-color: rgba(255, 176, 32, 0.45);
+  border-color: rgba(var(--warn-rgb), 0.45);
   color: var(--warn);
 }
 /* Attention is the one solid red block, so it never reads like progress. */
 .pill-err {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--err-fill);
+  border-color: var(--err-fill);
   color: var(--accent-ink);
 }
 .pill-info {
@@ -1717,7 +1724,7 @@ select.input,
 .job-ico.tone-accent {
   background: transparent;
   color: var(--accent);
-  box-shadow: inset 0 0 0 1px rgba(255, 59, 71, 0.5);
+  box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.5);
 }
 .job-ico.tone-ok {
   background: transparent;
@@ -1725,7 +1732,7 @@ select.input,
   box-shadow: inset 0 0 0 1px var(--border-strong);
 }
 .job-ico.tone-err {
-  background: var(--accent);
+  background: var(--err-fill);
   color: var(--accent-ink);
   box-shadow: none;
 }
@@ -1736,7 +1743,7 @@ select.input,
 .job-details,
 .notice,
 .sub-list {
-  background: rgba(255, 255, 255, 0.025);
+  background: rgba(var(--ink-rgb), 0.025);
   border-color: var(--border);
 }
 .notice {
@@ -1744,13 +1751,13 @@ select.input,
 }
 .notice.warn {
   background: var(--warn-soft);
-  border-color: rgba(255, 176, 32, 0.3);
+  border-color: rgba(var(--warn-rgb), 0.3);
   box-shadow: inset 2px 0 0 var(--warn);
 }
 .notice.err {
   background: var(--err-soft);
-  border-color: rgba(255, 59, 71, 0.35);
-  box-shadow: inset 2px 0 0 var(--accent);
+  border-color: rgba(var(--err-rgb), 0.35);
+  box-shadow: inset 2px 0 0 var(--err);
 }
 .notice.accent {
   box-shadow: inset 2px 0 0 var(--accent);
@@ -1779,7 +1786,7 @@ select.input,
   box-shadow: inset 2px 0 0 var(--text), var(--shadow);
 }
 .toast.err {
-  box-shadow: inset 2px 0 0 var(--accent), var(--shadow);
+  box-shadow: inset 2px 0 0 var(--err), var(--shadow);
 }
 .toast.info {
   box-shadow: inset 2px 0 0 var(--text-3), var(--shadow);
@@ -2190,7 +2197,7 @@ html {
     background: var(--hover);
   }
   .mrow.sel {
-    background: rgba(255, 59, 71, 0.08);
+    background: rgba(var(--accent-rgb), 0.08);
   }
   .mrow-ico {
     width: 38px;
@@ -2308,7 +2315,7 @@ html {
     background-color: var(--surface);
   }
   .sidebar {
-    background: #08080a;
+    background: var(--elev);
   }
   .nav-item {
     height: 54px;
@@ -2324,7 +2331,7 @@ html {
     color: var(--accent);
   }
   .topbar {
-    background: rgba(5, 5, 6, 0.92);
+    background: rgba(var(--bg-rgb), 0.92);
   }
   .topbar h1 {
     font-size: 15px;
@@ -2379,7 +2386,7 @@ html {
   font: inherit;
   cursor: pointer;
   text-decoration: underline;
-  text-decoration-color: rgba(255, 59, 71, 0.45);
+  text-decoration-color: rgba(var(--accent-rgb), 0.45);
   text-underline-offset: 3px;
 }
 .link:hover {
@@ -2387,7 +2394,7 @@ html {
 }
 
 ::selection {
-  background: rgba(255, 59, 71, 0.35);
+  background: rgba(var(--accent-rgb), 0.35);
   color: #fff;
 }
 
@@ -2496,11 +2503,11 @@ html {
   overflow: visible;
 }
 .flow-grid {
-  stroke: rgba(255, 255, 255, 0.06);
+  stroke: rgba(var(--ink-rgb), 0.06);
   stroke-width: 1;
 }
 .flow-base {
-  stroke: rgba(255, 255, 255, 0.24);
+  stroke: rgba(var(--ink-rgb), 0.24);
   stroke-width: 1;
 }
 .flow-tick {
@@ -2512,7 +2519,7 @@ html {
   fill: var(--text);
 }
 .flow-mark line {
-  stroke: rgba(255, 255, 255, 0.35);
+  stroke: rgba(var(--ink-rgb), 0.35);
   stroke-width: 1;
   stroke-dasharray: 2 3;
 }
@@ -2534,7 +2541,7 @@ html {
   fill: var(--warn);
 }
 .flow-cross {
-  stroke: rgba(255, 255, 255, 0.5);
+  stroke: rgba(var(--ink-rgb), 0.5);
   stroke-width: 1;
 }
 .flow-tip {
@@ -2619,7 +2626,7 @@ html {
   aspect-ratio: 1 / 0.78;
   border: 0;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.022);
+  background: rgba(var(--ink-rgb), 0.022);
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -2655,7 +2662,7 @@ html {
   font-weight: 750;
 }
 .cal-day.sel {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--ink-rgb), 0.1);
   box-shadow: inset 0 0 0 1.5px var(--text);
 }
 .cal-day.sel .cal-num {
@@ -2720,7 +2727,7 @@ html {
   flex-direction: column;
   gap: 6px;
   padding: 11px 13px 12px;
-  background: #1e1e1e;
+  background: var(--raised);
   border: 1px solid var(--border-strong);
   border-radius: 12px;
   box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
@@ -2852,7 +2859,7 @@ html {
   display: block;
   height: 100%;
   min-width: 3px;
-  background: rgba(255, 255, 255, 0.58);
+  background: rgba(var(--ink-rgb), 0.58);
   border-radius: 0 4px 4px 0;
 }
 .cat-track span.tiny {
@@ -2940,7 +2947,7 @@ html {
   transform: rotate(180deg);
 }
 .hrow.open {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(var(--ink-rgb), 0.02);
 }
 .receipt {
   padding: 4px 18px 16px 64px;
@@ -2982,7 +2989,7 @@ html {
   height: 4px;
   margin-top: 8px;
   border-radius: 2px;
-  background: rgba(255, 200, 100, 0.6);
+  background: rgba(var(--warn-rgb), 0.6);
   overflow: hidden;
 }
 .route-meter span {
@@ -3355,7 +3362,7 @@ html {
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(var(--ink-rgb), 0.14);
 }
 .week-wd {
   font-size: 12px;
@@ -3429,13 +3436,13 @@ html {
 }
 .pill-out {
   background: transparent;
-  border-color: rgba(229, 50, 63, 0.5);
+  border-color: rgba(var(--out-rgb), 0.5);
   color: var(--series-out);
 }
 .job-ico.tone-out {
   background: transparent;
   color: var(--series-out);
-  box-shadow: inset 0 0 0 1px rgba(229, 50, 63, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(var(--out-rgb), 0.45);
 }
 .job-pct {
   color: var(--text);
@@ -3524,7 +3531,7 @@ html {
 .modal,
 .pact {
   /* Declared here, not on :root, so --mark resolves per element (hover etc.). */
-  --mark: rgba(255, 255, 255, 0.78);
+  --mark: rgba(var(--ink-rgb), 0.78);
   --mark-len: 12px;
   --mark-w: 2px;
   --cm: linear-gradient(var(--mark), var(--mark));
@@ -3577,13 +3584,13 @@ html {
 }
 .btn-danger,
 .btn-danger:hover:not(:disabled) {
-  --mark: var(--accent);
+  --mark: var(--err);
 }
 /* Ghost buttons are outlined too, one step quieter than secondary:
    silver label and dimmer marks, brightening to white on hover. */
 .btn-ghost {
   border-color: var(--border-strong);
-  --mark: rgba(255, 255, 255, 0.55);
+  --mark: rgba(var(--ink-rgb), 0.55);
 }
 .btn-ghost:hover:not(:disabled) {
   border-color: var(--text-2);
@@ -3625,7 +3632,7 @@ html {
 }
 .cal-day {
   background: transparent;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(var(--ink-rgb), 0.05);
 }
 .cal-day.blank {
   box-shadow: none;
@@ -3635,7 +3642,7 @@ html {
   box-shadow: inset 0 0 0 1px var(--border-strong);
 }
 .cal-day.sel {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--ink-rgb), 0.05);
   box-shadow: inset 0 0 0 1px var(--text);
 }
 .cal-day.sel::before {
@@ -3662,7 +3669,7 @@ html {
   height: 6px;
 }
 .cat-track span {
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(var(--ink-rgb), 0.55);
 }
 .receipt-kv dt {
   font-family: var(--font-display);
@@ -3699,7 +3706,7 @@ html {
   background-color: var(--surface);
   color: var(--text);
   --mark: var(--accent);
-  border-color: rgba(255, 59, 71, 0.6);
+  border-color: rgba(var(--accent-rgb), 0.6);
 }
 .pact-send svg {
   color: var(--accent);
@@ -3783,14 +3790,14 @@ html {
 }
 .ring-outer {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.08);
+  stroke: rgba(var(--ink-rgb), 0.08);
 }
 .ring-ticks {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.22);
+  stroke: rgba(var(--ink-rgb), 0.22);
 }
 .ring-cross {
-  stroke: rgba(255, 255, 255, 0.32);
+  stroke: rgba(var(--ink-rgb), 0.32);
   fill: none;
 }
 .ring-cursor {
@@ -3803,7 +3810,7 @@ html {
   transition: stroke 0.25s;
 }
 .seg-o {
-  stroke: rgba(255, 255, 255, 0.09);
+  stroke: rgba(var(--ink-rgb), 0.11);
 }
 .seg-v {
   stroke: var(--text);
@@ -3812,10 +3819,10 @@ html {
   stroke: var(--accent);
 }
 .ring-paused .seg-v {
-  stroke: rgba(255, 255, 255, 0.5);
+  stroke: rgba(var(--ink-rgb), 0.5);
 }
 .ring-attention .seg-v {
-  stroke: rgba(255, 255, 255, 0.3);
+  stroke: rgba(var(--ink-rgb), 0.3);
 }
 .ring-idle .ring-cursor {
   fill: var(--text-3);
@@ -3907,7 +3914,7 @@ html {
   position: relative;
   flex: 1;
   height: 1px;
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(var(--ink-rgb), 0.5);
   overflow: visible;
 }
 .link-relay .ll-wire {
@@ -3995,20 +4002,20 @@ html {
 }
 .g-ticks {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.2);
+  stroke: rgba(var(--ink-rgb), 0.2);
   stroke-width: 4;
 }
 .g-rim {
   fill: var(--surface);
-  stroke: rgba(255, 255, 255, 0.45);
+  stroke: rgba(var(--ink-rgb), 0.45);
 }
 .g-line {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.15);
+  stroke: rgba(var(--ink-rgb), 0.15);
 }
 .g-eq {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.3);
+  stroke: rgba(var(--ink-rgb), 0.3);
 }
 .g-orbit {
   fill: none;
@@ -4020,7 +4027,7 @@ html {
   stroke: var(--text-3);
 }
 .globe.off .g-rim {
-  stroke: rgba(255, 255, 255, 0.2);
+  stroke: rgba(var(--ink-rgb), 0.2);
 }
 
 /* Hazard stripes: only on things that need the user */
@@ -4051,7 +4058,7 @@ html {
   flex: 1;
   min-width: 0;
   padding: 16px 22px 18px;
-  background-image: var(--cm-img), radial-gradient(520px 300px at 18% 55%, rgba(255, 59, 71, 0.09), transparent 70%);
+  background-image: var(--cm-img), radial-gradient(520px 300px at 18% 55%, rgba(var(--accent-rgb), 0.09), transparent 70%);
   background-size: var(--cm-size), 100% 100%;
   background-position: var(--cm-pos), center;
 }
@@ -4062,7 +4069,7 @@ html {
   gap: 12px;
   padding-bottom: 10px;
   margin-bottom: 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 1px solid rgba(var(--ink-rgb), 0.07);
 }
 .focus-head .num {
   font-size: 10px;
@@ -4095,7 +4102,7 @@ html {
   margin-top: 4px;
   padding: 6px 10px;
   background: var(--err-soft);
-  box-shadow: inset 2px 0 0 var(--accent);
+  box-shadow: inset 2px 0 0 var(--err);
 }
 .focus-kv {
   display: grid;
@@ -4158,11 +4165,11 @@ html {
 }
 .dg-ticks {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.22);
+  stroke: rgba(var(--ink-rgb), 0.22);
   stroke-width: 4;
 }
 .dot-globe.off .dg-ticks {
-  stroke: rgba(255, 255, 255, 0.12);
+  stroke: rgba(var(--ink-rgb), 0.12);
 }
 .dg-stage {
   position: absolute;
@@ -4197,7 +4204,7 @@ html {
   line-height: 1;
   letter-spacing: 0.04em;
   color: var(--text);
-  background: rgba(5, 5, 6, 0.8);
+  background: rgba(var(--bg-rgb), 0.8);
   padding: 3px 5px;
   white-space: nowrap;
 }
@@ -4207,7 +4214,7 @@ html {
 }
 .dot-globe.off .dg-relay.home .dg-tag {
   color: var(--text);
-  background: rgba(5, 5, 6, 0.8);
+  background: rgba(var(--bg-rgb), 0.8);
 }
 
 .sr-only {
@@ -4238,7 +4245,7 @@ html {
   padding: 6px 0;
 }
 .netp-kv > div + div {
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid rgba(var(--ink-rgb), 0.06);
 }
 .netp-kv dd {
   margin: 0;
@@ -4289,7 +4296,7 @@ html {
   width: 100%;
   margin: 12px 0;
   padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border-top: 1px solid rgba(var(--ink-rgb), 0.07);
 }
 .focus-wrap.compact .focus-kv {
   gap: 10px 8px;
@@ -4444,15 +4451,18 @@ html {
     min-height: 36px;
   }
 }
-/* Side-by-side cards (Overview: Devices and Recent activity) also end at the
-   same level. */
+/* Side-by-side cards (Overview: Devices and Recent activity): each card is
+   only as tall as its content; they don't stretch to match each other. */
+.two-col.even {
+  align-items: start;
+}
 .two-col.even > div {
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
 .two-col.even > div > .panel {
-  flex: 1;
+  flex: none;
 }
 
 /* Full-width pages: settings rows span the window (label left, control
@@ -4461,4 +4471,2593 @@ html {
 .page-settings .toggle-text .hint,
 .page-settings .notice {
   max-width: 80ch;
+}
+
+/* ------------------------------------------------------------ topbar actions */
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.theme-toggle {
+  width: 36px;
+  height: 36px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-2);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.theme-toggle:hover {
+  color: var(--text);
+  background: var(--hover);
+  border-color: var(--border-strong);
+}
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (max-width: 760px) {
+  .topbar-actions .btn > span {
+    display: none;
+  }
+  .topbar-actions .btn {
+    width: 42px;
+    padding: 0;
+    justify-content: center;
+  }
+}
+
+/* --------------------------------------------------------------- light theme */
+
+:root[data-theme="light"] {
+  --ink-rgb: 0, 0, 0;
+  --bg-rgb: 246, 246, 244;
+  --bg: #f6f6f4;
+  --elev: #ffffff;
+  --raised: #ffffff;
+  --surface: #ffffff;
+  --surface-2: rgba(0, 0, 0, 0.035);
+  --surface-3: rgba(0, 0, 0, 0.06);
+  --hover: rgba(0, 0, 0, 0.045);
+  --border: rgba(0, 0, 0, 0.12);
+  --border-strong: rgba(0, 0, 0, 0.28);
+  --text: #141416;
+  --text-2: #55555b;
+  --text-3: #85858c;
+  --accent: #15803d;
+  --accent-strong: #166534;
+  --accent-ink: #ffffff;
+  --accent-rgb: 21, 128, 61;
+  --accent-soft: rgba(21, 128, 61, 0.1);
+  --ok: #15803d;
+  --ok-rgb: 21, 128, 61;
+  --ok-soft: rgba(21, 128, 61, 0.1);
+  --ok-fill: var(--ok);
+  --warn: #c27a06;
+  --warn-rgb: 194, 122, 6;
+  --warn-soft: rgba(245, 158, 11, 0.15);
+  --warn-fill: var(--warn);
+  --err: #dc2626;
+  --err-rgb: 220, 38, 38;
+  --err-soft: rgba(220, 38, 38, 0.1);
+  --err-fill: var(--err);
+  --info: #44444a;
+  --info-soft: rgba(0, 0, 0, 0.05);
+  --series-in: #15803d;
+  --series-out: #64748b;
+  --out-rgb: 100, 116, 139;
+  --shadow: 0 14px 36px rgba(0, 0, 0, 0.14);
+  color-scheme: light;
+}
+:root[data-theme="light"] .nav-item.active {
+  color: var(--text);
+}
+:root[data-theme="light"] .pact-send,
+:root[data-theme="light"] .mcheck.on {
+  color: var(--accent-ink);
+}
+:root[data-theme="light"] .pact-send .pact-d {
+  color: rgba(255, 255, 255, 0.78);
+}
+:root[data-theme="light"] .switch::after {
+  background: #ffffff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18);
+}
+:root[data-theme="light"] .modal-backdrop {
+  background: rgba(20, 20, 22, 0.35);
+}
+
+/* ------------------------------------------- traffic lights for operations */
+/* Green = running or done, yellow = waiting or paused, red = needs attention.
+   The brand colour (--accent) is the same green as running/done. */
+
+.dot.ok {
+  background: var(--ok-fill);
+}
+.dot.warn {
+  background: var(--warn-fill);
+}
+.dot.err {
+  background: var(--err-fill);
+}
+.bar-ok {
+  background: var(--ok-fill);
+}
+.bar-warn {
+  background: var(--warn-fill);
+}
+.bar-err {
+  background: var(--err-fill);
+}
+.pill-ok {
+  background: var(--ok-soft);
+  border-color: rgba(var(--ok-rgb), 0.45);
+  color: var(--ok);
+}
+.pill-warn {
+  background: var(--warn-soft);
+  border-color: rgba(var(--warn-rgb), 0.45);
+  color: var(--warn);
+}
+.job-ico.tone-ok {
+  color: var(--ok);
+  box-shadow: inset 0 0 0 1px rgba(var(--ok-rgb), 0.5);
+}
+.job-ico.tone-warn {
+  background: transparent;
+  color: var(--warn);
+  box-shadow: inset 0 0 0 1px rgba(var(--warn-rgb), 0.5);
+}
+.toast.ok {
+  box-shadow: inset 2px 0 0 var(--ok), var(--shadow);
+}
+
+/* ------------------------------------------------------- live speed graph (HUD) */
+
+:root {
+  --in-rgb: 74, 222, 128;
+  --flow-glow: 0.6;
+}
+:root[data-theme="light"] {
+  --in-rgb: 21, 128, 61;
+  --flow-glow: 0.22;
+}
+
+.flow {
+  position: relative;
+  overflow: hidden;
+}
+/* A faint glow rising from the baseline side of the panel. */
+.flow::before {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 60%;
+  background: radial-gradient(60% 100% at 70% 100%, rgba(var(--in-rgb), 0.06), transparent 70%);
+  pointer-events: none;
+}
+.flow-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-display);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--series-in);
+}
+.flow-live i {
+  width: 6px;
+  height: 6px;
+  background: var(--series-in);
+  box-shadow: 0 0 8px rgba(var(--in-rgb), var(--flow-glow));
+  animation: flow-blink 1.6s ease-in-out infinite;
+}
+.flow-legend .in b {
+  color: var(--series-in);
+  text-shadow: 0 0 10px rgba(var(--in-rgb), calc(var(--flow-glow) * 0.6));
+}
+.flow-legend .in i {
+  box-shadow: 0 0 6px rgba(var(--in-rgb), var(--flow-glow));
+}
+
+/* Background: a sparse dot matrix with small crosshairs at 10 s × value levels. */
+.flow-dot {
+  fill: rgba(var(--ink-rgb), 0.16);
+}
+.flow-xhair {
+  fill: none;
+  stroke: rgba(var(--ink-rgb), 0.3);
+  stroke-width: 1;
+}
+.flow-base {
+  stroke: rgba(var(--ink-rgb), 0.32);
+}
+.flow-tick {
+  transition: fill 0.2s;
+}
+.flow-tick.lit-in {
+  fill: var(--series-in);
+  font-weight: 700;
+}
+.flow-tick.lit-out {
+  fill: var(--series-out);
+  font-weight: 700;
+}
+
+.flow-line {
+  fill: none;
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.flow-line.in {
+  stroke: var(--series-in);
+  filter: drop-shadow(0 0 4px rgba(var(--in-rgb), var(--flow-glow)));
+}
+.flow-line.out {
+  stroke: var(--series-out);
+  stroke-width: 1.3;
+  filter: drop-shadow(0 0 3px rgba(var(--out-rgb), calc(var(--flow-glow) * 0.6)));
+}
+
+/* Between samples the plot slides left by one sample, so time flows smoothly. */
+.flow-scroll {
+  animation: flow-scroll 1s linear forwards;
+}
+@keyframes flow-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(-1 * var(--step)));
+  }
+}
+
+/* First appearance: the plot sweeps open from the left. */
+.flow-wipe {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: flow-wipe 1.4s cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+@keyframes flow-wipe {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.flow-scan {
+  animation: flow-scan 5.5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  pointer-events: none;
+}
+@keyframes flow-scan {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(calc(var(--iw) + 90px));
+    opacity: 0;
+  }
+}
+
+/* The newest point: pinned to the right edge, gliding with the line's end
+   (one sample per second, linear like the scroll). */
+.flow-head-dot {
+  transition: transform 1s linear;
+}
+.flow-head-dot .core {
+  fill: var(--series-in);
+  filter: drop-shadow(0 0 4px rgba(var(--in-rgb), 0.9));
+}
+.flow-head-dot.out .core {
+  fill: var(--series-out);
+  filter: none;
+}
+.flow-head-dot .ping {
+  fill: none;
+  stroke: var(--series-in);
+  stroke-width: 1;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: flow-ping 1s ease-out forwards;
+}
+@keyframes flow-ping {
+  from {
+    transform: scale(0.3);
+    opacity: 0.9;
+  }
+  to {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+@keyframes flow-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+/* Hover cursor: dashed line between two triangle caps, a ring on each line. */
+.flow-cursor line {
+  stroke: var(--series-in);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  opacity: 0.85;
+}
+.flow-cursor polygon {
+  fill: var(--series-in);
+}
+.flow-marker {
+  fill: var(--bg);
+  stroke-width: 2;
+}
+.flow-marker.in {
+  stroke: var(--series-in);
+  filter: drop-shadow(0 0 5px rgba(var(--in-rgb), 0.8));
+}
+.flow-marker.out {
+  stroke: var(--series-out);
+}
+
+/* Tooltip: a glass readout beside the cursor, flipped near the right edge. */
+.flow-tip {
+  transform: none;
+  background: rgba(var(--bg-rgb), 0.72);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(var(--in-rgb), 0.35);
+  box-shadow: 0 0 0 1px rgba(var(--ink-rgb), 0.04), 0 0 24px rgba(var(--in-rgb), calc(var(--flow-glow) * 0.25)), var(--shadow);
+}
+.flow-tip.flip {
+  transform: translateX(-100%);
+}
+.flow-tip .lab {
+  color: var(--series-in);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flow-scroll,
+  .flow-wipe,
+  .flow-scan,
+  .flow-head-dot .ping,
+  .flow-live i {
+    animation: none;
+  }
+  .flow-scan,
+  .flow-head-dot .ping {
+    display: none;
+  }
+  /* No scrolling: show the newest sample at the edge, where the dots are. */
+  .flow-scroll {
+    transform: translateX(calc(-1 * var(--step)));
+  }
+  .flow-head-dot {
+    transition: none;
+  }
+}
+
+/* ------------------------------------------------------------ segmented meter */
+/* A solid fill with a taller marker on its end, over grey ticks for what is
+   left (after Keitoto's "Budget Health" meter, scaled to a list row). */
+
+.progress.meter {
+  --tick: 3px;
+  --pitch: 5px;
+  --track: 8px;
+  --mark-w: 3px;
+  --mark-h: 14px;
+  --tone: var(--accent);
+  --tone-rgb: var(--accent-rgb);
+  height: var(--mark-h);
+  background: none;
+  border-radius: 0;
+  overflow: visible;
+}
+.meter.tone-ok {
+  --tone: var(--ok-fill);
+  --tone-rgb: var(--ok-rgb);
+}
+.meter.tone-warn {
+  --tone: var(--warn-fill);
+  --tone-rgb: var(--warn-rgb);
+}
+.meter.tone-err {
+  --tone: var(--err-fill);
+  --tone-rgb: var(--err-rgb);
+}
+.meter.tone-out {
+  --tone: var(--series-out);
+  --tone-rgb: var(--out-rgb);
+}
+.meter.tone-muted,
+.meter.tone-info {
+  --tone: rgba(var(--ink-rgb), 0.4);
+  --tone-rgb: var(--ink-rgb);
+}
+/* What is left: grey ticks. */
+.progress.meter::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc((var(--mark-h) - var(--track)) / 2);
+  height: var(--track);
+  background: repeating-linear-gradient(90deg, rgba(var(--ink-rgb), 0.11) 0 var(--tick), transparent var(--tick) var(--pitch));
+}
+/* The fill, its left corners round. */
+.meter .progress-bar {
+  position: absolute;
+  left: 0;
+  top: calc((var(--mark-h) - var(--track)) / 2);
+  height: var(--track);
+  width: calc(var(--p) * 100%);
+  background: var(--tone);
+  border-radius: 2px 0 0 2px;
+  -webkit-mask-image: none;
+  mask-image: none;
+  box-shadow: 0 0 10px rgba(var(--tone-rgb), calc(var(--flow-glow, 0.5) * 0.35));
+  transition: width 0.75s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s;
+  animation: meter-grow 1.3s cubic-bezier(0.76, 0, 0.24, 1) 0.15s both;
+}
+/* Snap the end to a whole tick where the browser can round. */
+@supports (width: round(nearest, 10px, 5px)) {
+  .meter .progress-bar {
+    width: round(nearest, calc(var(--p) * 100%), var(--pitch));
+  }
+}
+/* The marker on the fill's end; it settles with a small stretch after the sweep. */
+.meter .progress-bar::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: calc((var(--track) - var(--mark-h)) / 2);
+  width: var(--mark-w);
+  height: var(--mark-h);
+  background: var(--tone);
+  box-shadow: 0 0 8px rgba(var(--tone-rgb), var(--flow-glow, 0.5));
+  animation: meter-settle 0.68s 1.33s both;
+}
+@keyframes meter-grow {
+  from {
+    width: 0;
+  }
+}
+@keyframes meter-settle {
+  0% {
+    transform: scaleY(1);
+  }
+  24% {
+    transform: scaleY(1.28);
+    animation-timing-function: cubic-bezier(0.34, 1.8, 0.64, 1);
+  }
+  100% {
+    transform: scaleY(1);
+  }
+}
+/* Unknown progress: a short lit segment sweeps across the ticks, clipped to
+   the track so it enters and leaves at the ends instead of running past them. */
+.progress.meter.indeterminate {
+  overflow: hidden;
+}
+.meter.indeterminate .progress-bar {
+  width: 18%;
+  border-radius: 0;
+  animation: indet 1.4s ease-in-out infinite;
+}
+.meter.indeterminate .progress-bar::after {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .meter .progress-bar,
+  .meter .progress-bar::after {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* ------------------------------------------------- progress dial (meter style) */
+/* Same language as the bar meter: grey segments for what is left, a solid
+   glowing fill, and a taller marker on its end. Traffic-light tone by state. */
+
+.ring {
+  --tone: var(--ok);
+  --tone-rgb: var(--ok-rgb);
+}
+.ring-paused {
+  --tone: var(--warn);
+  --tone-rgb: var(--warn-rgb);
+}
+.ring-attention {
+  --tone: var(--err);
+  --tone-rgb: var(--err-rgb);
+}
+.ring-idle {
+  --tone: rgba(var(--ink-rgb), 0.4);
+  --tone-rgb: var(--ink-rgb);
+}
+.ring-fill {
+  fill: none;
+  stroke: var(--tone);
+  stroke-linecap: butt;
+  transition: stroke-dasharray 0.75s cubic-bezier(0.16, 1, 0.3, 1), stroke 0.3s;
+  animation: ring-grow 1.3s cubic-bezier(0.76, 0, 0.24, 1) 0.15s both;
+}
+.ring-fill.verified {
+  stroke-dasharray: var(--pv) 1;
+  filter: drop-shadow(0 0 5px rgba(var(--tone-rgb), calc(var(--flow-glow, 0.5) * 0.6)));
+}
+.ring-fill.arriving {
+  stroke-dasharray: var(--pd) 1;
+  stroke-opacity: 0.32;
+}
+.ring-mark {
+  transform: rotate(var(--deg));
+  transition: transform 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: ring-mark-in 1.3s cubic-bezier(0.76, 0, 0.24, 1) 0.15s both;
+}
+.ring-mark-bar {
+  fill: var(--tone);
+  filter: drop-shadow(0 0 4px rgba(var(--tone-rgb), var(--flow-glow, 0.5)));
+  transition: fill 0.3s;
+  animation: meter-settle 0.68s 1.33s both;
+}
+.ring-cursor {
+  fill: var(--tone);
+}
+@keyframes ring-grow {
+  from {
+    stroke-dasharray: 0 1;
+  }
+}
+@keyframes ring-mark-in {
+  from {
+    transform: rotate(0deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ring-fill,
+  .ring-mark,
+  .ring-mark-bar {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* ------------------------------------------------------ link line (futuristic) */
+/* Two glowing diamond nodes joined by a lit wire over a tick rail; a beam and
+   light packets stream toward the receiver. Green = direct, yellow = relay,
+   grey = no path. */
+
+.link-line {
+  --ll: var(--ok);
+  --ll-rgb: var(--ok-rgb);
+  gap: 8px;
+}
+.link-relay {
+  --ll: var(--warn);
+  --ll-rgb: var(--warn-rgb);
+}
+.link-none {
+  --ll: var(--text-3);
+  --ll-rgb: var(--ink-rgb);
+}
+.ll-cap {
+  display: inline-flex;
+  align-self: center;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 10px;
+  color: var(--ll);
+  background: linear-gradient(90deg, transparent, rgba(var(--ll-rgb), 0.1), transparent);
+  border-top: 1px solid rgba(var(--ll-rgb), 0.25);
+  border-bottom: 1px solid rgba(var(--ll-rgb), 0.25);
+}
+.link-none .ll-cap {
+  color: var(--text-2);
+}
+.ll-cap-dot {
+  width: 5px;
+  height: 5px;
+  background: var(--ll);
+  box-shadow: 0 0 6px rgba(var(--ll-rgb), var(--flow-glow, 0.5));
+}
+.link-line.moving .ll-cap-dot {
+  animation: flow-blink 1.6s ease-in-out infinite;
+}
+.ll-track {
+  gap: 0;
+  height: 18px;
+}
+
+/* Nodes: diamonds with a soft halo; the receiving end is solid. */
+.ll-node {
+  position: relative;
+  width: 9px;
+  height: 9px;
+  margin: 0 5px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--ll), 0 0 8px rgba(var(--ll-rgb), calc(var(--flow-glow, 0.5) * 0.7));
+  transform: rotate(45deg);
+}
+.link-line.in .ll-node.local,
+.link-line.out .ll-node.peer {
+  background: var(--ll);
+}
+.ll-node.hollow {
+  background: transparent;
+}
+.ll-halo {
+  position: absolute;
+  inset: -5px;
+  border: 1px solid rgba(var(--ll-rgb), 0.5);
+  opacity: 0;
+}
+.link-line.moving .ll-halo {
+  animation: ll-halo 2.4s ease-out infinite;
+}
+.link-line.moving .ll-node.peer .ll-halo {
+  animation-delay: -1.2s;
+}
+@keyframes ll-halo {
+  from {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  to {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+/* The wire: a thin lit line over a tick rail. */
+.ll-wire,
+.link-relay .ll-wire,
+.link-none .ll-wire {
+  height: 1px;
+  background: linear-gradient(90deg, rgba(var(--ll-rgb), 0.85), rgba(var(--ll-rgb), 0.35) 50%, rgba(var(--ll-rgb), 0.85));
+  box-shadow: 0 0 6px rgba(var(--ll-rgb), calc(var(--flow-glow, 0.5) * 0.5));
+}
+.link-relay .ll-wire {
+  background: repeating-linear-gradient(90deg, var(--ll) 0 5px, transparent 5px 9px);
+}
+.link-none .ll-wire {
+  background: repeating-linear-gradient(90deg, var(--text-3) 0 1px, transparent 1px 5px);
+  box-shadow: none;
+}
+.ll-rail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 4px;
+  height: 3px;
+  background: repeating-linear-gradient(90deg, rgba(var(--ink-rgb), 0.18) 0 1px, transparent 1px 10px);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 15%, #000 85%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 15%, #000 85%, transparent);
+}
+
+/* Beam: a bright streak that sweeps toward the receiver. */
+/* The beam element spans exactly the wire; the streak is its background, so
+   it is clipped at the nodes instead of shooting past them. */
+.ll-beam {
+  position: absolute;
+  top: -1px;
+  height: 3px;
+  left: 0;
+  right: 0;
+  opacity: 0;
+  background-image: linear-gradient(90deg, transparent, rgba(var(--ll-rgb), 0.9));
+  background-size: 38% 100%;
+  background-repeat: no-repeat;
+  background-position: -61.3% 0;
+}
+.link-line.in .ll-beam {
+  background-image: linear-gradient(270deg, transparent, rgba(var(--ll-rgb), 0.9));
+}
+.link-line.moving .ll-beam {
+  animation: ll-beam 2.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+.link-line.in.moving .ll-beam {
+  animation-direction: reverse;
+}
+/* -61.3% / 161.3% put a 38%-wide streak just outside each end of the wire. */
+@keyframes ll-beam {
+  0% {
+    background-position: -61.3% 0;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    background-position: 161.3% 0;
+    opacity: 0;
+  }
+}
+
+/* Packets: short glowing dashes. */
+.ll-wire b {
+  top: -1px;
+  width: 7px;
+  height: 3px;
+  background: var(--ll);
+  box-shadow: 0 0 6px rgba(var(--ll-rgb), 0.9);
+}
+.ll-wire b:nth-of-type(1) {
+  animation-delay: 0s !important;
+}
+.ll-wire b:nth-of-type(2) {
+  animation-delay: -0.8s !important;
+}
+.ll-wire b:nth-of-type(3) {
+  animation-delay: -1.6s !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .link-line.moving .ll-wire b:nth-of-type(1) {
+    left: 25%;
+  }
+  .link-line.moving .ll-wire b:nth-of-type(2) {
+    left: 50%;
+  }
+  .link-line.moving .ll-wire b:nth-of-type(3) {
+    display: block;
+    left: 75%;
+  }
+}
+
+/* Relay hop: a diamond in the middle. */
+.ll-relay {
+  width: 9px;
+  height: 9px;
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1.5px var(--ll), 0 0 8px rgba(var(--ll-rgb), 0.5);
+  z-index: 1;
+}
+.ll-relay .ll-halo {
+  inset: -4px;
+}
+
+/* End labels with RX / TX role tags. */
+.ll-ends {
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+}
+.ll-end {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text-2);
+}
+.ll-end.right {
+  justify-content: flex-end;
+}
+.ll-role {
+  flex: none;
+  padding: 1px 4px;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--ll);
+  border: 1px solid rgba(var(--ll-rgb), 0.4);
+  background: rgba(var(--ll-rgb), 0.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .link-line.moving .ll-beam,
+  .link-line.moving .ll-halo,
+  .link-line.moving .ll-cap-dot {
+    animation: none;
+  }
+  .ll-beam,
+  .ll-halo {
+    display: none;
+  }
+}
+
+/* ------------------------------------------------------- focus card pager */
+
+.focus-pager {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+.pager-btn {
+  width: 22px;
+  height: 22px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+.pager-btn:hover {
+  color: var(--accent);
+  border-color: rgba(var(--accent-rgb), 0.5);
+  background: var(--accent-soft);
+  box-shadow: 0 0 8px rgba(var(--accent-rgb), calc(var(--flow-glow, 0.5) * 0.4));
+}
+.pager-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.focus-dots {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  margin: -6px 0 6px;
+}
+.focus-dots i {
+  width: 10px;
+  height: 2px;
+  background: rgba(var(--ink-rgb), 0.15);
+  transition: width 0.25s, background 0.25s;
+}
+.focus-dots i.on {
+  width: 22px;
+  background: var(--accent);
+  box-shadow: 0 0 6px rgba(var(--accent-rgb), var(--flow-glow, 0.5));
+}
+/* A new transfer slides in. */
+.focus-body {
+  animation: focus-in 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes focus-in {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .focus-body {
+    animation: none;
+  }
+}
+
+/* Light theme globe: relay tags get a hairline so they read on the pale sphere. */
+:root[data-theme="light"] .dg-relay:not(.home) .dg-tag {
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+/* ------------------------------------------------ overview: devices + activity */
+
+.sec-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.sec-stat i {
+  width: 6px;
+  height: 6px;
+  background: var(--text-3);
+}
+.sec-stat i.on {
+  background: var(--ok);
+  box-shadow: 0 0 6px rgba(var(--ok-rgb), var(--flow-glow, 0.5));
+}
+
+/* Devices: one tile per link, with a status node and a live link readout. */
+.dev-list {
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dev-tile {
+  --lk: var(--ok);
+  --lk-rgb: var(--ok-rgb);
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 12px 11px 14px;
+  background: linear-gradient(90deg, rgba(var(--lk-rgb), 0.05), transparent 45%);
+  border: 1px solid rgba(var(--ink-rgb), 0.06);
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.dev-tile:hover {
+  border-color: rgba(var(--lk-rgb), 0.3);
+  background: linear-gradient(90deg, rgba(var(--lk-rgb), 0.09), transparent 60%);
+}
+.dev-tile.link-relay {
+  --lk: var(--warn);
+  --lk-rgb: var(--warn-rgb);
+}
+.dev-tile.link-offline {
+  --lk: var(--text-3);
+  --lk-rgb: var(--ink-rgb);
+  background: none;
+}
+.dev-node {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  color: var(--lk);
+  border: 1px solid rgba(var(--lk-rgb), 0.35);
+  background: rgba(var(--lk-rgb), 0.07);
+}
+.link-offline .dev-node {
+  color: var(--text-3);
+}
+.dev-id {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.dev-name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 13.5px;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+.link-offline .dev-name {
+  color: var(--text-2);
+}
+.dev-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.dev-dir {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 5px 1px 3px;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  border: 1px solid var(--border);
+}
+.dev-link {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  min-width: 92px;
+}
+/* Latency and signal bars on one line, bars bottom-aligned to the text. */
+.dev-link-row {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 7px;
+  line-height: 1;
+}
+.dev-link-kind {
+  font-family: var(--font-display);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--lk);
+}
+.dev-link-rtt {
+  font-size: 11.5px;
+  line-height: 1;
+  color: var(--text-2);
+}
+.sig {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 13px;
+  margin-bottom: 1px;
+}
+.sig i {
+  width: 3px;
+  background: rgba(var(--ink-rgb), 0.14);
+}
+.sig i.on {
+  background: var(--lk);
+  box-shadow: 0 0 4px rgba(var(--lk-rgb), calc(var(--flow-glow, 0.5) * 0.8));
+}
+/* Same width on every tile, so the link readouts line up in one column. */
+.dev-act {
+  min-width: 78px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Activity: a timeline rail with one node per event. */
+.act-list {
+  padding: 8px 14px 8px 12px;
+}
+.act-rail {
+  position: relative;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.act-rail::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 14px;
+  bottom: 14px;
+  width: 1px;
+  background: linear-gradient(180deg, rgba(var(--ink-rgb), 0.22), rgba(var(--ink-rgb), 0.04));
+}
+.act-item {
+  --tn: var(--text-3);
+  --tn-rgb: var(--ink-rgb);
+  position: relative;
+  display: grid;
+  grid-template-columns: 9px 46px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+}
+.act-item + .act-item {
+  border-top: 1px dashed rgba(var(--ink-rgb), 0.07);
+}
+.act-item.tone-ok {
+  --tn: var(--ok);
+  --tn-rgb: var(--ok-rgb);
+}
+.act-item.tone-warn {
+  --tn: var(--warn);
+  --tn-rgb: var(--warn-rgb);
+}
+.act-item.tone-err {
+  --tn: var(--err);
+  --tn-rgb: var(--err-rgb);
+}
+.act-node {
+  width: 9px;
+  height: 9px;
+  transform: rotate(45deg);
+  background: var(--elev);
+  box-shadow: inset 0 0 0 1.5px var(--tn);
+  z-index: 1;
+}
+.act-item.latest .act-node {
+  background: var(--tn);
+  box-shadow: 0 0 8px rgba(var(--tn-rgb), var(--flow-glow, 0.5));
+}
+.act-tag {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-align: center;
+  padding: 2px 0;
+  color: var(--tn);
+  border: 1px solid rgba(var(--tn-rgb), 0.35);
+  background: rgba(var(--tn-rgb), 0.07);
+}
+.act-msg {
+  font-size: 12.5px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.act-time {
+  font-size: 10.5px;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .dev-tile {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+  .dev-act {
+    grid-column: 2 / -1;
+    justify-self: start;
+  }
+}
+
+/* Topbar Send / Receive: lit while you are on that page. */
+.topbar-actions .btn.topbar-on {
+  color: var(--accent);
+  border-color: rgba(var(--accent-rgb), 0.55);
+  background: var(--accent-soft);
+  box-shadow: 0 0 10px rgba(var(--accent-rgb), calc(var(--flow-glow, 0.5) * 0.35));
+}
+
+/* ------------------------------------------------------------- send page */
+
+/* Summary strip: four readouts and the main action, like the Overview HUD. */
+.send-hud {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 18px;
+}
+.send-hud-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  background: rgba(var(--ink-rgb), 0.06);
+  border: 1px solid rgba(var(--ink-rgb), 0.06);
+}
+.send-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  background: var(--elev);
+}
+.send-stat .v {
+  font-size: 20px;
+  color: var(--text);
+}
+.send-stat.live .v {
+  color: var(--ok);
+  text-shadow: 0 0 10px rgba(var(--ok-rgb), calc(var(--flow-glow, 0.5) * 0.6));
+}
+.send-hud-cta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.send-hud-cta > span {
+  flex: 1;
+}
+
+.share-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* One shared folder: status edge, header with readouts, then Access and Invitations side by side. */
+.share-tile {
+  --st: var(--ok);
+  --st-rgb: var(--ok-rgb);
+  position: relative;
+  padding: 0;
+}
+.share-tile.st-ready {
+  --st: var(--accent);
+  --st-rgb: var(--accent-rgb);
+}
+.share-tile.st-paused {
+  --st: var(--warn);
+  --st-rgb: var(--warn-rgb);
+}
+.share-top {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px 14px 18px;
+  background: linear-gradient(90deg, rgba(var(--st-rgb), 0.06), transparent 50%);
+  border-bottom: 1px solid rgba(var(--ink-rgb), 0.06);
+}
+.share-node {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  color: var(--st);
+  border: 1px solid rgba(var(--st-rgb), 0.35);
+  background: rgba(var(--st-rgb), 0.07);
+}
+.share-id {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.share-name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+.share-path {
+  font-size: 11px;
+  color: var(--text-3);
+}
+.share-stats {
+  display: flex;
+  gap: 18px;
+}
+.share-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 52px;
+}
+.share-stat .k {
+  font-family: var(--font-display);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.share-stat .v {
+  font-size: 12.5px;
+  color: var(--text);
+}
+.share-stat .v.st-sending {
+  color: var(--ok);
+}
+.share-stat .v.st-ready {
+  color: var(--accent);
+}
+.share-stat .v.st-paused {
+  color: var(--warn);
+}
+.share-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.share-body {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+}
+.share-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 16px 14px 18px;
+  min-width: 0;
+}
+.share-col + .share-col {
+  border-left: 1px solid rgba(var(--ink-rgb), 0.06);
+  padding-left: 16px;
+}
+.share-col-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+.share-none {
+  font-size: 12px;
+  color: var(--text-3);
+  padding: 10px 12px;
+  border: 1px dashed rgba(var(--ink-rgb), 0.12);
+}
+
+/* A device with access: same link colours and readout as the Overview tiles. */
+.acc-row {
+  --lk: var(--ok);
+  --lk-rgb: var(--ok-rgb);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 8px 9px 10px;
+  border: 1px solid rgba(var(--ink-rgb), 0.06);
+  background: linear-gradient(90deg, rgba(var(--lk-rgb), 0.05), transparent 45%);
+}
+.acc-row.link-relay {
+  --lk: var(--warn);
+  --lk-rgb: var(--warn-rgb);
+}
+.acc-row.link-offline {
+  --lk: var(--text-3);
+  --lk-rgb: var(--ink-rgb);
+  background: none;
+}
+.acc-node {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  color: var(--lk);
+  border: 1px solid rgba(var(--lk-rgb), 0.35);
+  background: rgba(var(--lk-rgb), 0.07);
+}
+.acc-id {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.acc-name {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  font-size: 13px;
+}
+.acc-name .mono {
+  font-size: 10.5px;
+}
+.acc-state {
+  font-size: 11.5px;
+  color: var(--text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.acc-state.busy {
+  color: var(--ok);
+}
+
+/* An open invitation: a draining timer bar and status tags. */
+.inv-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 8px 9px 10px;
+  border: 1px solid rgba(var(--ink-rgb), 0.06);
+}
+.inv-node {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  color: var(--accent);
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
+  background: var(--accent-soft);
+}
+.inv-main {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.inv-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12.5px;
+}
+.inv-k {
+  font-family: var(--font-display);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.inv-timer {
+  height: 3px;
+  background: repeating-linear-gradient(90deg, rgba(var(--ink-rgb), 0.11) 0 3px, transparent 3px 5px);
+}
+.inv-timer i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  box-shadow: 0 0 6px rgba(var(--accent-rgb), calc(var(--flow-glow, 0.5) * 0.7));
+}
+.inv-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.inv-tag {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  color: var(--text-2);
+  border: 1px solid var(--border);
+}
+.inv-tag.warn {
+  color: var(--warn);
+  border-color: rgba(var(--warn-rgb), 0.4);
+  background: var(--warn-soft);
+}
+.inv-tag.ok {
+  color: var(--ok);
+  border-color: rgba(var(--ok-rgb), 0.4);
+  background: var(--ok-soft);
+}
+
+@media (max-width: 1080px) {
+  .share-top {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+  .share-stats {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .share-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .share-col + .share-col {
+    border-left: none;
+    border-top: 1px solid rgba(var(--ink-rgb), 0.06);
+    padding-left: 18px;
+  }
+}
+@media (max-width: 760px) {
+  .send-hud-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .send-hud-cta {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .acc-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+  .acc-row .dev-link {
+    display: none;
+  }
+}
+
+/* Segmented control stretched across its field: equal-width options. */
+.segmented.full {
+  display: flex;
+  width: 100%;
+  flex-wrap: nowrap;
+}
+.segmented.full button {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* No-expiry invitation: a steady, full timer bar. */
+.inv-timer.never i {
+  background: repeating-linear-gradient(90deg, var(--accent) 0 6px, rgba(var(--accent-rgb), 0.45) 6px 8px);
+}
+
+/* ------------------------------------------------------ invite: created view */
+
+.inv-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.inv-chip {
+  font-family: var(--font-display);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: 4px 9px;
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  background: rgba(var(--ink-rgb), 0.03);
+}
+.inv-chip.on {
+  color: var(--accent);
+  border-color: rgba(var(--accent-rgb), 0.4);
+  background: var(--accent-soft);
+}
+.inv-grid {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 24px;
+  align-items: center;
+}
+
+/* QR in a scanner frame: corner brackets and a beam sweeping down. White
+   behind the code itself, so every phone camera reads it. */
+.qr-scan {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.qr-scan figcaption {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.qr-frame {
+  --c: rgba(var(--accent-rgb), 0.9);
+  position: relative;
+  display: block;
+  padding: 12px;
+  background:
+    linear-gradient(var(--c), var(--c)) top left / 16px 2px,
+    linear-gradient(var(--c), var(--c)) top left / 2px 16px,
+    linear-gradient(var(--c), var(--c)) top right / 16px 2px,
+    linear-gradient(var(--c), var(--c)) top right / 2px 16px,
+    linear-gradient(var(--c), var(--c)) bottom left / 16px 2px,
+    linear-gradient(var(--c), var(--c)) bottom left / 2px 16px,
+    linear-gradient(var(--c), var(--c)) bottom right / 16px 2px,
+    linear-gradient(var(--c), var(--c)) bottom right / 2px 16px;
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 0 10px rgba(var(--accent-rgb), calc(var(--flow-glow, 0.5) * 0.35)));
+}
+.qr-frame .qr {
+  width: 172px;
+  height: 172px;
+  padding: 8px;
+  border-radius: 0;
+}
+.qr-beam {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 12px;
+  height: 22%;
+  background: linear-gradient(180deg, transparent, rgba(var(--accent-rgb), 0.35) 85%, rgba(var(--accent-rgb), 0.9));
+  border-bottom: 1px solid var(--accent);
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  animation: qr-beam 2.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+@keyframes qr-beam {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(372%);
+    opacity: 0;
+  }
+}
+
+/* The one code: characters in cells, a validity countdown, one copy button. */
+.inv-code {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+.code-cells {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.code-group {
+  display: inline-flex;
+  gap: 3px;
+}
+.code-group i {
+  width: 28px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  font-style: normal;
+  font-family: var(--mono);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--accent);
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
+  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.1), rgba(var(--accent-rgb), 0.03));
+  text-shadow: 0 0 10px rgba(var(--accent-rgb), calc(var(--flow-glow, 0.5) * 0.8));
+  animation: code-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) var(--d, 0ms) both;
+}
+@keyframes code-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.code-valid {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  font-size: 11px;
+  color: var(--text-2);
+}
+.code-timer {
+  flex: 1;
+  height: 3px;
+  background: repeating-linear-gradient(90deg, rgba(var(--ink-rgb), 0.11) 0 3px, transparent 3px 5px);
+}
+.code-timer i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  box-shadow: 0 0 6px rgba(var(--accent-rgb), calc(var(--flow-glow, 0.5) * 0.7));
+  transition: width 1s linear;
+}
+.inv-code .code-box {
+  width: 100%;
+  max-height: 120px;
+  overflow: auto;
+}
+
+/* Status line: a pulse while the invitation waits for someone. */
+.inv-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  font-size: 12.5px;
+  color: var(--text-2);
+  border: 1px solid rgba(var(--ink-rgb), 0.08);
+  background: rgba(var(--ink-rgb), 0.02);
+}
+.inv-status b {
+  color: var(--text);
+}
+.inv-pulse {
+  position: relative;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  background: var(--accent);
+}
+.inv-pulse::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border: 1px solid var(--accent);
+  animation: inv-pulse 1.8s ease-out infinite;
+}
+@keyframes inv-pulse {
+  from {
+    transform: scale(0.6);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .inv-grid {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+  }
+  .inv-code {
+    align-items: center;
+  }
+  .code-group i {
+    width: 24px;
+    height: 34px;
+    font-size: 17px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .qr-beam,
+  .inv-pulse::after,
+  .code-group i {
+    animation: none;
+  }
+  .qr-beam {
+    display: none;
+  }
+}
+
+/* QR fix: the QR is a <span>, and as an inline box its white background ran
+   as a strip beside the code. Make it a sized block that the SVG fills. */
+.qr-frame .qr {
+  display: block;
+  box-sizing: border-box;
+  line-height: 0;
+}
+.qr-frame .qr svg {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* The long invitation, its copy button, and its lifetime meter. */
+.inv-long {
+  max-height: none;
+}
+.inv-long .val {
+  font-size: 11.5px;
+  line-height: 1.55;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+}
+.inv-life {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+.inv-life-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 12px;
+}
+.inv-life.tone-warn .inv-life-head .num {
+  color: var(--warn);
+}
+.inv-life.tone-err .inv-life-head .num {
+  color: var(--err);
+}
+
+/* 16-character code: four groups of four cells; smaller in Send page rows. */
+.code-cells {
+  gap: 8px;
+}
+.code-group i {
+  width: 26px;
+}
+.code-cells.sm {
+  gap: 5px;
+}
+.code-cells.sm .code-group {
+  gap: 2px;
+}
+.code-cells.sm .code-group i {
+  width: 15px;
+  height: 21px;
+  font-size: 12px;
+  font-weight: 600;
+  animation: none;
+}
+.inv-code-line {
+  align-items: center;
+  gap: 6px;
+}
+/* The Connect dialog's code field: one line, large mono, spaced like the code. */
+.input.code-input {
+  min-height: 0;
+  resize: none;
+  font-size: 18px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 12px 14px;
+}
+.input.code-input::placeholder {
+  font-size: 12.5px;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+@media (max-width: 640px) {
+  .code-group i {
+    width: 21px;
+    height: 32px;
+    font-size: 16px;
+  }
+}
+
+/* Invite QR, final layout: the corner brackets hug the QR, a slim white
+   margin replaces the old quiet zone, and the beam is clipped to the code. */
+.qr-frame {
+  padding: 8px;
+}
+.qr-box {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  background: #fff;
+}
+.qr-frame .qr {
+  width: 176px;
+  height: 176px;
+  padding: 12px;
+  background: #fff;
+}
+.qr-box .qr-beam {
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 25%;
+  animation: qr-beam-in 2.6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+@keyframes qr-beam-in {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    /* 4 × its own height = the full box */
+    transform: translateY(400%);
+  }
+}
+
+/* The 16-character code on one line: cells share the column's width. */
+.inv-code .code-cells {
+  width: 100%;
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+.inv-code .code-group {
+  flex: 1 1 0;
+  display: flex;
+  gap: 3px;
+  min-width: 0;
+}
+.inv-code .code-group i {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+  max-width: 30px;
+  height: 38px;
+  font-size: 18px;
+}
+@media (max-width: 640px) {
+  .inv-code .code-cells {
+    gap: 5px;
+  }
+  .inv-code .code-group {
+    gap: 2px;
+  }
+  .inv-code .code-group i {
+    height: 30px;
+    font-size: 14px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .qr-box .qr-beam {
+    display: none;
+  }
+}
+
+/* Invitation rows, rearranged: code · tags · revoke on top, lifetime meter below. */
+.inv-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 10px 8px 10px 12px;
+}
+.inv-tag {
+  white-space: nowrap;
+}
+/* Access and Invitations get equal halves of a folder tile; on narrow
+   windows they stack (this must come after the base rule it overrides). */
+.share-body {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+@media (max-width: 1080px) {
+  .share-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+/* Top line of an invitation: the code takes the room it needs (one line when
+   it fits); tags and revoke move to their own line when it doesn't, and on
+   very narrow screens the code's four groups wrap instead of overlapping. */
+.inv-top {
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+.inv-top .inv-code-line {
+  flex: 1 1 300px;
+  min-width: 0;
+}
+.inv-top .code-cells.sm {
+  flex-wrap: wrap;
+  row-gap: 4px;
+  min-width: 0;
+}
+.inv-top .code-cells.sm .code-group {
+  flex-wrap: nowrap;
+}
+.inv-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.inv-top .inv-code-line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.inv-top .inv-tags {
+  margin-left: auto;
+  flex-wrap: nowrap;
+}
+.inv-nocode {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  padding: 3px 8px;
+  border: 1px dashed rgba(var(--ink-rgb), 0.15);
+}
+.inv-bottom {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-right: 6px;
+}
+.inv-bottom .progress.meter {
+  flex: 1;
+  --track: 6px;
+  --mark-h: 12px;
+}
+.inv-left {
+  flex: none;
+  min-width: 76px;
+  text-align: right;
+  font-size: 11px;
+  color: var(--text-2);
+}
+.inv-row.tone-warn .inv-left {
+  color: var(--warn);
+}
+.inv-row.tone-err .inv-left {
+  color: var(--err);
+}
+@media (max-width: 760px) {
+  .inv-top {
+    flex-wrap: wrap;
+  }
+}
+
+.inv-side {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+.inv-side .inv-tags {
+  margin-left: 0;
+}
+
+/* Device tile detail line while data is moving (Send page access list). */
+.dev-busy {
+  color: var(--ok);
+}
+/* Access list on the Send page: tiles stacked like the Overview device list;
+   the action column only needs room for one icon button here. */
+.share-col .dev-tile + .dev-tile {
+  margin-top: 4px;
+}
+.share-col .dev-act {
+  min-width: 36px;
+}
+
+/* Transfer lists: no nested cards. Plain rows divided by a line, like the
+   Overview device list. */
+.job-list {
+  padding: 0;
+}
+.job-list > .job {
+  border: 0;
+  background: none;
+  transition: background 0.2s;
+}
+.job-list > .job + .job {
+  border-top: 1px solid var(--border);
+}
+.job-list > .job:hover {
+  background: rgba(var(--ink-rgb), 0.02);
+}
+/* Overview: no nested cards. The device list is plain rows divided by a
+   line, like the transfer rows; the nested tile look stays on the Send page. */
+.dev-list.flat {
+  padding: 0;
+  gap: 0;
+}
+.dev-list.flat .dev-tile {
+  border: 0;
+  background: none;
+  padding: 12px 16px;
+}
+.dev-list.flat .dev-tile + .dev-tile {
+  border-top: 1px solid var(--border);
+}
+.dev-list.flat .dev-tile:hover {
+  background: rgba(var(--ink-rgb), 0.02);
+}
+
+/* ------------------------------------------------------------- receive page */
+
+/* Device tiles reuse the Send page's folder tiles; their colour follows the link. */
+.share-tile.lk-direct {
+  --st: var(--ok);
+  --st-rgb: var(--ok-rgb);
+}
+.share-tile.lk-relay {
+  --st: var(--warn);
+  --st-rgb: var(--warn-rgb);
+}
+.share-tile.lk-offline {
+  --st: var(--text-3);
+  --st-rgb: var(--ink-rgb);
+}
+.share-tile.lk-offline .share-top {
+  background: none;
+}
+.share-tile.lk-offline .share-name {
+  color: var(--text-2);
+}
+.share-stat .v.lk-text {
+  color: var(--st);
+}
+.share-stat .sig-v {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 6px;
+  --lk: var(--st);
+  --lk-rgb: var(--st-rgb);
+}
+/* A folder shared with you: icon, name, Browse. */
+.fold-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 8px 8px 10px;
+  border: 1px solid rgba(var(--ink-rgb), 0.06);
+}
+.fold-node {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  color: var(--st);
+  border: 1px solid rgba(var(--st-rgb), 0.35);
+  background: rgba(var(--st-rgb), 0.07);
+}
+.fold-name {
+  font-size: 13px;
+  color: var(--text);
+}
+.ident {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid rgba(var(--ink-rgb), 0.06);
+}
+
+/* Summary strip value tones (shared by every page's HudStrip). */
+.send-stat.warn .v {
+  color: var(--warn);
+}
+.send-stat.err .v {
+  color: var(--err);
+  text-shadow: 0 0 10px rgba(var(--err-rgb), calc(var(--flow-glow, 0.5) * 0.5));
+}
+/* Transfers page: Send and Receive sections under the filter tabs. */
+.tr-section {
+  margin-top: 16px;
+}
+.tr-section + .tr-section {
+  margin-top: 22px;
+}
+@media (max-width: 1080px) {
+  .send-hud-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+@media (max-width: 760px) {
+  .send-hud-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+/* Activity page: full messages wrap instead of being cut to one line. */
+.act-msg.act-wrap {
+  white-space: normal;
+  overflow: visible;
+}
+
+/* History calendar cells: taller, so a full day reads as a tall gauge. */
+.cal-day {
+  aspect-ratio: 1 / 0.88;
+}
+@media (max-width: 760px) {
+  .cal-day {
+    aspect-ratio: 1 / 1.12;
+  }
+}
+/* History side lists (With whom, What), HUD style: indexed rows divided by a
+   line, mono readouts, and the segmented meter split into received and sent. */
+.hud-side {
+  position: relative;
+  padding: 14px 16px 8px;
+}
+.who:focus-visible,
+.what:focus-visible {
+  outline: 1.5px solid var(--accent);
+  outline-offset: -1.5px;
+}
+.who,
+.what {
+  cursor: default;
+}
+.hud-side .side-head {
+  margin-bottom: 4px;
+}
+.hud-side .side-head h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.side-count {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  padding: 2px 5px;
+  box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.4);
+  line-height: 1;
+}
+.side-sum {
+  font-size: 11.5px;
+  color: var(--text-3);
+  letter-spacing: 0.04em;
+}
+
+/* The meter: grey ticks for the whole width, the fill split received | sent. */
+.smeter {
+  position: relative;
+  display: block;
+  height: 14px;
+  min-width: 0;
+}
+.smeter::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 4px;
+  height: 6px;
+  background: repeating-linear-gradient(90deg, rgba(var(--ink-rgb), 0.1) 0 3px, transparent 3px 5px);
+}
+.smeter-fill {
+  position: absolute;
+  left: 0;
+  top: 4px;
+  height: 6px;
+  display: flex;
+  gap: 2px;
+  width: max(4px, calc(var(--w) * 100%));
+  animation: meter-grow 1.1s cubic-bezier(0.76, 0, 0.24, 1) 0.15s both;
+}
+.smeter-fill > span {
+  min-width: 3px;
+  height: 100%;
+}
+.smeter-in {
+  flex: var(--a) 1 0;
+  background: var(--series-in);
+  box-shadow: 0 0 10px rgba(var(--ok-rgb), 0.3);
+  border-radius: 2px 0 0 2px;
+}
+.smeter-out {
+  flex: calc(1 - var(--a)) 1 0;
+  background: var(--series-out);
+  box-shadow: 0 0 10px rgba(var(--out-rgb), 0.22);
+}
+.smeter:not(.split) .smeter-out {
+  border-radius: 2px 0 0 2px;
+}
+
+.who-list,
+.what-list {
+  display: flex;
+  flex-direction: column;
+}
+.who-top {
+  grid-column: 2 / 4;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+.who {
+  display: grid;
+  /* A fixed last column, so every row's meter is the same length. */
+  grid-template-columns: 22px minmax(0, 1fr) 5.4ch;
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 6px;
+  padding: 10px 0;
+}
+.who + .who,
+.what + .what {
+  border-top: 1px solid var(--border);
+}
+.who-idx {
+  font-size: 10.5px;
+  color: var(--text-3);
+  letter-spacing: 0.06em;
+}
+.who-name {
+  font-weight: 600;
+}
+.who-vals {
+  display: inline-flex;
+  gap: 10px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.who-in {
+  color: var(--series-in);
+}
+.who-out {
+  color: var(--series-out);
+}
+.who .smeter {
+  grid-column: 2;
+}
+.who-pct,
+.what-pct {
+  justify-self: end;
+  min-width: 4.4ch;
+  text-align: center;
+  font-size: 10.5px;
+  line-height: 1;
+  padding: 3px 5px;
+  color: var(--text-2);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+.what {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) 5.4ch;
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 6px;
+  padding: 10px 0;
+}
+.what .smeter {
+  grid-column: 2;
+}
+.what-ico {
+  grid-row: span 2;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  color: var(--text-2);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+.what:first-child .what-ico {
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.5);
+}
+.what-name {
+  font-size: 13.5px;
+}
+.what-val {
+  text-align: right;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+.who,
+.what {
+  transition: background 0.2s;
+}
+.who:hover,
+.what:hover {
+  background: linear-gradient(90deg, transparent, rgba(var(--ink-rgb), 0.03) 30%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .smeter-fill {
+    animation: none;
+  }
+}
+
+/* Day level: each calendar day fills up from the bottom like a gauge,
+   received first and sent on top, to its share of the busiest day. Fine
+   scan lines with a bright edge on each level keep the text readable. */
+.day-level {
+  position: absolute;
+  /* Below the cell's header line (date and amount), so no edge crosses text. */
+  inset: 27px 1px 1px;
+  display: flex;
+  flex-direction: column-reverse;
+  overflow: hidden;
+  pointer-events: none;
+  transform-origin: bottom;
+  animation: level-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(80ms + var(--i, 0) * 12ms);
+}
+@keyframes level-in {
+  from {
+    transform: scaleY(0);
+  }
+}
+.day-level > i {
+  position: relative;
+  display: block;
+  flex: none;
+  min-height: 2px;
+  background:
+    repeating-linear-gradient(to top, rgba(var(--c-rgb), 0.12) 0 1px, transparent 1px 3px),
+    linear-gradient(to top, rgba(var(--c-rgb), 0.04), rgba(var(--c-rgb), 0.2));
+  box-shadow: inset 0 2px 0 var(--c);
+  transition: filter 0.2s;
+}
+/* A soft glow under each level's edge. */
+.day-level > i::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 12px;
+  max-height: 100%;
+  background: linear-gradient(to bottom, rgba(var(--c-rgb), 0.24), transparent);
+}
+.lv-in {
+  --c: var(--series-in);
+  --c-rgb: var(--ok-rgb);
+  height: calc(var(--in) * 100%);
+}
+.lv-out {
+  --c: var(--series-out);
+  --c-rgb: var(--out-rgb);
+  height: calc(var(--out) * 100%);
+}
+.cal-day:not(:disabled):hover .day-level > i,
+.cal-day.sel .day-level > i {
+  filter: brightness(1.35) saturate(1.1);
+}
+.cal-num {
+  z-index: 1;
+}
+.cal-amt {
+  position: absolute;
+  right: 8px;
+  top: 7px;
+  z-index: 1;
+  font-size: 10.5px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.cal-day:not(:disabled):hover .cal-amt,
+.cal-day.sel .cal-amt {
+  color: var(--text);
+}
+@media (max-width: 760px) {
+  .cal-amt {
+    display: none;
+  }
+  .cal-day .day-level {
+    inset: 20px 1px 1px;
+  }
+}
+
+/* The legend: what the two colours are and what a full day means. */
+.cal-keys {
+  display: flex;
+  gap: 18px;
+}
+.cal-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.cal-key i {
+  width: 16px;
+  height: 11px;
+  background:
+    repeating-linear-gradient(to top, rgba(var(--c-rgb), 0.3) 0 1px, transparent 1px 3px),
+    rgba(var(--c-rgb), 0.08);
+  box-shadow: inset 0 1.5px 0 var(--c);
+}
+.cal-key.in {
+  --c: var(--series-in);
+  --c-rgb: var(--ok-rgb);
+}
+.cal-key.out {
+  --c: var(--series-out);
+  --c-rgb: var(--out-rgb);
+}
+.cal-scale-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-3);
+}
+.cal-scale-note b {
+  color: var(--text);
+  font-weight: 600;
+}
+/* A tiny full cell: the scale's top. */
+.cal-gauge {
+  position: relative;
+  width: 12px;
+  height: 14px;
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+.cal-gauge i {
+  position: absolute;
+  inset: 2px;
+  background: repeating-linear-gradient(to top, rgba(var(--ink-rgb), 0.4) 0 1px, transparent 1px 3px);
+  box-shadow: inset 0 1.5px 0 var(--text-2);
+}
+
+/* Phone home week strip: one narrow gauge per day. */
+.week-dot .day-level {
+  position: relative;
+  inset: auto;
+  width: 14px;
+  height: 100%;
+  box-shadow: inset 0 0 0 1px rgba(var(--ink-rgb), 0.08);
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+.week-dot {
+  place-items: end center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .day-level {
+    animation: none;
+  }
+}
+
+/* Receipts sit under the calendar in the same column, so both are the same
+   width; the side lists span both rows on the right. */
+.history-top {
+  grid-template-rows: auto 1fr;
+  row-gap: 24px;
+}
+.history-top > .cal-panel {
+  grid-column: 1;
+  grid-row: 1;
+}
+.history-top > .history-side {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+.history-top > .history-receipts {
+  grid-column: 1;
+  grid-row: 2;
+  min-width: 0;
+}
+@media (max-width: 1080px) {
+  .history-top > .cal-panel,
+  .history-top > .history-side,
+  .history-top > .history-receipts {
+    grid-column: auto;
+    grid-row: auto;
+  }
+  .history-top {
+    grid-template-rows: none;
+  }
+}
+
+/* Settings rows: the control sits on the right at its natural width, so
+   option tabs stay on one line and buttons line up with the toggles. */
+.page-settings .setting {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.page-settings .setting > :last-child {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 340px;
+  max-width: 560px;
+}
+.page-settings .setting > :last-child > .input,
+.page-settings .setting > :last-child > .hstack,
+.page-settings .setting > :last-child > .range-field {
+  flex: 1;
+  min-width: 0;
+}
+.page-settings .setting .segmented {
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+@media (max-width: 760px) {
+  .page-settings .setting {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .page-settings .setting > :last-child {
+    justify-content: flex-start;
+    min-width: 0;
+    max-width: none;
+  }
+  .page-settings .setting .segmented {
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+}
+
+/* Range input as a segmented meter: a lit fill over grey ticks, a tall
+   marker for the thumb, and the value in a mono readout beside it. */
+.range-field {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.range-meter {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.range-meter::-webkit-slider-runnable-track {
+  height: 8px;
+  background:
+    linear-gradient(var(--accent), var(--accent)) left / calc(var(--p, 0) * 100%) 100% no-repeat,
+    repeating-linear-gradient(90deg, rgba(var(--ink-rgb), 0.12) 0 3px, transparent 3px 5px);
+  border-radius: 2px 0 0 2px;
+}
+.range-meter::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 4px;
+  height: 20px;
+  margin-top: -6px;
+  border: 0;
+  background: var(--accent);
+  box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.6);
+  transition: transform 0.15s;
+}
+.range-meter:hover::-webkit-slider-thumb,
+.range-meter:active::-webkit-slider-thumb {
+  transform: scaleY(1.2);
+}
+.range-meter::-moz-range-track {
+  height: 8px;
+  background: repeating-linear-gradient(90deg, rgba(var(--ink-rgb), 0.12) 0 3px, transparent 3px 5px);
+}
+.range-meter::-moz-range-progress {
+  height: 8px;
+  background: var(--accent);
+}
+.range-meter::-moz-range-thumb {
+  width: 4px;
+  height: 20px;
+  border: 0;
+  border-radius: 0;
+  background: var(--accent);
+}
+.range-meter:focus-visible {
+  outline: 1.5px solid var(--accent);
+  outline-offset: 4px;
+}
+.range-value {
+  min-width: 4ch;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 6px 8px;
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.45);
 }

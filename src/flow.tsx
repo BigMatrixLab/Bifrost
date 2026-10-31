@@ -1,13 +1,13 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { speed } from "./format";
 import { useStore } from "./store";
 
 /**
- * Two-series chart colours: received is white, sent is red. They differ in
+ * Two-series chart colours: received is green, sent is silver. They differ in
  * lightness as well as hue, so they stay apart for colour-blind readers.
  * Kept in sync with --series-in and --series-out in styles.css.
  */
-export const SERIES = { in: "#F2F2F2", out: "#E5323F" } as const;
+export const SERIES = { in: "var(--series-in)", out: "var(--series-out)" } as const;
 
 const WINDOW = 120; // seconds of history the live graph keeps
 
@@ -96,7 +96,8 @@ export function FlowProvider({ children }: { children: ReactNode }) {
       }
       prev.current = seen;
       setFlow((f) => {
-        const cut = now - WINDOW * 1000;
+        // A few seconds past the window, so the graph's left edge never runs out of data.
+        const cut = now - (WINDOW + 5) * 1000;
         const idle = down === 0 && up === 0 && marks.length === 0;
         const recent = f.samples.filter((s) => s.t >= cut);
         // Nothing moving and nothing to show: skip the re-render.
@@ -130,10 +131,52 @@ function ago(sec: number) {
   return sec < 60 ? `${sec} s ago` : `${Math.floor(sec / 60)} min ${sec % 60 ? `${sec % 60} s ` : ""}ago`;
 }
 
+type Pt = { x: number; y: number };
+
 /**
- * Live receive and send speed over the last two minutes, one bar per second.
- * Received bars rise above the baseline, sent bars hang below it, both on the
- * same scale; each side gets height in proportion to its own peak.
+ * Smooth path through the points without overshoot (monotone cubic, Steffen's
+ * method, as d3's curveMonotoneX), so a curve never dips below the baseline or
+ * above a peak that wasn't measured. Each tangent depends only on a point's two
+ * neighbours, so a segment is final once the point after it exists; the live
+ * graph relies on that to scroll without the edge changing shape.
+ */
+function smoothPath(p: Pt[]): string {
+  const n = p.length;
+  if (n === 0) return "";
+  if (n === 1) return `M${p[0].x.toFixed(1)},${p[0].y.toFixed(1)}`;
+  const sec = (i: number) => (p[i + 1].y - p[i].y) / (p[i + 1].x - p[i].x || 1);
+  const t: number[] = new Array(n);
+  t[0] = sec(0);
+  t[n - 1] = sec(n - 2);
+  for (let i = 1; i < n - 1; i++) {
+    const h0 = p[i].x - p[i - 1].x || 1;
+    const h1 = p[i + 1].x - p[i].x || 1;
+    const s0 = sec(i - 1);
+    const s1 = sec(i);
+    const q = (s0 * h1 + s1 * h0) / (h0 + h1);
+    t[i] = (Math.sign(s0) + Math.sign(s1)) * Math.min(Math.abs(s0), Math.abs(s1), 0.5 * Math.abs(q)) || 0;
+  }
+  let d = `M${p[0].x.toFixed(1)},${p[0].y.toFixed(1)}`;
+  for (let i = 0; i < n - 1; i++) {
+    const dx = (p[i + 1].x - p[i].x) / 3;
+    d += `C${(p[i].x + dx).toFixed(1)},${(p[i].y + t[i] * dx).toFixed(1)} ${(p[i + 1].x - dx).toFixed(1)},${(p[i + 1].y - t[i + 1] * dx).toFixed(1)} ${p[i + 1].x.toFixed(1)},${p[i + 1].y.toFixed(1)}`;
+  }
+  return d;
+}
+
+const DOT = 18; // background dot spacing
+const XH_W = DOT * 5; // crosshair every 5th dot across…
+const XH_H = DOT * 3; // …and every 3rd dot down
+const CAP = 5; // cursor triangle caps
+const CAP_HALF = CAP / Math.sqrt(3);
+
+/**
+ * Live receive and send speed over the last two minutes. Receiving is a
+ * glowing area above the baseline, sending hangs below it, both on one scale.
+ * The plot scrolls continuously (one sample per second, eased over that
+ * second), the newest point pulses, and hovering shows a dashed cursor with a
+ * marker on each line and both speeds. On first appearance the plot sweeps in
+ * from the left. Motion stops for "reduce motion".
  */
 export function LiveFlow() {
   const { samples, marks } = useFlow();
@@ -143,8 +186,9 @@ export function LiveFlow() {
   const nowUp = uploads.reduce((a, u) => a + u.bps, 0);
   const box = useRef<HTMLDivElement>(null);
   const [w, setW] = useState(640);
-  const [hoverT, setHoverT] = useState<number | null>(null);
-  const [, force] = useState(0);
+  // Pointer position over the plot (px), so the cursor follows time as data scrolls under it.
+  const [px, setPx] = useState<number | null>(null);
+  const ids = useId().replace(/[^\w-]/g, "");
 
   useEffect(() => {
     const el = box.current;
@@ -154,64 +198,93 @@ export function LiveFlow() {
     setW(el.clientWidth);
     return () => ro.disconnect();
   }, []);
-  // Keep the time axis moving even when no new samples arrive.
-  useEffect(() => {
-    const id = window.setInterval(() => force((x) => x + 1), 1000);
-    return () => window.clearInterval(id);
-  }, []);
 
-  const now = Date.now();
-  const from = now - WINDOW * 1000;
-  const visible = samples.filter((s) => s.t >= from);
+  // Positions are relative to the newest sample, not the clock, so renders in
+  // between samples don't move anything; CSS scrolls the plot between samples.
+  const tEnd = samples.length ? samples[samples.length - 1].t : Date.now();
+  const from = tEnd - WINDOW * 1000;
+  // A few samples past the left edge, so the curve always covers it while sliding.
+  const visible = samples.filter((s) => s.t >= from - 4000);
   const hasDown = visible.some((s) => s.down > 0) || nowDown > 0;
   const hasUp = visible.some((s) => s.up > 0) || nowUp > 0;
 
   const narrow = w < 520;
-  const H = narrow ? 150 : 176;
-  const pad = { l: narrow ? 36 : 46, r: 8, t: 24, b: 22 };
+  const H = narrow ? 168 : 204;
+  const pad = { l: narrow ? 38 : 48, r: 10, t: 28, b: 24 };
   const iw = Math.max(10, w - pad.l - pad.r);
   const ih = H - pad.t - pad.b;
   const peakDown = Math.max(0, nowDown, ...visible.map((s) => s.down));
   const peakUp = Math.max(0, nowUp, ...visible.map((s) => s.up));
-  let nd = hasDown ? niceMax(peakDown * 1.05) : 0;
-  const nu = hasUp ? niceMax(peakUp * 1.05) : 0;
+  let nd = hasDown ? niceMax(peakDown * 1.08) : 0;
+  const nu = hasUp ? niceMax(peakUp * 1.08) : 0;
   if (nd + nu === 0) nd = niceMax(1);
   const k = ih / (nd + nu);
   const y0 = pad.t + nd * k;
-  const x = (t: number) => pad.l + ((t - from) / (WINDOW * 1000)) * iw;
-  const bw = Math.max(1.5, (iw / WINDOW) * 0.56);
+  const step = iw / WINDOW;
+  const right = pad.l + iw;
+  // The newest sample is placed two steps past the right edge (clipped). A
+  // smooth curve's segment changes shape until the sample after it exists, so
+  // the edge only ever shows segments that are final, and the slide carries
+  // them in continuously: nothing jumps when a sample arrives. The display
+  // lags live data by about two seconds.
+  const LEAD = 2;
+  const x = (t: number) => right + LEAD * step - ((tEnd - t) / 1000) * step;
 
-  const bars = (key: "down" | "up") =>
-    visible
-      .filter((s) => s[key] > 0)
-      .map((s) => {
-        const h = Math.max(1, s[key] * k);
-        return key === "down" ? `M${x(s.t).toFixed(1)} ${(y0 - 1).toFixed(1)}v${(-h).toFixed(1)}` : `M${x(s.t).toFixed(1)} ${(y0 + 1).toFixed(1)}v${h.toFixed(1)}`;
-      })
-      .join("");
+  const downPts = visible.map((s) => ({ x: x(s.t), y: y0 - s.down * k }));
+  const upPts = visible.map((s) => ({ x: x(s.t), y: y0 + s.up * k }));
+  const area = (pts: Pt[]) => (pts.length > 1 ? `${smoothPath(pts)}L${pts[pts.length - 1].x.toFixed(1)},${y0}L${pts[0].x.toFixed(1)},${y0}Z` : "");
+  // The sample that reaches the right edge by the end of this second (the
+  // edge dots glide to it); the newest one is still off-screen.
+  const last = visible[Math.max(0, visible.length - LEAD)];
 
-  const hv = hoverT == null || visible.length === 0 ? null : visible.reduce((b, s) => (Math.abs(s.t - hoverT) < Math.abs(b.t - hoverT) ? s : b));
+  // Background lattice, centred in the plot both ways: (gridX, gridY) is a
+  // crosshair, and every crosshair sits on a dot.
+  const plotTop = pad.t - 6;
+  const plotH = H - pad.t - pad.b + 6;
+  const gridX = pad.l + ((iw % XH_W) + XH_W) / 2;
+  const gridY = plotTop + ((plotH % XH_H) + XH_H) / 2;
+
+  const hv =
+    px == null || visible.length === 0
+      ? null
+      : (() => {
+          const t = tEnd - ((right + LEAD * step - px) / step) * 1000;
+          return visible.reduce((b, s) => (Math.abs(s.t - t) < Math.abs(b.t - t) ? s : b));
+        })();
   const hoverMarks = hv ? marks.filter((m) => Math.abs(m.t - hv.t) <= 1500) : [];
-  const shownMarks = marks.filter((m) => m.t >= from);
+  const shownMarks = marks.filter((m) => m.t >= from - 2000);
+
+  // Y ticks; the one nearest the hovered value lights up.
+  const downTicks = hasDown ? [nd, nd / 2] : [];
+  const upTicks = hasUp ? [nu] : [];
+  const near = (ticks: number[], v: number) => (v > 0 && ticks.length ? ticks.reduce((b, t) => (Math.abs(t - v) < Math.abs(b - v) ? t : b)) : null);
+  const litDown = hv ? near([...downTicks, 0], hv.down) : null;
+  const litUp = hv ? near(upTicks, hv.up) : null;
+  const tick = (v: number) => (v === 0 ? "0" : speed(v).replace("/s", ""));
+
+  const hx = hv ? x(hv.t) : 0;
+  const flip = hx > w - 250;
 
   const onMove = (clientX: number) => {
     const r = box.current?.getBoundingClientRect();
     if (!r) return;
-    setHoverT(from + ((clientX - r.left - pad.l) / iw) * WINDOW * 1000);
+    const p = clientX - r.left;
+    setPx(p < pad.l || p > right + 4 ? null : p);
   };
 
   return (
     <section className="panel flow" aria-label="Live transfer speed">
       <div className="flow-head">
         <h3>Throughput</h3>
-        <span className="flow-sub">Last 2 min · 1 bar = 1 s</span>
+        <span className="flow-live" aria-hidden="true"><i />Live</span>
+        <span className="flow-sub">Last 2 min · 1 s resolution</span>
         <div className="flow-legend" role="list">
-          <span role="listitem" className={hasDown ? "" : "dim"}>
+          <span role="listitem" className={hasDown ? "in" : "in dim"}>
             <i style={{ background: SERIES.in }} />
             Receiving
             <b className="num">{speed(nowDown)}</b>
           </span>
-          <span role="listitem" className={hasUp ? "" : "dim"}>
+          <span role="listitem" className={hasUp ? "out" : "out dim"}>
             <i style={{ background: SERIES.out }} />
             Sending
             <b className="num">{speed(nowUp)}</b>
@@ -223,36 +296,122 @@ export function LiveFlow() {
         ref={box}
         onPointerMove={(e) => onMove(e.clientX)}
         onPointerDown={(e) => onMove(e.clientX)}
-        onPointerLeave={() => setHoverT(null)}
+        onPointerLeave={() => setPx(null)}
       >
-        <svg width={w} height={H} role="img" aria-label={`Receiving ${speed(nowDown)}, sending ${speed(nowUp)}; bars for each second of the last two minutes`}>
-          <line x1={pad.l} x2={pad.l + iw} y1={pad.t + 0.5} y2={pad.t + 0.5} className="flow-grid" />
-          {hasDown && <line x1={pad.l} x2={pad.l + iw} y1={pad.t + (nd / 2) * k} y2={pad.t + (nd / 2) * k} className="flow-grid" />}
-          {hasUp && <line x1={pad.l} x2={pad.l + iw} y1={H - pad.b - 0.5} y2={H - pad.b - 0.5} className="flow-grid" />}
-          <line x1={pad.l} x2={pad.l + iw} y1={y0} y2={y0} className="flow-base" />
-          {hasDown && (
-            <text x={pad.l - 8} y={pad.t + 4} textAnchor="end" className="flow-tick">{speed(nd).replace("/s", "")}</text>
-          )}
-          <text x={pad.l - 8} y={y0 + 3.5} textAnchor="end" className="flow-tick">0</text>
-          {hasUp && (
-            <text x={pad.l - 8} y={H - pad.b + 3} textAnchor="end" className="flow-tick">{speed(nu).replace("/s", "")}</text>
-          )}
-          {shownMarks.map((m, i) => (
-            <g key={`${m.t}-${m.kind}-${i}`} className={`flow-mark mark-${m.kind}`}>
-              <line x1={x(m.t)} x2={x(m.t)} y1={pad.t - 10} y2={H - pad.b} />
-              <text x={x(m.t) + 4} y={pad.t - 12}>{MARK_TEXT[m.kind]}</text>
-            </g>
+        <svg
+          width={w}
+          height={H}
+          role="img"
+          aria-label={`Receiving ${speed(nowDown)}, sending ${speed(nowUp)}; speed for each second of the last two minutes`}
+          style={{ ["--step" as string]: `${step}px`, ["--iw" as string]: `${iw}px` }}
+        >
+          <defs>
+            <linearGradient id={`${ids}-in`} gradientUnits="userSpaceOnUse" x1="0" y1={pad.t} x2="0" y2={y0}>
+              <stop offset="0" style={{ stopColor: "var(--series-in)", stopOpacity: 0.42 }} />
+              <stop offset="1" style={{ stopColor: "var(--series-in)", stopOpacity: 0.02 }} />
+            </linearGradient>
+            <linearGradient id={`${ids}-out`} gradientUnits="userSpaceOnUse" x1="0" y1={H - pad.b} x2="0" y2={y0}>
+              <stop offset="0" style={{ stopColor: "var(--series-out)", stopOpacity: 0.32 }} />
+              <stop offset="1" style={{ stopColor: "var(--series-out)", stopOpacity: 0.02 }} />
+            </linearGradient>
+            <linearGradient id={`${ids}-scan`} x1="0" x2="1" y1="0" y2="0">
+              <stop offset="0" style={{ stopColor: "var(--series-in)", stopOpacity: 0 }} />
+              <stop offset="0.85" style={{ stopColor: "var(--series-in)", stopOpacity: 0.07 }} />
+              <stop offset="1" style={{ stopColor: "var(--series-in)", stopOpacity: 0.22 }} />
+            </linearGradient>
+            {/* Stationary crosshair lattice centred in the plot. */}
+            <pattern id={`${ids}-xhair`} patternUnits="userSpaceOnUse" x={gridX - XH_W / 2} y={gridY - XH_H / 2} width={XH_W} height={XH_H}>
+              <path d={`M${XH_W / 2 - 3},${XH_H / 2}h6M${XH_W / 2},${XH_H / 2 - 3}v6`} className="flow-xhair" />
+            </pattern>
+            <linearGradient id={`${ids}-fade`} x1="0" x2="1" y1="0" y2="0">
+              <stop offset="0" stopColor="#fff" stopOpacity={0} />
+              <stop offset="0.08" stopColor="#fff" stopOpacity={1} />
+              <stop offset="0.92" stopColor="#fff" stopOpacity={1} />
+              <stop offset="1" stopColor="#fff" stopOpacity={0} />
+            </linearGradient>
+            <mask id={`${ids}-fademask`} maskContentUnits="userSpaceOnUse">
+              <rect x={pad.l} y={0} width={iw} height={H} fill={`url(#${ids}-fade)`} />
+            </mask>
+            <clipPath id={`${ids}-clip`}>
+              {/* Sweeps open once on first appearance. */}
+              <rect className="flow-wipe" x={pad.l} y={0} width={iw + 1} height={H} />
+            </clipPath>
+          </defs>
+
+          {/* Background: dot matrix, fading out at both ends. */}
+          {/* Reference crosshairs only (no dot field), fading out at both ends. */}
+          <g mask={`url(#${ids}-fademask)`}>
+            <rect x={pad.l} y={plotTop} width={iw} height={plotH} fill={`url(#${ids}-xhair)`} />
+          </g>
+
+          {/* Y axis */}
+          {downTicks.map((v) => (
+            <text key={`td${v}`} x={pad.l - 8} y={y0 - v * k + 3.5} textAnchor="end" className={`flow-tick ${litDown === v ? "lit-in" : ""}`}>{tick(v)}</text>
           ))}
-          {hasDown && <path d={bars("down")} stroke={SERIES.in} strokeWidth={bw} fill="none" />}
-          {hasUp && <path d={bars("up")} stroke={SERIES.out} strokeWidth={bw} fill="none" />}
-          {hv && <line x1={x(hv.t)} x2={x(hv.t)} y1={pad.t} y2={H - pad.b} className="flow-cross" />}
-          <text x={pad.l} y={H - 4} className="flow-tick">−2:00</text>
-          <text x={pad.l + iw / 2} y={H - 4} textAnchor="middle" className="flow-tick">−1:00</text>
-          <text x={pad.l + iw} y={H - 4} textAnchor="end" className="flow-tick now">NOW</text>
+          <text x={pad.l - 8} y={y0 + 3.5} textAnchor="end" className={`flow-tick ${litDown === 0 ? "lit-in" : ""}`}>0</text>
+          {upTicks.map((v) => (
+            <text key={`tu${v}`} x={pad.l - 8} y={y0 + v * k + 3.5} textAnchor="end" className={`flow-tick ${litUp === v ? "lit-out" : ""}`}>{tick(v)}</text>
+          ))}
+
+          <g clipPath={`url(#${ids}-clip)`}>
+            {/* Everything here scrolls left by one sample over each second. */}
+            <g key={tEnd} className="flow-scroll">
+              {shownMarks.map((m, i) => (
+                <g key={`${m.t}-${m.kind}-${i}`} className={`flow-mark mark-${m.kind}`}>
+                  <line x1={x(m.t)} x2={x(m.t)} y1={pad.t - 10} y2={H - pad.b} />
+                  <text x={x(m.t) + 4} y={pad.t - 12}>{MARK_TEXT[m.kind]}</text>
+                </g>
+              ))}
+              {hasUp && (
+                <>
+                  <path d={area(upPts)} fill={`url(#${ids}-out)`} />
+                  <path d={smoothPath(upPts)} className="flow-line out" />
+                </>
+              )}
+              {hasDown && (
+                <>
+                  <path d={area(downPts)} fill={`url(#${ids}-in)`} />
+                  <path d={smoothPath(downPts)} className="flow-line in" />
+                </>
+              )}
+              {hv && (
+                <g className="flow-cursor">
+                  <line x1={hx} x2={hx} y1={pad.t - 4 + CAP} y2={H - pad.b - CAP} />
+                  <polygon points={`${hx - CAP_HALF},${pad.t - 4} ${hx + CAP_HALF},${pad.t - 4} ${hx},${pad.t - 4 + CAP}`} />
+                  <polygon points={`${hx - CAP_HALF},${H - pad.b} ${hx + CAP_HALF},${H - pad.b} ${hx},${H - pad.b - CAP}`} />
+                  {hasDown && <circle cx={hx} cy={y0 - hv.down * k} r={4.5} className="flow-marker in" />}
+                  {hasUp && <circle cx={hx} cy={y0 + hv.up * k} r={4} className="flow-marker out" />}
+                </g>
+              )}
+            </g>
+            {/* A faint beam that keeps sweeping toward "now", fading in and out at the ends. */}
+            <g mask={`url(#${ids}-fademask)`}>
+              <rect className="flow-scan" x={pad.l - 90} y={pad.t - 6} width={90} height={H - pad.t - pad.b + 6} fill={`url(#${ids}-scan)`} />
+            </g>
+          </g>
+
+          <line x1={pad.l} x2={right} y1={y0} y2={y0} className="flow-base" />
+
+          {/* The newest values: pinned to the right edge (they don't scroll) and
+              gliding to each new value; the ring pulses once per sample. */}
+          {last && hasDown && (
+            <g className="flow-head-dot in" style={{ transform: `translate(${right}px, ${y0 - last.down * k}px)` }}>
+              <circle key={tEnd} r={7} className="ping" />
+              <circle r={2.8} className="core" />
+            </g>
+          )}
+          {last && hasUp && (
+            <g className="flow-head-dot out" style={{ transform: `translate(${right}px, ${y0 + last.up * k}px)` }}>
+              <circle r={2.6} className="core" />
+            </g>
+          )}
+          <text x={pad.l} y={H - 5} className="flow-tick">−2:00</text>
+          <text x={pad.l + iw / 2} y={H - 5} textAnchor="middle" className="flow-tick">−1:00</text>
+          <text x={right} y={H - 5} textAnchor="end" className="flow-tick now">NOW</text>
         </svg>
         {hv && (
-          <div className="flow-tip" style={{ left: Math.min(Math.max(x(hv.t), 120), w - 120) }}>
-            <span className="lab">{ago(Math.round((now - hv.t) / 1000))}</span>
+          <div className={`flow-tip ${flip ? "flip" : ""}`} style={{ left: flip ? hx - 16 : hx + 16, top: pad.t - 4 }}>
+            <span className="lab">{ago(Math.round((Date.now() - hv.t) / 1000))}</span>
             <span className="tip-row"><i style={{ background: SERIES.in }} />Receiving<b className="num">{speed(hv.down)}</b></span>
             <span className="tip-row"><i style={{ background: SERIES.out }} />Sending<b className="num">{speed(hv.up)}</b></span>
             {hoverMarks.map((m, i) => (

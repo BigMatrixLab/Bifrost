@@ -62,17 +62,23 @@ export function Pill({ tone = "muted", icon, children }: { tone?: Tone; icon?: R
   );
 }
 
+/**
+ * Segmented meter: a solid fill with a taller marker on its end over grey
+ * ticks for what is left. The fill sweeps out on first appearance and eases
+ * to new values; it snaps to whole ticks, so no tick is ever cut in half.
+ */
 export function Progress({ value, tone = "accent", indeterminate }: { value: number; tone?: Tone; indeterminate?: boolean }) {
   const pct = Math.max(0, Math.min(100, value * 100));
   return (
     <div
-      className={`progress ${indeterminate ? "indeterminate" : ""}`}
+      className={`progress meter tone-${tone} ${indeterminate ? "indeterminate" : ""}`}
       role="progressbar"
       aria-valuenow={Math.round(pct)}
       aria-valuemin={0}
       aria-valuemax={100}
+      style={{ ["--p" as string]: pct / 100 }}
     >
-      <div className={`progress-bar bar-${tone}`} style={{ width: indeterminate ? undefined : `${pct}%` }} />
+      <div className="progress-bar" />
     </div>
   );
 }
@@ -227,15 +233,18 @@ export function Segmented<T extends string | number>({
   options,
   onChange,
   label,
+  full = false,
 }: {
   value: T;
   options: { value: T; label: string }[];
   onChange: (v: T) => void;
   label: string;
+  /** Stretch across the container, options sharing the width equally. */
+  full?: boolean;
 }) {
   const slide = useSlide<HTMLDivElement>("button", "button.on");
   return (
-    <div className="segmented slides" role="radiogroup" aria-label={label} ref={slide}>
+    <div className={`segmented slides ${full ? "full" : ""}`} role="radiogroup" aria-label={label} ref={slide}>
       {options.map((o) => (
         <button
           key={String(o.value)}
@@ -286,5 +295,95 @@ export function SafetyWords({ words, compact }: { words: string[]; compact?: boo
         <span className="word" key={i}>{w}</span>
       ))}
     </span>
+  );
+}
+
+// ------------------------------------------------------------------ link readout
+
+export type Link = "direct" | "relay" | "offline";
+
+/** The link state of a device from its connection flag and route kind. */
+export function linkOf(connected: boolean, kind: string | undefined): Link {
+  if (!connected || !kind || kind === "none") return "offline";
+  return kind === "relay" ? "relay" : "direct";
+}
+
+/** Latency as 4 signal bars: more lit bars for a shorter round trip. */
+export function SignalBars({ rtt, link }: { rtt: number | null; link: Link }) {
+  const lit = link === "offline" || rtt == null ? 0 : rtt < 40 ? 4 : rtt < 120 ? 3 : rtt < 250 ? 2 : 1;
+  return (
+    <span className="sig" aria-hidden="true">
+      {[0, 1, 2, 3].map((i) => (
+        <i key={i} className={i < lit ? "on" : ""} style={{ height: 4 + i * 3 }} />
+      ))}
+    </span>
+  );
+}
+
+/** Route, latency and signal bars, right-aligned; colour comes from the parent's link class. */
+export function LinkReadout({ link, rtt }: { link: Link; rtt: number | null }) {
+  return (
+    <span className="dev-link" title={link === "relay" ? "Relayed, end-to-end encrypted" : link === "direct" ? "Direct path" : "Not connected"}>
+      <span className="dev-link-kind">{link === "direct" ? "Direct" : link === "relay" ? "Relay" : "Offline"}</span>
+      <span className="dev-link-row">
+        <span className="dev-link-rtt num">{link !== "offline" && rtt != null ? `${rtt} ms` : "– ms"}</span>
+        <SignalBars rtt={rtt} link={link} />
+      </span>
+    </span>
+  );
+}
+
+// ------------------------------------------------------------------ invitation code
+
+/** An invitation code in glowing character cells, one group per dash. */
+export function CodeCells({ code, small = false }: { code: string; small?: boolean }) {
+  return (
+    <span className={`code-cells selectable ${small ? "sm" : ""}`} aria-label={`Code ${code}`}>
+      {code.split("-").map((g, gi) => (
+        <span className="code-group" key={gi}>
+          {g.split("").map((ch, ci) => (
+            <i key={ci} style={{ ["--d" as string]: `${(gi * 4 + ci) * 30}ms` }}>
+              {ch}
+            </i>
+          ))}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+// ------------------------------------------------------------------ summary strip
+
+export interface HudStat {
+  label: string;
+  value: ReactNode;
+  /** Shown faint after the value, e.g. "/ 3". */
+  of?: ReactNode;
+  /** Colour the value: live data (green) or a traffic-light state. */
+  tone?: "live" | "warn" | "err";
+}
+
+/** The page summary: a row of readouts, then an optional note and action (as on the Send page). */
+export function HudStrip({ stats, note, action, label }: { stats: HudStat[]; note?: ReactNode; action?: ReactNode; label: string }) {
+  return (
+    <section className="panel send-hud" aria-label={label}>
+      <div className="send-hud-stats" style={{ gridTemplateColumns: `repeat(${stats.length}, minmax(0, 1fr))` }}>
+        {stats.map((s) => (
+          <div key={s.label} className={`send-stat ${s.tone ?? ""}`}>
+            <span className="lab">{s.label}</span>
+            <span className="v num">
+              {s.value}
+              {s.of != null && <span className="faint"> / {s.of}</span>}
+            </span>
+          </div>
+        ))}
+      </div>
+      {(note || action) && (
+        <div className="send-hud-cta">
+          <span className="small muted">{note}</span>
+          {action}
+        </div>
+      )}
+    </section>
   );
 }

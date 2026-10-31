@@ -1,8 +1,8 @@
-import { ArrowUpRight, FolderUp, KeyRound, Monitor } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, FolderUp, KeyRound, Monitor } from "lucide-react";
 import { useMemo } from "react";
 import { isActive, ago } from "../format";
 import { useStore } from "../store";
-import { Button, Empty, RouteBadge, SectionHeader, usePhone } from "../ui";
+import { Button, Empty, LinkReadout, SectionHeader, linkOf, usePhone, type Link } from "../ui";
 import { DotGlobe, relayRegion } from "../hud";
 import { FocusTransfer, useFocusJob } from "../focus";
 import { JobRow, SendRow } from "./Transfers";
@@ -67,8 +67,140 @@ function NetworkPanel() {
   );
 }
 
+
+/** One linked device: a status node, who it is and which way files go, and the live link readout. */
+export function DeviceTile({
+  name,
+  dir,
+  detail,
+  link,
+  rtt,
+  action,
+  busy = false,
+  title,
+}: {
+  name: string;
+  dir: "in" | "out";
+  detail: string;
+  link: Link;
+  rtt: number | null;
+  action?: React.ReactNode;
+  /** Data is moving right now: the detail line turns green. */
+  busy?: boolean;
+  /** Tooltip on the name (e.g. the device's ID and safety words). */
+  title?: string;
+}) {
+  return (
+    <div className={`dev-tile link-${link}`}>
+      <span className="dev-node" aria-hidden="true">
+        <Monitor size={15} />
+      </span>
+      <span className="dev-id">
+        <span className="dev-name truncate" title={title}>{name}</span>
+        <span className="dev-meta">
+          <span className={`dev-dir ${dir}`}>
+            {dir === "in" ? <ArrowDownLeft size={11} /> : <ArrowUpRight size={11} />}
+            {dir === "in" ? "Source" : "Guest"}
+          </span>
+          <span className={`truncate ${busy ? "dev-busy" : ""}`}>{detail}</span>
+        </span>
+      </span>
+      <LinkReadout link={link} rtt={rtt} />
+      <span className="dev-act">{action}</span>
+    </div>
+  );
+}
+
+
+function DevicesPanel() {
+  const { remotes, grants, openBrowser } = useStore();
+  const tiles = [
+    ...remotes.slice(0, 4).map((r) => ({
+      key: `r-${r.peerId}`,
+      name: r.name,
+      dir: "in" as const,
+      detail: `Shares ${r.shares.length} folder${r.shares.length === 1 ? "" : "s"} with you`,
+      link: linkOf(r.status.state === "connected", r.status.route?.kind),
+      rtt: r.status.route?.rttMs ?? null,
+      action: r.shares[0] ? (
+        <Button size="sm" onClick={() => openBrowser({ peerId: r.peerId, shareId: r.shares[0].id, shareName: r.shares[0].name, peerName: r.name })}>
+          Browse
+        </Button>
+      ) : undefined,
+    })),
+    ...grants.slice(0, 4).map((g) => ({
+      key: `g-${g.peerId}-${g.shareId}`,
+      name: g.deviceName,
+      dir: "out" as const,
+      detail: `Can open “${g.shareName}”`,
+      link: linkOf(g.connected, g.route?.kind),
+      rtt: g.route?.rttMs ?? null,
+      action: undefined,
+    })),
+  ];
+  const online = tiles.filter((t) => t.link !== "offline").length;
+  return (
+    <div>
+      <SectionHeader title="Devices">
+        {tiles.length > 0 && (
+          <span className="sec-stat num">
+            <i className={online ? "on" : ""} />
+            {online} / {tiles.length} online
+          </span>
+        )}
+      </SectionHeader>
+      <div className="panel dev-list flat">
+        {tiles.length === 0 ? (
+          <Empty icon={<Monitor size={20} />} title="No devices yet">Devices you connect to or share with show up here.</Empty>
+        ) : (
+          tiles.map(({ key, ...t }) => <DeviceTile key={key} {...t} />)
+        )}
+      </div>
+    </div>
+  );
+}
+
+const LEVEL: Record<string, { tone: string; tag: string }> = {
+  success: { tone: "ok", tag: "Done" },
+  warning: { tone: "warn", tag: "Wait" },
+  error: { tone: "err", tag: "Alert" },
+  info: { tone: "info", tag: "Info" },
+};
+
+/** Recent events as a timeline: a node per event on a rail, newest first. */
+function ActivityPanel() {
+  const { activity, setPage } = useStore();
+  const items = activity.slice(0, 6);
+  return (
+    <div>
+      <SectionHeader title="Recent activity">
+        <Button size="sm" variant="ghost" onClick={() => setPage("activity")}>View all</Button>
+      </SectionHeader>
+      <div className="panel act-list">
+        {items.length === 0 ? (
+          <Empty icon={<ArrowUpRight size={20} />} title="No activity yet" />
+        ) : (
+          <ol className="act-rail">
+            {items.map((a, i) => {
+              const l = LEVEL[a.level] ?? LEVEL.info;
+              return (
+                <li key={a.id} className={`act-item tone-${l.tone} ${i === 0 ? "latest" : ""}`}>
+                  <span className="act-node" aria-hidden="true" />
+                  <span className="act-tag">{l.tag}</span>
+                  <span className="act-msg">{a.message}</span>
+                  <span className="act-time num">{ago(a.ts)}</span>
+                </li>
+              );
+            })}
+          </ol>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function DesktopOverview() {
-  const { jobs, uploads, outgoing, remotes, grants, activity, setPage, setConnectOpen, openBrowser } = useStore();
+  const { jobs, uploads, outgoing, setPage, setConnectOpen } = useStore();
   const sendingNow = outgoing.filter((o) => o.status === "sending" || o.status === "waiting");
   const shareFolder = useShareFolder();
   const list = useMemo(() => Object.values(jobs).sort((a, b) => b.updatedAt - a.updatedAt), [jobs]);
@@ -83,7 +215,7 @@ function DesktopOverview() {
       <StorageAccessNotice />
       <div className="hud-top">
         {focus.job ? (
-          <FocusTransfer job={focus.job} index={focus.index} count={focus.count} />
+          <FocusTransfer job={focus.job} index={focus.index} count={focus.count} onPrev={focus.prev} onNext={focus.next} />
         ) : (
           <div className="hero-actions stacked">
             <button className="hero-tile" onClick={shareFolder}>
@@ -109,7 +241,7 @@ function DesktopOverview() {
 
       {sendingNow.length > 0 && (
         <div>
-          <SectionHeader title="Sending now">
+          <SectionHeader title="Send">
             <Button size="sm" variant="ghost" onClick={() => setPage("transfers")} icon={<ArrowUpRight size={14} />}>
               All transfers
             </Button>
@@ -123,14 +255,14 @@ function DesktopOverview() {
       )}
 
       <div>
-        <SectionHeader title="Transfers">
+        <SectionHeader title="Receive">
           <Button size="sm" variant="ghost" onClick={() => setPage("transfers")} icon={<ArrowUpRight size={14} />}>
             All transfers
           </Button>
         </SectionHeader>
         {active.length === 0 ? (
           <div className="panel">
-            <Empty icon={<ArrowUpRight size={20} />} title="Nothing in progress">
+            <Empty icon={<ArrowUpRight size={20} />} title="Nothing being received">
               {list.length > 0 ? `${list.filter((j) => j.status === "completed").length} completed transfer(s).` : "Downloads you start appear here with live progress."}
             </Empty>
           </div>
@@ -144,57 +276,8 @@ function DesktopOverview() {
       </div>
 
       <div className="two-col even">
-        <div>
-          <SectionHeader title="Devices" />
-          <div className="panel row-list">
-            {remotes.length === 0 && grants.length === 0 && (
-              <Empty icon={<Monitor size={20} />} title="No devices yet">Devices you connect to or share with show up here.</Empty>
-            )}
-            {remotes.slice(0, 4).map((r) => (
-              <div className="row" key={r.peerId}>
-                <Monitor size={16} className="faint" />
-                <div className="stack grow">
-                  <span className="truncate"><b>{r.name}</b></span>
-                  <span className="small faint">Shares with you · {r.shares.length} folder(s)</span>
-                </div>
-                <RouteBadge route={r.status.route} connected={r.status.state === "connected"} />
-                {r.shares[0] && (
-                  <Button size="sm" onClick={() => openBrowser({ peerId: r.peerId, shareId: r.shares[0].id, shareName: r.shares[0].name, peerName: r.name })}>
-                    Browse
-                  </Button>
-                )}
-              </div>
-            ))}
-            {grants.slice(0, 4).map((g) => (
-              <div className="row" key={g.peerId + g.shareId}>
-                <Monitor size={16} className="faint" />
-                <div className="stack grow">
-                  <span className="truncate"><b>{g.deviceName}</b></span>
-                  <span className="small faint truncate">Can open “{g.shareName}”</span>
-                </div>
-                <RouteBadge route={g.route} connected={g.connected} />
-              </div>
-            ))}
-          </div>
-        </div>
-        <div>
-          <SectionHeader title="Recent activity">
-            <Button size="sm" variant="ghost" onClick={() => setPage("activity")}>View all</Button>
-          </SectionHeader>
-          <div className="panel">
-            {activity.length === 0 ? (
-              <Empty icon={<ArrowUpRight size={20} />} title="No activity yet" />
-            ) : (
-              activity.slice(0, 6).map((a) => (
-                <div className="activity-item" key={a.id}>
-                  <span className={`dot ${a.level === "success" ? "ok" : a.level === "warning" || a.level === "error" ? "warn" : ""}`} style={{ marginTop: 7 }} />
-                  <span className="grow small">{a.message}</span>
-                  <span className="faint small">{ago(a.ts)}</span>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
+        <DevicesPanel />
+        <ActivityPanel />
       </div>
     </div>
   );

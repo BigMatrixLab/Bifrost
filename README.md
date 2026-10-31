@@ -1,13 +1,14 @@
 <div align="center">
 
-<img src="website/assets/icon-256.png" width="88" alt="Relayless logo" />
+<img src="website/assets/icon-256.png" width="88" alt="Quanta logo" />
 
-# Relayless
+# Quanta
 
 **Your files never sit on a server.**
 
 Direct, end-to-end encrypted transfers between Windows and Android, with a privacy receipt for every file.<br />
-No account, no cloud copy, no size limit, and every transfer picks up from the last verified megabyte.
+No account, no cloud copy, no size limit, and every transfer picks up from the last verified megabyte.<br />
+<sub>Formerly Relayless.</sub>
 
 [![Latest release](https://img.shields.io/github/v/release/MisbahKhan0009/Relayless?display_name=release&style=flat-square&color=1ed760&labelColor=181818&label=release)](https://github.com/MisbahKhan0009/Relayless/releases/latest)
 [![Build](https://img.shields.io/github/actions/workflow/status/MisbahKhan0009/Relayless/build.yml?branch=main&style=flat-square&labelColor=181818&label=build)](https://github.com/MisbahKhan0009/Relayless/actions/workflows/build.yml)
@@ -24,7 +25,7 @@ No account, no cloud copy, no size limit, and every transfer picks up from the l
 
 <br />
 
-<img src="website/assets/hero.webp" alt="Relayless on Windows showing active transfers, and on Android browsing a shared folder" width="100%" />
+<img src="website/assets/hero.webp" alt="Quanta on Windows showing active transfers, and on Android browsing a shared folder" width="100%" />
 
 </div>
 
@@ -32,18 +33,18 @@ No account, no cloud copy, no size limit, and every transfer picks up from the l
 
 ## Privacy you can check
 
-Most tools ask you to trust that they are private. Relayless shows you.
+Most tools ask you to trust that they are private. Quanta shows you.
 
 - **A receipt for every transfer.** When a file finishes, both devices keep a receipt: the route it took (direct, or how many bytes a relay carried, encrypted), the encryption, how many 1 MiB blocks were verified, a file fingerprint that matches on both sides, and what servers stored. The answer to that last one is always *nothing*.
 - **Safety words.** When a device asks for access, both screens show the same five words derived from the two devices' keys. Read them to each other; matching words mean no one is in the middle.
 - **History that stays home.** A month calendar with a dot for each day (bigger dot, more data), totals per device and per file type, all computed on the device from its own receipts. Keep it for a year, 90 days, 30 days, forever or not at all, with or without file names.
-- **Who sees what.** File names, contents, listings and history exist only on the two devices. The coordination service sees device IDs and IP addresses so the devices can find each other, and nothing else. There is no Relayless server, account or analytics.
+- **Who sees what.** File names, contents, listings and history exist only on the two devices. The coordination service sees device IDs and IP addresses so the devices can find each other, and nothing else. There is no Quanta server, account or analytics.
 
 <p align="center"><img src="website/assets/screens/desktop-history.webp" alt="History: a month calendar where each day's dot is sized by data moved, with totals per device and per file type" width="100%" /></p>
 
-## Why Relayless
+## Why Quanta
 
-Sending a 64 GB file across continents usually means uploading it to someone else's server, waiting, then downloading it again, and starting over when the connection drops. Relayless sends it once, directly from the sender's disk to the receiver's, and treats interruptions as normal: pause it, lose Wi-Fi, reboot either machine, and it continues from where it stopped.
+Sending a 64 GB file across continents usually means uploading it to someone else's server, waiting, then downloading it again, and starting over when the connection drops. Quanta sends it once, directly from the sender's disk to the receiver's, and treats interruptions as normal: pause it, lose Wi-Fi, reboot either machine, and it continues from where it stopped.
 
 - **No middleman storage.** Files travel device to device over an end-to-end encrypted connection. Nothing is uploaded anywhere.
 - **Built for unreliable links.** Progress is verified and saved every megabyte, so an interruption costs seconds, not hours.
@@ -61,7 +62,7 @@ Sending a 64 GB file across continents usually means uploading it to someone els
 | **Invitations and short codes** | Share an invitation in any chat app, or read out a 12-character code. New devices need your approval. |
 | **Browse before downloading** | Search the shared folder, pick single files or whole folders, and choose where they go. |
 | **Direct first** | A direct path is always tried first; if routers block it, an end-to-end encrypted relay carries the data until a direct path opens. The route is always visible, and Direct only is one setting away. |
-| **Source change detection** | If the sender edits the file mid-transfer, Relayless stops instead of mixing two versions, and offers to start over. |
+| **Source change detection** | If the sender edits the file mid-transfer, Quanta stops instead of mixing two versions, and offers to start over. |
 | **Live speed graph** | Receive and send speed over the last two minutes, with markers for pauses, reconnects and route changes. |
 | **Privacy receipts and history** | A receipt per finished file and a local calendar of what moved, with whom and what kind of files. Never uploaded. |
 | **Safety words** | Five words, identical on both devices, to confirm a new pairing out loud. |
@@ -84,8 +85,8 @@ Sending a 64 GB file across continents usually means uploading it to someone els
 
 | Platform | File | Requirements |
 |---|---|---|
-| **Windows** | `Relayless-Setup-<version>-x64.exe` | Windows 10 or 11, 64-bit. No administrator rights needed. |
-| **Android** | `Relayless-<version>-android.apk` | Android 7.0 or newer. One universal APK for every phone and tablet. |
+| **Windows** | `Quanta-Setup-<version>-x64.exe` | Windows 10 or 11, 64-bit. No administrator rights needed. |
+| **Android** | `Quanta-<version>-android.apk` | Android 7.0 or newer. One universal APK for every phone and tablet. |
 
 Get both from the **[latest release](https://github.com/MisbahKhan0009/Relayless/releases/latest)**.
 
@@ -94,8 +95,8 @@ Get both from the **[latest release](https://github.com/MisbahKhan0009/Relayless
 
 ### Quick start
 
-1. **On the device with the files:** open **Shared folders → Share a folder**, then **Invite**. Send the invitation or read out the short code.
-2. **On the receiving device:** tap **Connect**, paste the invitation or type the code, then wait for the sender to approve.
+1. **On the device with the files:** open **Send → Share a folder**, then **Invite**. Send the invitation or read out the short code.
+2. **On the receiving device:** tap **Receive**, paste the invitation or type the code, then wait for the sender to approve.
 3. Browse the folder, select what you need and tap **Download**. Follow progress under **Transfers**.
 
 Both devices need to be online while files move. On Android, allow **All files access** and, for long transfers, **Settings → Android → Run in the background**.
@@ -127,7 +128,7 @@ sequenceDiagram
     S->>S: Save the matching receipt
 ```
 
-The lookup and relay servers (run by the [iroh](https://iroh.computer) project) only help the two devices find each other and punch through routers. They never see file names, contents or your history; receipts travel only between the two devices, inside the encrypted connection. By default Relayless tries a direct path for about 15 seconds and then, if routers block it (common on mobile data), continues through a relay that forwards end-to-end encrypted packets it can't read. It moves to a direct path as soon as one opens, and the receipt records how many bytes were relayed. **Direct only** in Settings keeps all file data off relays.
+The lookup and relay servers (run by the [iroh](https://iroh.computer) project) only help the two devices find each other and punch through routers. They never see file names, contents or your history; receipts travel only between the two devices, inside the encrypted connection. By default Quanta tries a direct path for about 15 seconds and then, if routers block it (common on mobile data), continues through a relay that forwards end-to-end encrypted packets it can't read. It moves to a direct path as soon as one opens, and the receipt records how many bytes were relayed. **Direct only** in Settings keeps all file data off relays.
 
 The public relays are rate-limited (often around 1 Mbit/s). If your transfers show **Relayed** and are slow, see [docs/RELAY.md](docs/RELAY.md): enable UPnP or IPv6 for a direct path, or run your own relay for full speed.
 
@@ -189,7 +190,7 @@ src/                         Interface (React + TypeScript): pages, live speed
 mock/                        Demo backend for `npm run dev:ui`
 website/                     Project website, published to GitHub Pages
 docs/                        Architecture and protocol notes
-PRODUCT.md                   Who Relayless is for and the principles it keeps
+PRODUCT.md                   Who Quanta is for and the principles it keeps
 DESIGN.md                    Visual system: colours, type, chart and calendar rules
 ```
 
@@ -213,8 +214,8 @@ Contributions of every size are welcome: bug reports, translations, docs and cod
 
 ## License
 
-Relayless is released under the [MIT License](LICENSE).
+Quanta is released under the [MIT License](LICENSE).
 
 ## Acknowledgements
 
-Relayless stands on [iroh](https://github.com/n0-computer/iroh) for peer-to-peer QUIC and hole punching, [Tauri](https://tauri.app) for the apps, [BLAKE3](https://github.com/BLAKE3-team/BLAKE3) for hashing and [SQLite](https://sqlite.org) for durable state.
+Quanta stands on [iroh](https://github.com/n0-computer/iroh) for peer-to-peer QUIC and hole punching, [Tauri](https://tauri.app) for the apps, [BLAKE3](https://github.com/BLAKE3-team/BLAKE3) for hashing and [SQLite](https://sqlite.org) for durable state.

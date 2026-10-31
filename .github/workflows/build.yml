@@ -85,7 +85,7 @@ jobs:
         run: |
           $exe = Get-ChildItem target/release/bundle/nsis/*.exe | Select-Object -First 1
           $ver = (Get-Content src-tauri/tauri.conf.json | ConvertFrom-Json).version
-          $dest = "Relayless-Setup-$ver-x64.exe"
+          $dest = "Quanta-Setup-$ver-x64.exe"
           Copy-Item $exe.FullName $dest
           $hash = (Get-FileHash $dest -Algorithm SHA256).Hash.ToLower()
           "$hash  $dest" | Out-File -Encoding ascii "$dest.sha256"
@@ -99,9 +99,9 @@ jobs:
           $p = Start-Process -FilePath $setup -ArgumentList "/S" -PassThru -Wait
           Write-Host "Installer exit code: $($p.ExitCode)"
           if ($p.ExitCode -ne 0) { Write-Host "::error title=Smoke test::Installer exited with $($p.ExitCode)"; exit 1 }
-          $exe = Get-ChildItem "$env:LOCALAPPDATA\Relayless" -Recurse -Filter "Relayless.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
-          if (-not $exe) { $exe = Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter "Relayless.exe" -ErrorAction SilentlyContinue | Select-Object -First 1 }
-          if (-not $exe) { Write-Host "::error title=Smoke test::Installed Relayless.exe not found"; exit 1 }
+          $exe = Get-ChildItem "$env:LOCALAPPDATA\Quanta" -Recurse -Filter "Quanta.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $exe) { $exe = Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter "Quanta.exe" -ErrorAction SilentlyContinue | Select-Object -First 1 }
+          if (-not $exe) { Write-Host "::error title=Smoke test::Installed Quanta.exe not found"; exit 1 }
           Write-Host "Installed at $($exe.FullName)"
           $app = Start-Process -FilePath $exe.FullName -PassThru
           Start-Sleep -Seconds 25
@@ -116,7 +116,7 @@ jobs:
           Start-Sleep -Seconds 6
           $secondExited = $second.HasExited
           Write-Host "Second instance exited (single-instance handoff): $secondExited"
-          Get-Process -Name "Relayless" -ErrorAction SilentlyContinue | Stop-Process -Force
+          Get-Process -Name "Quanta" -ErrorAction SilentlyContinue | Stop-Process -Force
           $ok = $alive -and ($text -match "started as") -and $secondExited
           $summary = "alive=$alive started=$($text -match 'started as') secondExited=$secondExited ws=${mem}MB"
           if (-not $ok) {
@@ -128,7 +128,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Relayless-Windows-installer
+          name: Quanta-Windows-installer
           path: |
             ${{ steps.out.outputs.file }}
             ${{ steps.out.outputs.file }}.sha256
@@ -139,7 +139,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v0.1.0-build${{ github.run_number }}
-          name: Relayless 0.1.0 (build ${{ github.run_number }})
+          name: Quanta 0.1.0 (build ${{ github.run_number }})
           body_path: .github/release-notes.md
           make_latest: true
           files: |
@@ -229,7 +229,7 @@ jobs:
             openssl rand -hex 16 | tr -d '\n' > "$K/pass"
             keytool -genkeypair -keystore "$K/relayless.jks" -storetype PKCS12 -alias relayless -keyalg RSA -keysize 2048 \
               -validity 10000 -storepass "$(cat "$K/pass")" -keypass "$(cat "$K/pass")" \
-              -dname "CN=Relayless, OU=Relayless, O=Relayless, L=Dhaka, C=BD" > /dev/null 2>&1
+              -dname "CN=Quanta, OU=Quanta, O=Quanta, L=Dhaka, C=BD" > /dev/null 2>&1
             echo "::notice title=APK signing::Created a new signing key; later builds reuse it"
           else
             echo "::notice title=APK signing::Reusing the cached signing key"
@@ -251,7 +251,7 @@ jobs:
           find src-tauri/gen/android/app/build/outputs/apk -name "*.apk" -print
           f=$(find src-tauri/gen/android/app/build/outputs/apk -name "*release*.apk" | head -1)
           [ -n "$f" ] || { echo "::error title=APK::No release APK found"; exit 1; }
-          name="Relayless-$ver-build${{ github.run_number }}-android.apk"
+          name="Quanta-$ver-build${{ github.run_number }}-android.apk"
           cp "$f" "out/$name"
           (cd out && sha256sum "$name" > "$name.sha256" && ls -la)
           echo "apk=out/$name" >> "$GITHUB_OUTPUT"
@@ -283,7 +283,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Relayless-Android-APK
+          name: Quanta-Android-APK
           path: out/*
           if-no-files-found: error
 
@@ -292,7 +292,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v0.1.0-build${{ github.run_number }}
-          name: Relayless 0.1.0 (build ${{ github.run_number }})
+          name: Quanta 0.1.0 (build ${{ github.run_number }})
           body_path: .github/release-notes.md
           files: out/*
           make_latest: true

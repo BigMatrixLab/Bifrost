@@ -29,7 +29,7 @@ import { useSlide } from "../slide";
 const ROW_DESK = 38;
 const ROW_PHONE = 66;
 
-/** "/storage/emulated/0/Download/Relayless" -> "Phone storage › Download › Relayless" */
+/** "/storage/emulated/0/Download/Quanta" -> "Phone storage › Download › Quanta" */
 function friendlyPath(p: string): string {
   const m = p.match(/^\/storage\/emulated\/0\/?(.*)$/);
   if (!m) return p;
@@ -146,7 +146,7 @@ export default function Browser() {
       <div className="page">
         <div className="panel">
           <Empty icon={<FolderOpen size={20} />} title="Nothing open">
-            Choose a shared folder from <a href="#" onClick={(e) => { e.preventDefault(); setPage("devices"); }}>Remote devices</a>.
+            Choose a shared folder in <a href="#" onClick={(e) => { e.preventDefault(); setPage("devices"); }}>Receive</a>.
           </Empty>
         </div>
       </div>

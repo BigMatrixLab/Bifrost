@@ -1,4 +1,4 @@
-//! Relayless desktop and Android app shell: Tauri commands, events, and
+//! Quanta desktop and Android app shell: Tauri commands, events, and
 //! platform integration (tray on Windows, background service on Android).
 
 use std::path::PathBuf;
@@ -43,7 +43,7 @@ fn show_main(app: &AppHandle) {
         return;
     }
     let built = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
-        .title("Relayless")
+        .title("Quanta")
         .inner_size(1200.0, 780.0)
         .min_inner_size(960.0, 620.0)
         .theme(Some(tauri::Theme::Dark))
@@ -337,7 +337,7 @@ fn list_local_dir(path: Option<String>) -> CmdResult<LocalDir> {
     let dir = path.filter(|p| !p.trim().is_empty()).map(PathBuf::from).unwrap_or_else(|| root.clone());
     let rd = std::fs::read_dir(&dir).map_err(|e| {
         if e.kind() == std::io::ErrorKind::PermissionDenied {
-            "Relayless doesn't have permission to read this folder. Allow \"All files access\" in Settings.".to_string()
+            "Quanta doesn't have permission to read this folder. Allow \"All files access\" in Settings.".to_string()
         } else {
             format!("Can't open {}: {e}", dir.display())
         }
@@ -375,7 +375,7 @@ fn logcat(msg: &str) {
     extern "C" {
         fn __android_log_write(prio: i32, tag: *const std::ffi::c_char, text: *const std::ffi::c_char) -> i32;
     }
-    let tag = CString::new("Relayless").unwrap_or_default();
+    let tag = CString::new("Quanta").unwrap_or_default();
     let text = CString::new(msg.replace('\0', "")).unwrap_or_default();
     // 4 = ANDROID_LOG_INFO
     unsafe {
@@ -428,7 +428,7 @@ fn spawn_service_controller(app: AppHandle, core: Core) {
                         }
                         Some((title, parts.join(" · ")))
                     } else if last_active.elapsed() < Duration::from_secs(120) {
-                        Some(("Relayless".to_string(), "Ready. Transfers finished or paused.".to_string()))
+                        Some(("Quanta".to_string(), "Ready. Transfers finished or paused.".to_string()))
                     } else {
                         None
                     };
@@ -475,7 +475,7 @@ pub fn run() {
             let (downloads, name) = {
                 let model = app.relayless_android().device_info().map(|d| d.model).unwrap_or_default();
                 (
-                    PathBuf::from("/storage/emulated/0/Download/Relayless"),
+                    PathBuf::from("/storage/emulated/0/Download/Quanta"),
                     if model.trim().is_empty() { "Android phone".to_string() } else { model },
                 )
             };
@@ -483,7 +483,7 @@ pub fn run() {
             let (downloads, name) = (
                 app.path()
                     .download_dir()
-                    .map(|d| d.join("Relayless"))
+                    .map(|d| d.join("Quanta"))
                     .unwrap_or_else(|_| data_dir.join("Downloads")),
                 device_name(),
             );
@@ -499,9 +499,9 @@ pub fn run() {
             }))
             .map_err(|e| -> Box<dyn std::error::Error> { e.to_string().into() })?;
             relayless_core::set_low_priority(core.settings().low_priority);
-            tracing::info!("Relayless {} started as {}", env!("CARGO_PKG_VERSION"), core.endpoint_id());
+            tracing::info!("Quanta {} started as {}", env!("CARGO_PKG_VERSION"), core.endpoint_id());
             #[cfg(target_os = "android")]
-            logcat(&format!("Relayless engine started as {}", core.endpoint_id()));
+            logcat(&format!("Quanta engine started as {}", core.endpoint_id()));
 
             // Forward engine events to the UI and to system notifications.
             let handle = app.handle().clone();
@@ -531,11 +531,11 @@ pub fn run() {
             #[cfg(desktop)]
             {
                 // Tray icon: transfers keep running when the window is closed.
-                let open = MenuItem::with_id(app, "open", "Open Relayless", true, None::<&str>)?;
+                let open = MenuItem::with_id(app, "open", "Open Quanta", true, None::<&str>)?;
                 let quit = MenuItem::with_id(app, "quit", "Quit (stops transfers)", true, None::<&str>)?;
                 let menu = Menu::with_items(app, &[&open, &quit])?;
                 let mut tray = TrayIconBuilder::with_id("main")
-                    .tooltip("Relayless")
+                    .tooltip("Quanta")
                     .menu(&menu)
                     .show_menu_on_left_click(false)
                     .on_menu_event(|app, event| match event.id.as_ref() {
@@ -600,7 +600,7 @@ pub fn run() {
             make_dir,
         ])
         .build(tauri::generate_context!())
-        .expect("error while building Relayless");
+        .expect("error while building Quanta");
 
     app.run(|app, event| match event {
         #[cfg(desktop)]

@@ -99,7 +99,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [activity, setActivity] = useState<Activity[]>([]);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [integrity, setIntegrity] = useState<Record<string, { checked: number; total: number }>>({});
-  const [page, setPage] = useState<Page>("overview");
+  // Demo build only: `#shares`, `#devices`, … opens that page (for screenshots).
+  const [page, setPage] = useState<Page>(() =>
+    import.meta.env.MODE === "mock" && location.hash.length > 1 ? (location.hash.slice(1) as Page) : "overview",
+  );
   const [browse, setBrowse] = useState<BrowseTarget | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [connectOpen, setConnectOpen] = useState(false);

@@ -1,4 +1,4 @@
-# Contributing to Relayless
+# Contributing to Quanta
 
 Thanks for helping. Bug reports, ideas, translations, documentation and code are all welcome.
 
@@ -6,7 +6,7 @@ Thanks for helping. Bug reports, ideas, translations, documentation and code are
 
 Open a [bug report](https://github.com/MisbahKhan0009/Relayless/issues/new?template=bug_report.yml) and include:
 
-- the Relayless version on both devices (Settings → About)
+- the Quanta version on both devices (Settings → About)
 - Windows or Android version, and device model for Android
 - what you expected and what happened, with exact error messages
 - whether the route was direct or relayed
