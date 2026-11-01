@@ -1,9 +1,113 @@
 import { useState } from "react";
-import { FolderOpen, KeyRound, Monitor, PlugZap, Trash2, Waypoints, Zap } from "lucide-react";
-import { api, errorText, type Remote } from "../api";
+import { FolderOpen, KeyRound, Monitor, PlugZap, RefreshCw, Trash2, Waypoints, Zap } from "lucide-react";
+import { api, canDownload, canUpload, errorText, permissionText, type Remote, type RemoteShare } from "../api";
 import { ago, speed } from "../format";
+import { pickFolder } from "../platform";
 import { useStore } from "../store";
-import { Button, Empty, HudStrip, IconButton, Modal, SafetyWords, SectionHeader, SignalBars, linkOf } from "../ui";
+import { Button, Empty, HudStrip, IconButton, Modal, SafetyWords, SectionHeader, SignalBars, Toggle, linkOf } from "../ui";
+
+/** Auto-sync for one shared folder: on/off, its local folder and last check. */
+function SyncButton({ peerId, share }: { peerId: string; share: RemoteShare }) {
+  const { syncs, settings, toast, refreshSyncs } = useStore();
+  const sync = syncs.find((x) => x.peerId === peerId && x.shareId === share.id);
+  const [open, setOpen] = useState(false);
+  const [dest, setDest] = useState("");
+  const [existing, setExisting] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const sep = (settings?.downloadDir ?? "").includes("\\") ? "\\" : "/";
+  const openDialog = () => {
+    setDest(sync?.destDir ?? `${settings?.downloadDir ?? ""}${sep}${share.name.replace(/[<>:"/\\|?*]/g, "_")}`);
+    setExisting(false);
+    setOpen(true);
+  };
+  const run = async (f: () => Promise<unknown>, ok: string) => {
+    setBusy(true);
+    try {
+      await f();
+      refreshSyncs();
+      toast(ok, "ok");
+      setOpen(false);
+    } catch (e) {
+      toast(errorText(e), "err");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const title = sync
+    ? sync.lastError
+      ? `Auto-sync: ${sync.lastError}`
+      : `Auto-sync on${sync.lastSyncAt ? `, checked ${ago(sync.lastSyncAt)}` : ""}. Into ${sync.destDir}`
+    : "Download new files from this folder automatically";
+  return (
+    <>
+      <Button
+        size="sm"
+        variant={sync ? "primary" : "secondary"}
+        icon={<RefreshCw size={14} className={sync?.syncing ? "spin" : ""} />}
+        title={title}
+        onClick={openDialog}
+      >
+        {sync ? (sync.lastError ? "Sync paused" : "Syncing") : "Auto-sync"}
+      </Button>
+      {open && (
+        <Modal
+          title={`Auto-sync “${share.name}”`}
+          onClose={() => setOpen(false)}
+          footer={
+            <>
+              {sync && (
+                <Button variant="danger" disabled={busy} onClick={() => run(() => api.disableSync(peerId, share.id), `Auto-sync off for “${share.name}”`)}>
+                  Turn off
+                </Button>
+              )}
+              <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button
+                variant="primary"
+                loading={busy}
+                icon={<RefreshCw size={15} />}
+                onClick={() => run(() => api.enableSync(peerId, share.id, dest || null, existing), sync ? "Sync folder updated" : `Auto-sync on for “${share.name}”`)}
+              >
+                {sync ? "Save" : "Turn on"}
+              </Button>
+            </>
+          }
+        >
+          <span>
+            Bifrost checks this folder every minute while both devices are online and downloads every new file. Nothing is ever deleted
+            here: files the owner removes or renames stay on this device.
+          </span>
+          <div className="field">
+            <span className="label">Save into</span>
+            <div className="hstack">
+              <input className="input mono" value={dest} onChange={(e) => setDest(e.target.value)} />
+              <Button
+                onClick={async () => {
+                  const p = await pickFolder("Folder to sync into", dest || undefined);
+                  if (p) setDest(p);
+                }}
+              >
+                Change…
+              </Button>
+            </div>
+          </div>
+          {!sync && (
+            <Toggle
+              checked={existing}
+              onChange={setExisting}
+              label="Also download what's already there"
+              hint="Off: only files added from now on. On: everything in the folder now, then new files."
+            />
+          )}
+          {sync && (
+            <span className="hint">
+              {sync.lastError ? `Last check: ${sync.lastError}` : sync.lastSyncAt ? `Last checked ${ago(sync.lastSyncAt)}.` : "First check is running."}
+            </span>
+          )}
+        </Modal>
+      )}
+    </>
+  );
+}
 
 /**
  * One device that shares with you, in the Send page's folder-tile layout:
@@ -87,14 +191,20 @@ function RemoteCard({ r }: { r: Remote }) {
             <div className="share-none">No folders are shared with you right now.</div>
           ) : (
             r.shares.map((s) => (
-              <div className="fold-row" key={s.id}>
+              <div className="fold-row has-tag" key={s.id}>
                 <span className="fold-node" aria-hidden="true">
                   <FolderOpen size={14} />
                 </span>
                 <span className="fold-name truncate">{s.name}</span>
-                <Button size="sm" icon={<FolderOpen size={14} />} onClick={() => openBrowser({ peerId: r.peerId, shareId: s.id, shareName: s.name, peerName: r.name })}>
-                  Browse
-                </Button>
+                <span className={`perm-tag ${canUpload(s.permission) ? "up" : ""}`} title="What the owner lets you do in this folder">
+                  {permissionText(s.permission)}
+                </span>
+                <span className="hstack" style={{ gap: 6 }}>
+                  {canDownload(s.permission) && <SyncButton peerId={r.peerId} share={s} />}
+                  <Button size="sm" icon={<FolderOpen size={14} />} onClick={() => openBrowser({ peerId: r.peerId, shareId: s.id, shareName: s.name, peerName: r.name })}>
+                    {s.permission === "upload" ? "Open" : "Browse"}
+                  </Button>
+                </span>
               </div>
             ))
           )}

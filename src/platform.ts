@@ -11,7 +11,8 @@ export function isAndroid(): boolean {
   return platform === "android";
 }
 
-type PickRequest = { title: string; start?: string; resolve: (path: string | null) => void };
+/** `files`: pick any number of files instead of one folder. */
+export type PickRequest = { title: string; start?: string; files?: boolean; resolve: (paths: string[] | null) => void };
 let host: ((r: PickRequest) => void) | null = null;
 
 /** Registered by <FolderPickerHost/>; used on Android where no native folder dialog returns real paths. */
@@ -27,6 +28,19 @@ export async function pickFolder(title: string, start?: string): Promise<string 
   }
   return new Promise((resolve) => {
     if (!host) return resolve(null);
-    host({ title, start, resolve });
+    host({ title, start, resolve: (p) => resolve(p?.[0] ?? null) });
+  });
+}
+
+/** Asks the user for one or more files: system dialog on desktop, in-app browser on Android. */
+export async function pickFiles(title: string): Promise<string[]> {
+  if (!isAndroid()) {
+    const p = await open({ directory: false, multiple: true, title });
+    if (!p) return [];
+    return (Array.isArray(p) ? p : [p]).filter((x): x is string => typeof x === "string" && x.length > 0);
+  }
+  return new Promise((resolve) => {
+    if (!host) return resolve([]);
+    host({ title, files: true, resolve: (p) => resolve(p ?? []) });
   });
 }

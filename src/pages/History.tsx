@@ -11,12 +11,12 @@ export type Dir = "both" | "received" | "sent";
 
 const DAY = 86_400_000;
 
-function dayKey(ms: number) {
+export function dayKey(ms: number) {
   const d = new Date(ms);
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
 
-function weekStart(): number {
+export function weekStart(): number {
   try {
     // 1 = Monday ... 7 = Sunday
     const info = (new Intl.Locale(navigator.language) as unknown as { weekInfo?: { firstDay: number }; getWeekInfo?: () => { firstDay: number } });
@@ -47,7 +47,7 @@ function fileLabel(e: HistoryEntry) {
   return e.name || categoryInfo(categoryOf(e.ext)).noun + (e.ext ? ` (.${e.ext})` : "");
 }
 
-function fmtDay(ms: number, opts: Intl.DateTimeFormatOptions = { weekday: "short", month: "short", day: "numeric" }) {
+export function fmtDay(ms: number, opts: Intl.DateTimeFormatOptions = { weekday: "short", month: "short", day: "numeric" }) {
   return new Date(ms).toLocaleDateString(undefined, opts);
 }
 
@@ -241,7 +241,7 @@ function SplitMeter({ inB, outB, max }: { inB: number; outB: number; max: number
  * The hover card shared by the calendar and the side lists: a title, the
  * total, the received / sent split, the largest files and a footnote.
  */
-function EntriesTip({
+export function EntriesTip({
   x,
   y,
   below,
@@ -291,13 +291,34 @@ function EntriesTip({
   );
 }
 
-interface DayAgg {
+export interface DayAgg {
   key: string;
   date: Date;
   total: number;
   inBytes: number;
   outBytes: number;
   entries: HistoryEntry[];
+}
+
+/** Per-day totals (received, sent, entries) and the busiest day's total. */
+export function buildDays(entries: HistoryEntry[]): { days: Map<string, DayAgg>; max: number } {
+  const days = new Map<string, DayAgg>();
+  for (const e of entries) {
+    const k = dayKey(e.finishedAt);
+    let a = days.get(k);
+    if (!a) {
+      const d = new Date(e.finishedAt);
+      a = { key: k, date: new Date(d.getFullYear(), d.getMonth(), d.getDate()), total: 0, inBytes: 0, outBytes: 0, entries: [] };
+      days.set(k, a);
+    }
+    a.total += moved(e);
+    if (e.direction === "received") a.inBytes += moved(e);
+    else a.outBytes += moved(e);
+    a.entries.push(e);
+  }
+  let max = 0;
+  days.forEach((a) => (max = Math.max(max, a.total)));
+  return { days, max };
 }
 
 function MonthCalendar({
@@ -420,44 +441,58 @@ function MonthCalendar({
 
 // ---------------------------------------------------------------- page
 
+/** Day the History page opens on next (set by the sidebar calendar). */
+let pendingDay: number | null = null;
+export function openHistoryOn(ms: number) {
+  pendingDay = ms;
+  window.dispatchEvent(new Event("relayless:history-day"));
+}
+
 export default function History() {
   const { history, settings, setPage } = useStore();
+  const [initial] = useState(() => {
+    const ms = pendingDay;
+    pendingDay = null;
+    return ms;
+  });
   const [dir, setDir] = useState<Dir>("both");
   const [month, setMonth] = useState(() => {
-    const d = new Date();
+    const d = new Date(initial ?? Date.now());
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(() => (initial != null ? dayKey(initial) : null));
   const [open, setOpen] = useState<string | null>(null);
   const [limit, setLimit] = useState(40);
 
+  // A new month or direction starts unselected (but keep a day picked from the sidebar).
+  const shown = useRef(`${month.getTime()}|${dir}`);
   useEffect(() => {
+    const k = `${month.getTime()}|${dir}`;
+    if (shown.current === k) return;
+    shown.current = k;
     setSelected(null);
     setLimit(40);
   }, [month, dir]);
+  // Picked in the sidebar calendar while this page is already open.
+  useEffect(() => {
+    const go = () => {
+      const ms = pendingDay;
+      pendingDay = null;
+      if (ms == null) return;
+      const d = new Date(ms);
+      const m = new Date(d.getFullYear(), d.getMonth(), 1);
+      shown.current = `${m.getTime()}|${dir}`;
+      setMonth(m);
+      setSelected(dayKey(ms));
+    };
+    window.addEventListener("relayless:history-day", go);
+    return () => window.removeEventListener("relayless:history-day", go);
+  }, [dir]);
 
   const filtered = useMemo(() => (dir === "both" ? history : history.filter((e) => e.direction === dir)), [history, dir]);
 
   // Per-day totals across all history, so dot sizes compare between months.
-  const { days, max } = useMemo(() => {
-    const days = new Map<string, DayAgg>();
-    for (const e of filtered) {
-      const k = dayKey(e.finishedAt);
-      let a = days.get(k);
-      if (!a) {
-        const d = new Date(e.finishedAt);
-        a = { key: k, date: new Date(d.getFullYear(), d.getMonth(), d.getDate()), total: 0, inBytes: 0, outBytes: 0, entries: [] };
-        days.set(k, a);
-      }
-      a.total += moved(e);
-      if (e.direction === "received") a.inBytes += moved(e);
-      else a.outBytes += moved(e);
-      a.entries.push(e);
-    }
-    let max = 0;
-    days.forEach((a) => (max = Math.max(max, a.total)));
-    return { days, max };
-  }, [filtered]);
+  const { days, max } = useMemo(() => buildDays(filtered), [filtered]);
 
   const monthStart = month.getTime();
   const monthEnd = new Date(month.getFullYear(), month.getMonth() + 1, 1).getTime();

@@ -17,7 +17,7 @@ import {
   X,
   XCircle,
 } from "lucide-react";
-import { android, api, errorText, type Job, type Outgoing } from "../api";
+import { android, api, errorText, type Incoming, type Job, type Outgoing, type Push } from "../api";
 import { isAndroid } from "../platform";
 import { bytes, dateTime, duration, isActive, mbit, speed, statusTone } from "../format";
 import { useStore } from "../store";
@@ -358,23 +358,159 @@ export function SendRow({ o, compact = false }: { o: Outgoing; compact?: boolean
   );
 }
 
+const PUSH_TEXT: Record<Push["status"], string> = {
+  queued: "Queued",
+  uploading: "Uploading",
+  retrying: "Waiting to continue",
+  completed: "Uploaded",
+  failed: "Failed",
+  canceled: "Canceled",
+};
+
+/** A file this device is uploading into someone else's shared folder. */
+export function PushRow({ p }: { p: Push }) {
+  const { toast } = useStore();
+  const [busy, setBusy] = useState(false);
+  const running = p.status === "queued" || p.status === "uploading" || p.status === "retrying";
+  const tone = p.status === "failed" ? "err" : p.status === "canceled" ? "muted" : p.status === "retrying" || p.status === "queued" ? "warn" : "ok";
+  const left = p.bps > 1 && p.status === "uploading" ? (p.size - p.sentBytes) / p.bps : null;
+  const where = [p.shareName, ...p.remotePath.slice(0, -1)].join(" › ");
+  const run = async (f: () => Promise<void>) => {
+    setBusy(true);
+    try {
+      await f();
+    } catch (e) {
+      toast(errorText(e), "err");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className={`job tone-${tone} ${p.status === "failed" ? "attn" : ""}`}>
+      <div className={`job-ico tone-${tone}`}>
+        {p.status === "completed" ? <ShieldCheck size={17} /> : p.status === "failed" || p.status === "canceled" ? <XCircle size={17} /> : <UploadIcon size={17} />}
+      </div>
+      <div className="stack">
+        <div className="hstack">
+          <span className="job-title truncate selectable" title={p.localPath}>{p.savedAs ?? p.name}</span>
+        </div>
+        <div className="job-meta">
+          <span className={`pill pill-${tone}`}>{PUSH_TEXT[p.status]}</span>
+          <span className="num">{p.status === "completed" ? bytes(p.size) : `${bytes(p.sentBytes)} of ${bytes(p.size)}`}</span>
+          {running && <span className="num job-pct">{pct(p.sentBytes, p.size)}</span>}
+          {p.status === "uploading" && p.bps > 1 && <span className="num">{speed(p.bps)}</span>}
+          {left != null && <span className="num">{duration(left)} left</span>}
+          <span className="faint truncate">to {where} on {p.peerName}</span>
+        </div>
+        {p.error && p.status !== "completed" && <span className="small muted">{p.error}</span>}
+      </div>
+      <div className="job-actions">
+        {(p.status === "failed" || p.status === "canceled") && (
+          <IconButton label="Retry" disabled={busy} onClick={() => run(() => api.retryPush(p.id))}>
+            <RotateCcw size={16} />
+          </IconButton>
+        )}
+        {running && (
+          <IconButton label="Cancel" disabled={busy} onClick={() => run(() => api.cancelPush(p.id))}>
+            <X size={16} />
+          </IconButton>
+        )}
+        {!running && (
+          <IconButton label="Remove from list" disabled={busy} onClick={() => run(() => api.removePush(p.id))}>
+            <Trash2 size={15} />
+          </IconButton>
+        )}
+      </div>
+      {running && (
+        <div className="job-progress">
+          <Progress value={p.size ? p.sentBytes / p.size : 0} tone={tone} indeterminate={p.status === "queued"} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+const INCOMING_TEXT: Record<Incoming["status"], string> = {
+  receiving: "Receiving upload",
+  interrupted: "Interrupted",
+  failed: "Failed",
+  completed: "Received and verified",
+};
+
+/** A file another device is uploading into one of this device's shared folders. */
+export function IncomingRow({ f }: { f: Incoming }) {
+  const { toast } = useStore();
+  const done = f.status === "completed";
+  const tone = f.status === "failed" ? "err" : f.status === "interrupted" ? "warn" : "ok";
+  const left = f.bps > 1 && f.status === "receiving" ? (f.size - f.receivedBytes) / f.bps : null;
+  const where = [f.shareName, ...f.path.slice(0, -1)].join(" › ");
+  return (
+    <div className={`job tone-${tone} ${f.status === "failed" ? "attn" : ""}`}>
+      <div className={`job-ico tone-${tone}`}>
+        {done ? <ShieldCheck size={17} /> : f.status === "failed" ? <XCircle size={17} /> : f.status === "interrupted" ? <Clock size={17} /> : <Download size={17} />}
+      </div>
+      <div className="stack">
+        <div className="hstack">
+          <span className="job-title truncate selectable" title={[f.shareName, ...f.path].join(" / ")}>{f.savedAs ?? f.name}</span>
+        </div>
+        <div className="job-meta">
+          <span className={`pill pill-${tone}`}>{f.status === "interrupted" ? `Waiting for ${f.deviceName}` : INCOMING_TEXT[f.status]}</span>
+          <span className="num">{done ? bytes(f.size) : `${bytes(f.receivedBytes)} of ${bytes(f.size)}`}</span>
+          {!done && <span className="num job-pct">{pct(f.receivedBytes, f.size)}</span>}
+          {f.status === "receiving" && f.bps > 1 && <span className="num">{speed(f.bps)}</span>}
+          {f.status === "receiving" && f.route === "relay" && <RelayedPill />}
+          {left != null && <span className="num">{duration(left)} left</span>}
+          <span className="faint truncate">from {f.deviceName} into {where}</span>
+        </div>
+        {f.error && f.status === "failed" && <span className="small muted">{f.error}</span>}
+      </div>
+      <div className="job-actions">
+        {f.status !== "receiving" && (
+          <IconButton label="Remove from list" onClick={() => api.removeIncoming(f.id).catch((e) => toast(errorText(e), "err"))}>
+            <Trash2 size={15} />
+          </IconButton>
+        )}
+      </div>
+      {!done && f.status !== "failed" && (
+        <div className="job-progress">
+          <Progress value={f.size ? f.receivedBytes / f.size : 0} tone={tone} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 type Filter = "all" | "receiving" | "sending" | "done" | "attention";
 
 export default function Transfers() {
-  const { jobs, outgoing, uploads, setPage, toast } = useStore();
+  const { jobs, outgoing, uploads, pushes, incoming, setPage, toast } = useStore();
   const flowActive = useFlowActive();
   const [filter, setFilter] = useState<Filter>("all");
   const tabSlide = useSlide<HTMLDivElement>(".tab", ".tab.on");
   const list = useMemo(() => Object.values(jobs).sort((a, b) => b.createdAt - a.createdAt), [jobs]);
   const sendingNow = outgoing.filter((o) => o.status === "sending" || o.status === "waiting" || o.status === "paused");
   const sentDone = outgoing.filter((o) => o.status === "verified" || o.status === "delivered");
+  const pushRunning = pushes.filter((p) => p.status === "queued" || p.status === "uploading" || p.status === "retrying");
+  const pushDone = pushes.filter((p) => p.status === "completed");
+  const pushFailed = pushes.filter((p) => p.status === "failed");
+  const inRunning = incoming.filter((f) => f.status === "receiving" || f.status === "interrupted");
+  const inDone = incoming.filter((f) => f.status === "completed");
+  const inFailed = incoming.filter((f) => f.status === "failed");
   const counts = {
-    all: list.length + outgoing.length,
-    receiving: list.filter((j) => isActive(j.status) || j.status === "paused").length,
-    sending: sendingNow.length,
-    done: list.filter((j) => j.status === "completed").length + sentDone.length,
-    attention: list.filter((j) => j.status === "needs_attention" || j.status === "failed").length,
+    all: list.length + outgoing.length + pushes.length + incoming.length,
+    receiving: list.filter((j) => isActive(j.status) || j.status === "paused").length + inRunning.length,
+    sending: sendingNow.length + pushRunning.length,
+    done: list.filter((j) => j.status === "completed").length + sentDone.length + pushDone.length + inDone.length,
+    attention: list.filter((j) => j.status === "needs_attention" || j.status === "failed").length + pushFailed.length + inFailed.length,
   };
+  const inShown =
+    filter === "all" ? incoming : filter === "receiving" ? inRunning : filter === "done" ? inDone : filter === "attention" ? inFailed : [];
+  const inBps = incoming.reduce((s, f) => s + (f.status === "receiving" ? f.bps : 0), 0);
+  const inLeft = inRunning.reduce((s, f) => s + Math.max(0, f.size - f.receivedBytes), 0);
+  const pushShown =
+    filter === "all" ? pushes : filter === "sending" ? pushRunning : filter === "done" ? pushDone : filter === "attention" ? pushFailed : [];
+  const pushBps = pushRunning.reduce((s, p) => s + p.bps, 0);
+  const pushLeft = pushRunning.reduce((s, p) => s + Math.max(0, p.size - p.sentBytes), 0);
   const shown = list.filter((j) =>
     filter === "all"
       ? true
@@ -388,10 +524,10 @@ export default function Transfers() {
   );
   const sends = filter === "all" || filter === "sending" ? outgoing : filter === "done" ? sentDone : [];
   const sendLeft = sendingNow.reduce((a, o) => a + (o.size - o.sentBytes), 0);
-  const total = list.filter((j) => j.status === "downloading").reduce((s, j) => s + j.speedBps, 0);
-  const remaining = list.filter((j) => isActive(j.status)).reduce((s, j) => s + (j.size - j.doneBytes), 0);
+  const total = list.filter((j) => j.status === "downloading").reduce((s, j) => s + j.speedBps, 0) + inBps;
+  const remaining = list.filter((j) => isActive(j.status)).reduce((s, j) => s + (j.size - j.doneBytes), 0) + inLeft;
 
-  const upBps = uploads.reduce((s, u) => s + u.bps, 0);
+  const upBps = uploads.reduce((s, u) => s + u.bps, 0) + pushBps;
 
   return (
     <div className="page">
@@ -401,7 +537,7 @@ export default function Transfers() {
           { label: "Receiving", value: total > 0 ? speed(total) : counts.receiving || "–", tone: total > 0 ? "live" : undefined },
           { label: "Sending", value: upBps > 0 ? speed(upBps) : counts.sending || "–", tone: upBps > 0 ? "live" : undefined },
           { label: "Left to receive", value: remaining > 0 ? bytes(remaining) : "–", of: total > 0 && remaining > 0 ? duration(remaining / total) : undefined },
-          { label: "Left to send", value: sendLeft > 0 ? bytes(sendLeft) : "–" },
+          { label: "Left to send", value: sendLeft + pushLeft > 0 ? bytes(sendLeft + pushLeft) : "–" },
           { label: "Needs attention", value: counts.attention, tone: counts.attention > 0 ? "err" : undefined },
         ]}
         note={`${counts.done} completed and verified end to end. Downloads keep their verified progress through disconnects, app restarts and reboots.`}
@@ -439,7 +575,39 @@ export default function Transfers() {
             </div>
           </div>
         )}
-        {shown.length === 0 && sends.length === 0 ? (
+        {pushShown.length > 0 && (
+          <div className="tr-section">
+            <SectionHeader title="Upload">
+              {pushDone.length > 0 && (filter === "all" || filter === "done") && (
+                <Button size="sm" variant="ghost" onClick={() => api.clearPushes().catch((e) => toast(errorText(e), "err"))}>
+                  Clear finished
+                </Button>
+              )}
+            </SectionHeader>
+            <div className="panel job-list">
+              {pushShown.map((p) => (
+                <PushRow key={p.id} p={p} />
+              ))}
+            </div>
+          </div>
+        )}
+        {inShown.length > 0 && (
+          <div className="tr-section">
+            <SectionHeader title="Uploads to your folders">
+              {inDone.length > 0 && (filter === "all" || filter === "done") && (
+                <Button size="sm" variant="ghost" onClick={() => api.clearIncoming().catch((e) => toast(errorText(e), "err"))}>
+                  Clear finished
+                </Button>
+              )}
+            </SectionHeader>
+            <div className="panel job-list">
+              {inShown.map((f) => (
+                <IncomingRow key={f.id} f={f} />
+              ))}
+            </div>
+          </div>
+        )}
+        {shown.length === 0 && sends.length === 0 && pushShown.length === 0 && inShown.length === 0 ? (
           <div className="panel">
             <Empty
               icon={filter === "sending" ? <UploadIcon size={20} /> : <Download size={20} />}

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { ArrowLeft, Check, ChevronRight, Folder, FolderPlus, HardDrive, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Check, ChevronRight, File as FileIcon, Folder, FolderPlus, HardDrive, ShieldAlert } from "lucide-react";
 import { android, api, errorText, type LocalDir } from "./api";
-import { isAndroid, registerPickerHost } from "./platform";
+import { bytes } from "./format";
+import { isAndroid, registerPickerHost, type PickRequest } from "./platform";
 import { Button, IconButton, Modal } from "./ui";
 
 /** Tracks Android "All files access"; re-checks when the user returns from Settings. */
@@ -46,14 +47,13 @@ export function StorageAccessNotice({ compact = false }: { compact?: boolean }) 
   );
 }
 
-type Req = { title: string; start?: string; resolve: (p: string | null) => void };
-
-/** In-app folder browser used on Android. */
+/** In-app folder browser used on Android; also picks files for uploads. */
 export function FolderPickerHost() {
-  const [req, setReq] = useState<Req | null>(null);
+  const [req, setReq] = useState<PickRequest | null>(null);
   const [dir, setDir] = useState<LocalDir | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [newName, setNewName] = useState<string | null>(null);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
   const access = useStorageAccess();
 
   useEffect(() => {
@@ -77,12 +77,20 @@ export function FolderPickerHost() {
   }, [req, load, access.granted]);
 
   if (!req) return null;
-  const finish = (p: string | null) => {
+  const finish = (p: string[] | null) => {
     req.resolve(p);
     setReq(null);
     setDir(null);
     setNewName(null);
+    setPicked(new Set());
   };
+  const togglePick = (p: string) =>
+    setPicked((s) => {
+      const n = new Set(s);
+      if (n.has(p)) n.delete(p);
+      else n.add(p);
+      return n;
+    });
   const rel = dir ? dir.path.slice(dir.root.length).split("/").filter(Boolean) : [];
 
   return (
@@ -93,9 +101,15 @@ export function FolderPickerHost() {
       footer={
         <>
           <Button variant="ghost" onClick={() => finish(null)}>Cancel</Button>
-          <Button variant="primary" icon={<Check size={15} />} disabled={!dir || !access.granted} onClick={() => dir && finish(dir.path)}>
-            Use this folder
-          </Button>
+          {req.files ? (
+            <Button variant="primary" icon={<Check size={15} />} disabled={picked.size === 0 || !access.granted} onClick={() => finish([...picked])}>
+              {picked.size === 0 ? "Choose files" : `Use ${picked.size} file${picked.size === 1 ? "" : "s"}`}
+            </Button>
+          ) : (
+            <Button variant="primary" icon={<Check size={15} />} disabled={!dir || !access.granted} onClick={() => dir && finish([dir.path])}>
+              Use this folder
+            </Button>
+          )}
         </>
       }
     >
@@ -163,7 +177,9 @@ export function FolderPickerHost() {
       )}
       {error && <div className="notice err"><ShieldAlert size={16} /><span>{error}</span></div>}
       <div className="picker-list">
-        {dir?.dirs.length === 0 && <div className="faint small" style={{ padding: 14 }}>No folders here.</div>}
+        {dir?.dirs.length === 0 && (!req.files || dir.files.length === 0) && (
+          <div className="faint small" style={{ padding: 14 }}>{req.files ? "Nothing here." : "No folders here."}</div>
+        )}
         {dir?.dirs.map((d) => (
           <button key={d} className="picker-item" onClick={() => load(dir.path + "/" + d)}>
             <Folder size={16} className="dir" />
@@ -171,6 +187,19 @@ export function FolderPickerHost() {
             <ChevronRight size={15} className="faint" />
           </button>
         ))}
+        {req.files &&
+          dir?.files.map((f) => {
+            const p = dir.path + "/" + f.name;
+            const on = picked.has(p);
+            return (
+              <button key={f.name} className={`picker-item ${on ? "on" : ""}`} role="checkbox" aria-checked={on} onClick={() => togglePick(p)}>
+                <FileIcon size={16} />
+                <span className="truncate grow">{f.name}</span>
+                <span className="faint small num">{bytes(f.size)}</span>
+                <span className={`mcheck ${on ? "on" : ""}`} aria-hidden="true">{on && <Check size={15} strokeWidth={3} />}</span>
+              </button>
+            );
+          })}
       </div>
     </Modal>
   );

@@ -13,8 +13,12 @@ pub mod invite;
 mod net;
 pub mod proto;
 mod receiver;
+mod notice;
+mod push;
 mod sender;
+mod sync;
 pub mod types;
+mod upload;
 pub mod util;
 pub mod words;
 
@@ -115,6 +119,13 @@ impl Core {
             settings.congestion = "cubic".into();
             settings.congestion_v2 = true;
         }
+        if !settings.tray_v2 {
+            // Closing the window keeps Bifrost running in the tray, so shared
+            // folders stay reachable and transfers continue. Move once; users
+            // can turn it off in Settings.
+            settings.close_to_tray = true;
+            settings.tray_v2 = true;
+        }
         if settings.device_name.trim().is_empty() {
             settings.device_name = opts.default_device_name.clone();
         }
@@ -163,6 +174,7 @@ impl Core {
         );
         let (events, _) = broadcast::channel(1024);
         let inner = Arc::new(Inner {
+            rt: tokio::runtime::Handle::current(),
             db,
             endpoint,
             data_dir: opts.data_dir.clone(),
@@ -185,6 +197,15 @@ impl Core {
             peers: Mutex::new(Default::default()),
             addr_hints: Mutex::new(Default::default()),
             jobs: Mutex::new(Default::default()),
+            put_active: Mutex::new(Default::default()),
+            put_lock: Mutex::new(()),
+            incoming_files: Mutex::new(Default::default()),
+            pushes: Mutex::new(Default::default()),
+            push_slots: tokio::sync::Semaphore::new(2),
+            net_wake: tokio::sync::Notify::new(),
+            syncing: Mutex::new(Default::default()),
+            sync_wake: tokio::sync::Notify::new(),
+            peer_notices: Mutex::new(Default::default()),
         });
         prune_history(&inner);
         tokio::spawn(sender::accept_loop(inner.clone()));
@@ -194,11 +215,20 @@ impl Core {
             tokio::spawn(republish_codes(inner.clone()));
         }
         let core = Core { inner };
+        // Every unfinished transfer starts again by itself: downloads that were
+        // running or waiting, and ones that stopped for a reason that may be
+        // gone now (sender offline, access paused, disk full). Paused and
+        // canceled ones stay as the user left them; a file that changed on
+        // the sender waits for the user to choose the new version.
         for job in core.inner.db.list_jobs()? {
-            if job.status.auto_runs() {
+            let retry = job.status == JobStatus::NeedsAttention
+                && !job.error.as_deref().unwrap_or("").to_lowercase().contains("changed");
+            if job.status.auto_runs() || retry {
                 spawn_job(&core.inner, &job.id);
             }
         }
+        push::restore(&core.inner);
+        tokio::spawn(sync::run(core.inner.clone()));
         Ok(core)
     }
 
@@ -249,6 +279,11 @@ impl Core {
         if s.download_dir.trim().is_empty() {
             s.download_dir = old.download_dir.clone();
         }
+        // One-time migration flags are never unset by a settings save.
+        s.route_v2 |= old.route_v2;
+        s.congestion_v2 |= old.congestion_v2;
+        s.autostart_v1 |= old.autostart_v1;
+        s.tray_v2 |= old.tray_v2;
         self.inner.db.save_settings(&s)?;
         self.inner.upload_limiter.set_rate(util::kib_to_bytes_per_sec(s.upload_limit_kbps));
         self.inner.download_limiter.set_rate(util::kib_to_bytes_per_sec(s.download_limit_kbps));
@@ -296,6 +331,7 @@ impl Core {
                 .map(|i| inv_dto(i, now, codes.get(&i.id).map(|c| c.code.clone())))
                 .collect(),
             device_count: grants.iter().filter(|g| g.share_id == s.id).count() as u32,
+            permission: s.permission.clone(),
         }
     }
 
@@ -305,7 +341,16 @@ impl Core {
         Ok(self.inner.db.list_shares()?.iter().map(|s| self.share_dto(s, &invs, &grants)).collect())
     }
 
+    /// Shares a folder with the default permission from Settings.
     pub fn create_share(&self, path: &str, name: Option<String>) -> Result<ShareDto> {
+        self.create_share_with(path, name, None)
+    }
+
+    /// Shares a folder. `permission` ("download", "upload" or "both") falls
+    /// back to the default from Settings. Sharing a folder that is already
+    /// shared resumes it and, if given, applies the permission.
+    pub fn create_share_with(&self, path: &str, name: Option<String>, permission: Option<String>) -> Result<ShareDto> {
+        let permission = permission.as_deref().map(normalize_permission).map(String::from);
         let p = std::fs::canonicalize(path).map_err(|_| anyhow!("That folder doesn't exist."))?;
         if !p.is_dir() {
             bail!("Choose a folder, not a file.");
@@ -317,6 +362,9 @@ impl Core {
         let existing = self.inner.db.list_shares()?;
         if let Some(s) = existing.iter().find(|s| Path::new(&s.root_path) == Path::new(&display)) {
             self.inner.db.set_share_active(&s.id, true)?;
+            if let Some(perm) = &permission {
+                self.inner.db.set_share_permission(&s.id, perm)?;
+            }
             self.inner.emit(CoreEvent::SharesChanged);
             return self
                 .list_shares()?
@@ -327,11 +375,32 @@ impl Core {
         let name = name
             .filter(|n| !n.trim().is_empty())
             .unwrap_or_else(|| p.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "Shared folder".into()));
-        let row = ShareRow { id: random_id(), root_path: display, name: name.clone(), active: true, created_at: now_ms() };
+        let permission = permission.unwrap_or_else(|| self.inner.settings().default_share_permission);
+        let row = ShareRow {
+            id: random_id(),
+            root_path: display,
+            name: name.clone(),
+            active: true,
+            created_at: now_ms(),
+            permission: normalize_permission(&permission).into(),
+        };
         self.inner.db.insert_share(&row)?;
-        self.inner.log("info", &format!("Started sharing \"{name}\""), None);
+        self.inner.log("info", &format!("Started sharing \"{name}\" ({})", permission_text(&row.permission)), None);
         self.inner.emit(CoreEvent::SharesChanged);
         Ok(self.share_dto(&row, &[], &[]))
+    }
+
+    /// Changes what invited devices may do in a share. Applies to their next
+    /// request; uploads in progress stop if uploading is no longer allowed.
+    pub fn set_share_permission(&self, id: &str, permission: &str) -> Result<ShareDto> {
+        let share = self.inner.db.get_share(id)?.ok_or_else(|| anyhow!("Unknown share."))?;
+        let perm = normalize_permission(permission);
+        if share.permission != perm {
+            self.inner.db.set_share_permission(id, perm)?;
+            self.inner.log("info", &format!("\"{}\" is now {}", share.name, permission_text(perm)), None);
+            self.inner.emit(CoreEvent::SharesChanged);
+        }
+        self.list_shares()?.into_iter().find(|d| d.id == id).ok_or_else(|| anyhow!("share vanished"))
     }
 
     pub fn set_share_active(&self, id: &str, active: bool) -> Result<()> {
@@ -462,7 +531,7 @@ impl Core {
     fn drop_code(&self, invitation_id: &str) {
         let _ = self.inner.db.delete_invitation_code(invitation_id);
         if let Some(sc) = self.inner.short_codes.lock().remove(invitation_id) {
-            tokio::spawn(async move { sc.endpoint.close().await });
+            self.inner.rt.spawn(async move { sc.endpoint.close().await });
         }
     }
 
@@ -615,16 +684,15 @@ impl Core {
         self.inner
             .db
             .upsert_remote(&peer_s, &hello.sender_name, inv.relay_url.as_ref().map(|u| u.to_string()).as_deref())?;
-        self.inner
-            .db
-            .set_remote_shares(&peer_s, &hello.shares.iter().map(|s| (s.id.clone(), s.name.clone())).collect::<Vec<_>>())?;
+        let shares = receiver::wire_shares(&hello.shares);
+        self.inner.db.set_remote_shares(&peer_s, &shares)?;
         receiver::adopt_conn(&self.inner, peer, conn);
         self.inner.log("success", &format!("Paired with {}", hello.sender_name), None);
         self.inner.emit(CoreEvent::RemotesChanged);
         Ok(JoinResult {
             peer_id: peer_s,
             sender_name: hello.sender_name,
-            shares: hello.shares.into_iter().map(|s| RemoteShareDto { id: s.id, name: s.name }).collect(),
+            shares: shares.into_iter().map(|(id, name, permission)| RemoteShareDto { id, name, permission }).collect(),
             safety_words: words,
         })
     }
@@ -682,7 +750,7 @@ impl Core {
                     peer_short: short_peer(&r.peer_id),
                     peer_id: r.peer_id,
                     name: r.name,
-                    shares: shares.into_iter().map(|(id, name)| RemoteShareDto { id, name }).collect(),
+                    shares: shares.into_iter().map(|(id, name, permission)| RemoteShareDto { id, name, permission }).collect(),
                     created_at: r.created_at,
                     last_seen_at: r.last_seen_at,
                     status,
@@ -719,15 +787,120 @@ impl Core {
         let conn = get_conn(&self.inner, id).await.map_err(je)?;
         let resp = request(&conn, &Request::List { share: share_id.into(), path, offset, limit }).await.map_err(je)?;
         match resp {
-            Response::List { entries, total } => Ok(ListResult {
-                entries: entries
-                    .into_iter()
-                    .map(|e| RemoteEntry { name: e.name, is_dir: e.dir, size: e.size, modified_ms: e.mtime_ms })
-                    .collect(),
-                total,
-                offset,
-            }),
+            Response::List { entries, total, perm } => {
+                // Older owners don't say: download only, as before.
+                let permission = normalize_permission(perm.as_deref().unwrap_or("download")).to_string();
+                if self.inner.db.set_remote_share_permission(peer_id, share_id, &permission).unwrap_or(false) {
+                    self.inner.emit(CoreEvent::RemotesChanged);
+                }
+                Ok(ListResult {
+                    entries: entries
+                        .into_iter()
+                        .map(|e| RemoteEntry { name: e.name, is_dir: e.dir, size: e.size, modified_ms: e.mtime_ms, mine: e.mine })
+                        .collect(),
+                    total,
+                    offset,
+                    permission,
+                })
+            }
             _ => bail!("Unexpected reply from sender."),
+        }
+    }
+
+    // ------------------------------------------------------------------ uploads into others' shares
+
+    /// Uploads local files and folders into `dir` of a share on another
+    /// device. Needs upload permission from its owner. Returns upload ids.
+    pub async fn start_upload(&self, peer_id: &str, share_id: &str, dir: Vec<String>, paths: Vec<String>) -> Result<Vec<String>> {
+        let id: EndpointId = peer_id.parse().map_err(|_| anyhow!("invalid device id"))?;
+        push::queue(&self.inner, id, share_id, dir, paths).await
+    }
+
+    pub fn list_pushes(&self) -> Vec<PushDto> {
+        push::list(&self.inner)
+    }
+
+    pub fn cancel_push(&self, id: &str) -> Result<()> {
+        push::cancel(&self.inner, id)
+    }
+
+    pub fn retry_push(&self, id: &str) -> Result<()> {
+        push::retry(&self.inner, id)
+    }
+
+    pub fn remove_push(&self, id: &str) -> Result<()> {
+        push::remove(&self.inner, id)
+    }
+
+    pub fn clear_pushes(&self) {
+        push::clear_finished(&self.inner)
+    }
+
+    // ------------------------------------------------------------------ auto-sync of remote shares
+
+    /// Remote shares this device downloads new files from automatically.
+    pub fn list_syncs(&self) -> Vec<SyncDto> {
+        sync::list(&self.inner)
+    }
+
+    /// Turns on auto-sync for a remote share. `dest_dir` defaults to
+    /// `<download folder>/<share name>`. With `include_existing`, what is
+    /// already in the share is downloaded too; otherwise only new files.
+    pub fn enable_sync(&self, peer_id: &str, share_id: &str, dest_dir: Option<String>, include_existing: bool) -> Result<SyncDto> {
+        sync::enable(&self.inner, peer_id, share_id, dest_dir, include_existing)
+    }
+
+    /// Turns auto-sync off. Downloaded files stay.
+    pub fn disable_sync(&self, peer_id: &str, share_id: &str) -> Result<()> {
+        sync::disable(&self.inner, peer_id, share_id)
+    }
+
+    /// Checks every synced folder now instead of at the next minute.
+    pub fn sync_now(&self) {
+        sync::kick(&self.inner)
+    }
+
+    /// Files other devices are uploading (or uploaded) into this device's shares.
+    pub fn list_incoming(&self) -> Vec<IncomingDto> {
+        upload::incoming_list(&self.inner)
+    }
+
+    pub fn remove_incoming(&self, id: &str) {
+        upload::remove_incoming(&self.inner, id)
+    }
+
+    pub fn clear_incoming(&self) {
+        upload::clear_incoming(&self.inner)
+    }
+
+    /// Creates a folder in a share on another device (a free name if taken).
+    /// Returns the name it got.
+    pub async fn remote_mkdir(&self, peer_id: &str, share_id: &str, path: Vec<String>) -> Result<String> {
+        let id: EndpointId = peer_id.parse().map_err(|_| anyhow!("invalid device id"))?;
+        proto::validate_components(&path).map_err(|_| anyhow!("invalid path"))?;
+        if path.is_empty() {
+            bail!("Enter a folder name.");
+        }
+        let conn = get_conn(&self.inner, id).await.map_err(je)?;
+        match request(&conn, &Request::Mkdir { share: share_id.into(), path, unique: true }).await.map_err(je)? {
+            Response::Created { name, .. } => Ok(name),
+            _ => bail!("Unexpected reply from the owner."),
+        }
+    }
+
+    /// Deletes a file or folder this device uploaded into another device's share.
+    pub async fn remote_delete(&self, peer_id: &str, share_id: &str, path: Vec<String>) -> Result<()> {
+        let id: EndpointId = peer_id.parse().map_err(|_| anyhow!("invalid device id"))?;
+        proto::validate_components(&path).map_err(|_| anyhow!("invalid path"))?;
+        if path.is_empty() {
+            bail!("Choose a file or folder.");
+        }
+        let conn = get_conn(&self.inner, id).await.map_err(je)?;
+        match request(&conn, &Request::Delete { share: share_id.into(), path }).await {
+            Ok(_) => Ok(()),
+            // Not-found from the owner reads as "file missing" for downloads; say it plainly here.
+            Err(JobError::Missing(_)) => bail!("It's no longer there."),
+            Err(e) => Err(je(e)),
         }
     }
 
@@ -784,63 +957,7 @@ impl Core {
             bail!("Nothing to download.");
         }
 
-        let chunk_size = settings.chunk_size_mib as u64 * 1024 * 1024;
-        let mut used: HashSet<PathBuf> = self
-            .inner
-            .db
-            .list_jobs()?
-            .into_iter()
-            .filter(|j| !matches!(j.status, JobStatus::Completed | JobStatus::Canceled))
-            .map(|j| PathBuf::from(j.dest_path))
-            .collect();
-        let mut ids = Vec::new();
-        let mut total = 0u64;
-        let now = now_ms();
-        for (remote, rel, size, mtime_ms) in files {
-            let mut dest = util::unique_path(&dest_root.join(&rel));
-            let mut n = 1;
-            while used.contains(&dest) {
-                let stem = rel.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
-                let ext = rel.extension().map(|e| format!(".{}", e.to_string_lossy())).unwrap_or_default();
-                dest = util::unique_path(&dest_root.join(&rel).with_file_name(format!("{stem} ({n}){ext}")));
-                n += 1;
-            }
-            used.insert(dest.clone());
-            let temp = PathBuf::from(format!("{}.rlpart", dest.to_string_lossy()));
-            let row = JobRow {
-                id: random_id(),
-                peer_id: peer_id.to_string(),
-                share_id: share_id.to_string(),
-                display_name: remote.last().cloned().unwrap_or_default(),
-                remote_path: remote,
-                size,
-                mtime_ms,
-                chunk_size,
-                total_chunks: size.div_ceil(chunk_size),
-                dest_path: dest.to_string_lossy().to_string(),
-                temp_path: temp.to_string_lossy().to_string(),
-                verified_bytes: 0,
-                status: JobStatus::Queued,
-                error: None,
-                created_at: now,
-                updated_at: now,
-                completed_at: None,
-                stats: Default::default(),
-            };
-            self.inner.db.insert_job(&row)?;
-            total += size;
-            ids.push(row.id.clone());
-        }
-        let peer_name = self.inner.db.get_remote(peer_id)?.map(|r| r.name).unwrap_or_default();
-        self.inner.log(
-            "info",
-            &format!("Queued {} file(s), {} from {peer_name}", ids.len(), util::human_bytes(total)),
-            None,
-        );
-        for id in &ids {
-            spawn_job(&self.inner, id);
-        }
-        Ok(ids)
+        queue_files(&self.inner, peer_id, share_id, files, &dest_root)
     }
 
     pub fn list_jobs(&self) -> Result<Vec<JobSnapshot>> {
@@ -1058,6 +1175,7 @@ impl Core {
             tokio::time::sleep(Duration::from_millis(25)).await;
         }
         sender::flush_send_diags(&self.inner, None, "shutdown");
+        notice::flush(&self.inner, true);
         let codes: Vec<_> = self.inner.short_codes.lock().drain().map(|(_, c)| c).collect();
         for c in codes {
             let _ = tokio::time::timeout(Duration::from_secs(2), c.endpoint.close()).await;
@@ -1152,6 +1270,14 @@ fn inv_dto(i: &InvitationRow, now: i64, code: Option<String>) -> InvitationDto {
     }
 }
 
+fn permission_text(p: &str) -> &'static str {
+    match normalize_permission(p) {
+        "upload" => "upload only",
+        "both" => "download and upload",
+        _ => "download only",
+    }
+}
+
 /// Removes the `\\?\` prefix Windows canonicalization adds, for display and storage.
 fn strip_verbatim(p: &Path) -> String {
     let s = p.to_string_lossy().to_string();
@@ -1162,6 +1288,73 @@ fn strip_verbatim(p: &Path) -> String {
     } else {
         s
     }
+}
+
+/// Creates download jobs for remote files: (remote path, local path below `dest_root`, size, mtime).
+/// Never overwrites: a taken name gets " (n)".
+pub(crate) fn queue_files(
+    inner: &Arc<Inner>,
+    peer_id: &str,
+    share_id: &str,
+    files: Vec<(Vec<String>, PathBuf, u64, i64)>,
+    dest_root: &Path,
+) -> Result<Vec<String>> {
+    let chunk_size = inner.settings().chunk_size_mib as u64 * 1024 * 1024;
+    let mut used: HashSet<PathBuf> = inner
+        .db
+        .list_jobs()?
+        .into_iter()
+        .filter(|j| !matches!(j.status, JobStatus::Completed | JobStatus::Canceled))
+        .map(|j| PathBuf::from(j.dest_path))
+        .collect();
+    let mut ids = Vec::new();
+    let mut total = 0u64;
+    let now = now_ms();
+    for (remote, rel, size, mtime_ms) in files {
+        let mut dest = util::unique_path(&dest_root.join(&rel));
+        let mut n = 1;
+        while used.contains(&dest) {
+            let stem = rel.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
+            let ext = rel.extension().map(|e| format!(".{}", e.to_string_lossy())).unwrap_or_default();
+            dest = util::unique_path(&dest_root.join(&rel).with_file_name(format!("{stem} ({n}){ext}")));
+            n += 1;
+        }
+        used.insert(dest.clone());
+        let temp = PathBuf::from(format!("{}.rlpart", dest.to_string_lossy()));
+        let row = JobRow {
+            id: random_id(),
+            peer_id: peer_id.to_string(),
+            share_id: share_id.to_string(),
+            display_name: remote.last().cloned().unwrap_or_default(),
+            remote_path: remote,
+            size,
+            mtime_ms,
+            chunk_size,
+            total_chunks: size.div_ceil(chunk_size),
+            dest_path: dest.to_string_lossy().to_string(),
+            temp_path: temp.to_string_lossy().to_string(),
+            verified_bytes: 0,
+            status: JobStatus::Queued,
+            error: None,
+            created_at: now,
+            updated_at: now,
+            completed_at: None,
+            stats: Default::default(),
+        };
+        inner.db.insert_job(&row)?;
+        total += size;
+        ids.push(row.id.clone());
+    }
+    let peer_name = inner.db.get_remote(peer_id)?.map(|r| r.name).unwrap_or_default();
+    inner.log(
+        "info",
+        &format!("Queued {} file(s), {} from {peer_name}", ids.len(), util::human_bytes(total)),
+        None,
+    );
+    for id in &ids {
+        spawn_job(inner, id);
+    }
+    Ok(ids)
 }
 
 /// Snapshot of outgoing files, newest activity first.
@@ -1252,8 +1445,17 @@ async fn network_watch(inner: Arc<Inner>) {
         let st = network_status(&inner);
         let key = (st.online, st.relay_url.clone(), st.direct_addrs);
         if last.as_ref() != Some(&key) {
+            let changed = last.is_some();
+            let online = st.online;
             last = Some(key);
             inner.emit(CoreEvent::Network(st));
+            // Back online, or on a different network: everything waiting to
+            // retry tries again now, and folder syncs check for new files.
+            if changed && online {
+                inner.log("info", "Network is back: resuming waiting transfers", None);
+                inner.net_wake.notify_waiters();
+                sync::kick(&inner);
+            }
         }
         tokio::select! {
             _ = tokio::time::sleep(Duration::from_secs(3)) => {}
@@ -1267,6 +1469,8 @@ async fn ticker(inner: Arc<Inner>) {
     let mut tick: u64 = 0;
     let mut had_uploads = false;
     let mut had_outgoing = false;
+    let mut had_pushes = false;
+    let mut had_incoming = false;
     loop {
         tokio::select! {
             _ = tokio::time::sleep(Duration::from_millis(500)) => {}
@@ -1283,6 +1487,20 @@ async fn ticker(inner: Arc<Inner>) {
             }
         }
         if tick % 2 == 0 {
+            // Uploads into others' shares.
+            let pushing = push::tick(&inner);
+            if pushing || had_pushes {
+                had_pushes = pushing;
+                push::emit_list(&inner);
+            }
+            // Owner notices for downloads and uploads by other devices.
+            notice::flush(&inner, false);
+            // Uploads into this device's shares.
+            let arriving = upload::incoming_tick(&inner);
+            if arriving || had_incoming {
+                had_incoming = arriving;
+                upload::emit_incoming(&inner);
+            }
             // Sender diagnostics: close out files idle for 15 s.
             sender::flush_send_diags(&inner, Some(Duration::from_secs(15)), "idle");
             if tick % 10 == 0 {

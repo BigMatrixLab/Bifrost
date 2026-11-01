@@ -475,10 +475,7 @@ async fn get_conn_traced(inner: &Arc<Inner>, peer: EndpointId, d: Option<&diag::
     finish(attempt, true, None);
     let peer_s = peer.to_string();
     let _ = inner.db.upsert_remote(&peer_s, &hello.sender_name, None);
-    let _ = inner.db.set_remote_shares(
-        &peer_s,
-        &hello.shares.iter().map(|s| (s.id.clone(), s.name.clone())).collect::<Vec<_>>(),
-    );
+    let _ = inner.db.set_remote_shares(&peer_s, &wire_shares(&hello.shares));
     inner.emit(CoreEvent::RemotesChanged);
     install_conn(inner, &pc, &conn);
     *guard = Some(conn.clone());
@@ -500,6 +497,18 @@ pub async fn drop_conn(inner: &Arc<Inner>, peer: EndpointId) {
     if let Some(c) = taken {
         c.close(VarInt::from_u32(0), b"reset");
     }
+}
+
+/// Shares from a Hello as (id, name, permission); a missing permission
+/// (older owner) means download only.
+pub fn wire_shares(shares: &[WireShare]) -> Vec<(String, String, String)> {
+    shares
+        .iter()
+        .map(|s| {
+            let perm = crate::types::normalize_permission(s.perm.as_deref().unwrap_or("download")).to_string();
+            (s.id.clone(), s.name.clone(), perm)
+        })
+        .collect()
 }
 
 /// Sends a Hello and waits for a final answer (approval may take a while).
@@ -778,7 +787,8 @@ pub fn spawn_job(inner: &Arc<Inner>, job_id: &str) {
     jobs.insert(job_id.to_string(), h.clone());
     drop(jobs);
     let inner = inner.clone();
-    tokio::spawn(async move {
+    let rt = inner.rt.clone();
+    rt.spawn(async move {
         let sampler = if inner.diag.enabled { Some(tokio::spawn(sample_loop(inner.clone(), h.clone()))) } else { None };
         let resumed_from = h.verified.load(Ordering::Relaxed);
         run_job(&inner, &h).await;
@@ -935,10 +945,12 @@ fn finish_diag(inner: &Arc<Inner>, h: &Arc<JobHandle>, resumed_from: u64) {
 }
 
 /// Sleeps between attempts; the time counts as `backoff_wait` in diagnostics.
-async fn sleep_or_stop(h: &JobHandle, d: Duration) -> bool {
+/// Ends early when the network comes back (`Inner::net_wake`).
+async fn sleep_or_stop(inner: &Inner, h: &JobHandle, d: Duration) -> bool {
     let t = Instant::now();
     let stopped = tokio::select! {
         _ = tokio::time::sleep(d) => false,
+        _ = inner.net_wake.notified() => false,
         _ = h.cancel.cancelled() => true,
     };
     h.diag.stages.backoff_wait.record(t.elapsed());
@@ -992,7 +1004,7 @@ async fn run_job(inner: &Arc<Inner>, h: &Arc<JobHandle>) {
                     inner.log("warning", &format!("Waiting for sender: {}", h.row.lock().display_name), Some(&h.id));
                 }
                 drop(_slot);
-                if sleep_or_stop(h, backoff(attempt)).await {
+                if sleep_or_stop(inner, h, backoff(attempt)).await {
                     return;
                 }
                 attempt = attempt.saturating_add(1);
@@ -1057,7 +1069,7 @@ async fn run_job(inner: &Arc<Inner>, h: &Arc<JobHandle>) {
                 if !pc.route.borrow().is_direct() {
                     h.diag.error(diag::ErrCat::RelayPathActive);
                     drop(_slot);
-                    if sleep_or_stop(h, Duration::from_secs(5)).await {
+                    if sleep_or_stop(inner, h, Duration::from_secs(5)).await {
                         return;
                     }
                     continue;
@@ -1105,7 +1117,7 @@ async fn run_job(inner: &Arc<Inner>, h: &Arc<JobHandle>) {
                 info!("job {} interrupted: {e}", h.id);
                 set_status(inner, h, JobStatus::Reconnecting, Some(format!("Connection interrupted. Your progress is safe. {e}")));
                 drop(_slot);
-                if sleep_or_stop(h, backoff(attempt)).await {
+                if sleep_or_stop(inner, h, backoff(attempt)).await {
                     return;
                 }
                 attempt = attempt.saturating_add(1);
@@ -1120,7 +1132,7 @@ async fn run_job(inner: &Arc<Inner>, h: &Arc<JobHandle>) {
                 }
                 set_status(inner, h, JobStatus::WaitingPeer, Some(m));
                 drop(_slot);
-                if sleep_or_stop(h, Duration::from_secs(5)).await {
+                if sleep_or_stop(inner, h, Duration::from_secs(5)).await {
                     return;
                 }
             }
@@ -1130,7 +1142,7 @@ async fn run_job(inner: &Arc<Inner>, h: &Arc<JobHandle>) {
                     "The connection switched to a relay. Waiting for a direct path (direct-only mode).".into(),
                 ));
                 drop(_slot);
-                if sleep_or_stop(h, Duration::from_secs(5)).await {
+                if sleep_or_stop(inner, h, Duration::from_secs(5)).await {
                     return;
                 }
             }

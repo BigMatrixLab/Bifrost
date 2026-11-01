@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 use relayless_core::{
-    AccessRequest, ActivityDto, Core, CoreEvent, CoreOptions, CreatedInvitation, DownloadItem, GrantDto, HistoryDto, OutgoingDto,
-    JobSnapshot, JoinResult, ListResult, NetworkStatus, PeerStatus, RemoteDto, Settings, ShareDto,
+    AccessRequest, ActivityDto, Core, CoreEvent, CoreOptions, CreatedInvitation, DownloadItem, GrantDto, HistoryDto, IncomingDto, OutgoingDto,
+    JobSnapshot, JoinResult, ListResult, NetworkStatus, PeerStatus, PushDto, RemoteDto, Settings, ShareDto, SyncDto,
 };
 use serde::Serialize;
 #[cfg(desktop)]
@@ -128,8 +128,100 @@ fn list_shares(s: State<AppState>) -> CmdResult<Vec<ShareDto>> {
 }
 
 #[tauri::command]
-fn create_share(s: State<AppState>, path: String, name: Option<String>) -> CmdResult<ShareDto> {
-    s.core.create_share(&path, name).map_err(err)
+fn create_share(s: State<AppState>, path: String, name: Option<String>, permission: Option<String>) -> CmdResult<ShareDto> {
+    s.core.create_share_with(&path, name, permission).map_err(err)
+}
+
+#[tauri::command]
+fn set_share_permission(s: State<AppState>, id: String, permission: String) -> CmdResult<ShareDto> {
+    s.core.set_share_permission(&id, &permission).map_err(err)
+}
+
+#[tauri::command]
+async fn start_upload(
+    s: State<'_, AppState>,
+    peer_id: String,
+    share_id: String,
+    dir: Vec<String>,
+    paths: Vec<String>,
+) -> CmdResult<Vec<String>> {
+    s.core.start_upload(&peer_id, &share_id, dir, paths).await.map_err(err)
+}
+
+#[tauri::command]
+fn list_pushes(s: State<AppState>) -> Vec<PushDto> {
+    s.core.list_pushes()
+}
+
+#[tauri::command]
+async fn cancel_push(s: State<'_, AppState>, id: String) -> CmdResult<()> {
+    s.core.cancel_push(&id).map_err(err)
+}
+
+#[tauri::command]
+async fn retry_push(s: State<'_, AppState>, id: String) -> CmdResult<()> {
+    s.core.retry_push(&id).map_err(err)
+}
+
+#[tauri::command]
+async fn remove_push(s: State<'_, AppState>, id: String) -> CmdResult<()> {
+    s.core.remove_push(&id).map_err(err)
+}
+
+#[tauri::command]
+fn clear_pushes(s: State<AppState>) {
+    s.core.clear_pushes()
+}
+
+#[tauri::command]
+fn list_syncs(s: State<AppState>) -> Vec<SyncDto> {
+    s.core.list_syncs()
+}
+
+#[tauri::command]
+async fn enable_sync(
+    s: State<'_, AppState>,
+    peer_id: String,
+    share_id: String,
+    dest_dir: Option<String>,
+    include_existing: bool,
+) -> CmdResult<SyncDto> {
+    s.core.enable_sync(&peer_id, &share_id, dest_dir, include_existing).map_err(err)
+}
+
+#[tauri::command]
+fn disable_sync(s: State<AppState>, peer_id: String, share_id: String) -> CmdResult<()> {
+    s.core.disable_sync(&peer_id, &share_id).map_err(err)
+}
+
+#[tauri::command]
+fn sync_now(s: State<AppState>) {
+    s.core.sync_now()
+}
+
+#[tauri::command]
+fn list_incoming(s: State<AppState>) -> Vec<IncomingDto> {
+    s.core.list_incoming()
+}
+
+#[tauri::command]
+fn remove_incoming(s: State<AppState>, id: String) {
+    s.core.remove_incoming(&id)
+}
+
+#[tauri::command]
+fn clear_incoming(s: State<AppState>) {
+    s.core.clear_incoming()
+}
+
+#[tauri::command]
+async fn remote_mkdir(s: State<'_, AppState>, peer_id: String, share_id: String, path: Vec<String>) -> CmdResult<String> {
+    s.core.remote_mkdir(&peer_id, &share_id, path).await.map_err(err)
+}
+
+#[tauri::command]
+async fn remote_delete(s: State<'_, AppState>, peer_id: String, share_id: String, path: Vec<String>) -> CmdResult<()> {
+    s.core.remote_delete(&peer_id, &share_id, path).await.map_err(err)
 }
 
 #[tauri::command]
@@ -335,7 +427,16 @@ struct LocalDir {
     path: String,
     parent: Option<String>,
     dirs: Vec<String>,
+    /// Files with their sizes, for picking files to upload.
+    files: Vec<LocalFile>,
     root: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct LocalFile {
+    name: String,
+    size: u64,
 }
 
 /// Root for the in-app folder picker (Android has no native folder picker that
@@ -362,18 +463,27 @@ fn list_local_dir(path: Option<String>) -> CmdResult<LocalDir> {
             format!("Can't open {}: {e}", dir.display())
         }
     })?;
-    let mut dirs: Vec<String> = rd
-        .flatten()
-        .filter(|e| e.file_type().map(|t| t.is_dir()).unwrap_or(false))
-        .map(|e| e.file_name().to_string_lossy().to_string())
-        .filter(|n| !n.starts_with('.'))
-        .collect();
+    let mut dirs: Vec<String> = Vec::new();
+    let mut files: Vec<LocalFile> = Vec::new();
+    for e in rd.flatten() {
+        let name = e.file_name().to_string_lossy().to_string();
+        if name.starts_with('.') {
+            continue;
+        }
+        match e.file_type() {
+            Ok(t) if t.is_dir() => dirs.push(name),
+            Ok(t) if t.is_file() => files.push(LocalFile { name, size: e.metadata().map(|m| m.len()).unwrap_or(0) }),
+            _ => {}
+        }
+    }
     dirs.sort_by_key(|a| a.to_lowercase());
+    files.sort_by_key(|f| f.name.to_lowercase());
     let parent = if dir == root { None } else { dir.parent().map(|p| p.to_string_lossy().to_string()) };
     Ok(LocalDir {
         path: dir.to_string_lossy().to_string(),
         parent,
         dirs,
+        files,
         root: root.to_string_lossy().to_string(),
     })
 }
@@ -415,12 +525,22 @@ fn spawn_service_controller(app: AppHandle, core: Core) {
         let mut rx = core.subscribe();
         let mut tick = tokio::time::interval(Duration::from_secs(2));
         let mut uploads: Vec<UploadDto> = Vec::new();
+        // Files this phone is uploading into others' shares.
+        let mut pushing: usize = 0;
+        // Files others are uploading into this phone's shares.
+        let mut arriving: usize = 0;
         let mut shown: Option<(String, String)> = None;
         let mut last_active = Instant::now() - Duration::from_secs(3600);
         loop {
             tokio::select! {
                 ev = rx.recv() => match ev {
                     Ok(CoreEvent::Uploads(u)) => uploads = u,
+                    Ok(CoreEvent::Pushes(p)) => {
+                        pushing = p.iter().filter(|x| matches!(x.status.as_str(), "queued" | "uploading" | "retrying")).count();
+                    }
+                    Ok(CoreEvent::Incoming(i)) => {
+                        arriving = i.iter().filter(|x| x.status == "receiving").count();
+                    }
                     Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
                     _ => {}
                 },
@@ -429,9 +549,11 @@ fn spawn_service_controller(app: AppHandle, core: Core) {
                     let active: Vec<&JobSnapshot> = jobs.iter().filter(|j| j.status.auto_runs()).collect();
                     let down: f64 = active.iter().map(|j| j.speed_bps).sum();
                     let up: f64 = uploads.iter().map(|u| u.bps).sum();
-                    let want = if !active.is_empty() || !uploads.is_empty() {
+                    let want = if !active.is_empty() || !uploads.is_empty() || pushing > 0 || arriving > 0 {
                         last_active = Instant::now();
                         let title = match (active.len(), uploads.len()) {
+                            (0, 0) if pushing == 0 => format!("Receiving {arriving} upload{}", if arriving == 1 { "" } else { "s" }),
+                            (0, 0) => format!("Uploading {pushing} file{}", if pushing == 1 { "" } else { "s" }),
                             (0, _) => format!("Sending to {}", uploads[0].device_name),
                             (1, 0) => format!("Receiving {}", active[0].display_name),
                             (n, 0) => format!("Receiving {n} files"),
@@ -578,6 +700,22 @@ pub fn run() {
                 }
                 tray.build(app)?;
 
+                // Start with Windows by default, once: after that the user's
+                // choice in Settings sticks.
+                {
+                    use tauri_plugin_autostart::ManagerExt;
+                    let state = app.state::<AppState>();
+                    let mut s = state.core.settings();
+                    if !s.autostart_v1 {
+                        match app.autolaunch().enable() {
+                            Ok(()) => tracing::info!("enabled start at sign-in"),
+                            Err(e) => tracing::warn!("couldn't enable start at sign-in: {e}"),
+                        }
+                        s.autostart_v1 = true;
+                        let _ = state.core.update_settings(s);
+                    }
+                }
+
                 if !std::env::args().any(|a| a == "--minimized") {
                     show_main(app.handle());
                 }
@@ -590,6 +728,22 @@ pub fn run() {
             update_settings,
             list_shares,
             create_share,
+            set_share_permission,
+            start_upload,
+            list_pushes,
+            cancel_push,
+            retry_push,
+            remove_push,
+            clear_pushes,
+            list_syncs,
+            enable_sync,
+            disable_sync,
+            sync_now,
+            list_incoming,
+            remove_incoming,
+            clear_incoming,
+            remote_mkdir,
+            remote_delete,
             set_share_active,
             delete_share,
             create_invitation,

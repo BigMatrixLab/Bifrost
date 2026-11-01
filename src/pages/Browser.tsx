@@ -16,14 +16,18 @@ import {
   Folder,
   FolderOpen,
   HardDrive,
+  FolderPlus,
+  FolderUp,
   RefreshCw,
   Search,
+  Trash2,
+  Upload,
 } from "lucide-react";
-import { api, errorText, type RemoteEntry } from "../api";
+import { api, canDownload, canUpload, errorText, type RemoteEntry, type SharePermission } from "../api";
 import { bytes, dateTime } from "../format";
 import { useStore } from "../store";
 import { Button, Empty, IconButton, Modal, usePhone } from "../ui";
-import { isAndroid } from "../platform";
+import { isAndroid, pickFiles } from "../platform";
 import { useSlide } from "../slide";
 
 const ROW_DESK = 38;
@@ -57,7 +61,14 @@ function fileIcon(e: RemoteEntry) {
 type SortKey = "name" | "size" | "modified";
 
 export default function Browser() {
-  const { browse, settings, toast, setPage } = useStore();
+  const { browse, settings, toast, setPage, remotes, pushes } = useStore();
+  const known = remotes.find((r) => r.peerId === browse?.peerId)?.shares.find((s) => s.id === browse?.shareId)?.permission;
+  const [perm, setPerm] = useState<SharePermission>(known ?? "download");
+  const mayDownload = canDownload(perm);
+  const mayUpload = canUpload(perm);
+  const [newFolder, setNewFolder] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<RemoteEntry[] | null>(null);
+  const [working, setWorking] = useState(false);
   const [path, setPath] = useState<string[]>([]);
   const [entries, setEntries] = useState<RemoteEntry[]>([]);
   const [total, setTotal] = useState(0);
@@ -86,6 +97,7 @@ export default function Browser() {
       try {
         const r = await api.listRemoteDir(browse.peerId, browse.shareId, p, offset, PAGE);
         if (id !== reqId.current) return;
+        if (r.permission) setPerm(r.permission);
         setTotal(r.total);
         setEntries((prev) => (offset === 0 ? r.entries : [...prev, ...r.entries]));
       } catch (e) {
@@ -101,8 +113,25 @@ export default function Browser() {
     setPath([]);
     setSelected(new Set());
     setEntries([]);
+    if (known) setPerm(known);
     load([], 0);
+    // `known` only seeds the permission; the listing reports the current one.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [browse, load]);
+
+  // Show files as they finish uploading into this folder.
+  const finished = pushes.filter((p) => p.peerId === browse?.peerId && p.shareId === browse?.shareId && p.status === "completed").length;
+  const seenFinished = useRef(finished);
+  const pathRef = useRef(path);
+  pathRef.current = path;
+  useEffect(() => {
+    if (finished > seenFinished.current) {
+      const t = window.setTimeout(() => load(pathRef.current, 0), 400);
+      seenFinished.current = finished;
+      return () => window.clearTimeout(t);
+    }
+    seenFinished.current = finished;
+  }, [finished, load]);
 
   useEffect(() => {
     const el = body.current;
@@ -186,6 +215,58 @@ export default function Browser() {
     }
   };
 
+  const startUpload = async (paths: string[]) => {
+    if (paths.length === 0) return;
+    try {
+      const ids = await api.startUpload(browse.peerId, browse.shareId, path, paths);
+      toast(ids.length ? `Uploading ${ids.length} file(s) to ${browse.peerName}. Track them in Transfers.` : "Folder created. It had no files to upload.", "ok");
+      if (ids.length === 0) load(path, 0);
+    } catch (e) {
+      toast(errorText(e), "err");
+    }
+  };
+  const uploadFiles = async () => startUpload(await pickFiles(`Upload to “${path.length ? path[path.length - 1] : browse.shareName}”`));
+  const uploadFolder = async () => {
+    const p = await pickFolder("Choose a folder to upload");
+    if (p) startUpload([p]);
+  };
+  const makeFolder = async () => {
+    const name = (newFolder ?? "").trim();
+    if (!name) return;
+    setWorking(true);
+    try {
+      const made = await api.remoteMkdir(browse.peerId, browse.shareId, [...path, name]);
+      setNewFolder(null);
+      toast(`Created “${made}”`, "ok");
+      load(path, 0);
+    } catch (e) {
+      toast(errorText(e), "err");
+    } finally {
+      setWorking(false);
+    }
+  };
+  const deleteItems = async (items: RemoteEntry[]) => {
+    setWorking(true);
+    const deleted: string[] = [];
+    try {
+      for (const e of items) {
+        try {
+          await api.remoteDelete(browse.peerId, browse.shareId, [...path, e.name]);
+          deleted.push(e.name);
+        } catch (err) {
+          toast(`${e.name}: ${errorText(err)}`, "err");
+        }
+      }
+      if (deleted.length > 0) toast(deleted.length === 1 ? `Deleted “${deleted[0]}”` : `Deleted ${deleted.length} items`, "ok");
+    } finally {
+      setWorking(false);
+      setConfirmDelete(null);
+      setSelected(new Set());
+      load(path, 0);
+    }
+  };
+  const selMine = sel.length > 0 && sel.every((e) => e.mine);
+
   return (
     <div className="page" style={{ gap: 14 }}>
       {phone ? (
@@ -201,6 +282,19 @@ export default function Browser() {
                 {path.length > 0 ? ` · ${[browse.shareName, ...path.slice(0, -1)].join(" › ")}` : ""}
               </span>
             </div>
+            {mayUpload && (
+              <>
+                <IconButton label="New folder" onClick={() => setNewFolder("")}>
+                  <FolderPlus size={17} />
+                </IconButton>
+                <IconButton label="Upload folder" onClick={uploadFolder}>
+                  <FolderUp size={17} />
+                </IconButton>
+                <IconButton label="Upload files" onClick={uploadFiles}>
+                  <Upload size={17} />
+                </IconButton>
+              </>
+            )}
             <IconButton label="Refresh" onClick={() => go(path)}>
               <RefreshCw size={17} className={loading ? "spin" : ""} />
             </IconButton>
@@ -234,7 +328,26 @@ export default function Browser() {
         <IconButton label="Refresh" onClick={() => go(path)}>
           <RefreshCw size={15} className={loading ? "spin" : ""} />
         </IconButton>
+        {mayUpload && (
+          <>
+            <IconButton label="New folder" onClick={() => setNewFolder("")}>
+              <FolderPlus size={16} />
+            </IconButton>
+            <Button size="sm" icon={<FolderUp size={14} />} onClick={uploadFolder}>Upload folder</Button>
+            <Button size="sm" variant="primary" icon={<Upload size={14} />} onClick={uploadFiles}>Upload files</Button>
+          </>
+        )}
       </div>
+      )}
+
+      {perm === "upload" && (
+        <div className="notice">
+          <Upload size={16} />
+          <span>
+            You can add files to <b>{browse.shareName}</b>. {browse.peerName} keeps the rest of the folder private, so you only see what you
+            uploaded, and you can delete it again.
+          </span>
+        </div>
       )}
 
       {error ? (
@@ -244,7 +357,7 @@ export default function Browser() {
           <Button size="sm" onClick={() => go(path)}>Try again</Button>
         </div>
       ) : (
-        <div className="table" role="grid" aria-rowcount={shown.length}>
+        <div className={`table ${mayUpload && mayDownload ? "acts2" : ""}`} role="grid" aria-rowcount={shown.length}>
           {phone ? (
             <div className="m-thead">
               <label className="hstack" style={{ gap: 10 }}>
@@ -295,6 +408,7 @@ export default function Browser() {
                       <span className="faint small">
                         {e.isDir ? "Folder" : bytes(e.size)}
                         {e.modifiedMs ? ` · ${shortDate(e.modifiedMs)}` : ""}
+                        {e.mine ? " · Uploaded by you" : ""}
                       </span>
                     </span>
                     <button
@@ -332,26 +446,39 @@ export default function Browser() {
                     ) : (
                       <span className="truncate selectable" title={e.name}>{e.name}</span>
                     )}
+                    {e.mine && <span className="perm-tag up" title="You uploaded this, so you can delete it">Yours</span>}
                   </span>
                   <span className="cell-r">{e.isDir ? "Folder" : bytes(e.size)}</span>
                   <span className="cell-r">{e.modifiedMs ? dateTime(e.modifiedMs) : "–"}</span>
-                  <span>
-                    <IconButton
-                      label={`Download ${e.name}`}
-                      onClick={() => {
-                        setSelected(new Set([e.name]));
-                        setDest(settings?.downloadDir ?? "");
-                        setConfirm(true);
-                      }}
-                    >
-                      <Download size={15} />
-                    </IconButton>
+                  <span className="row-acts">
+                    {mayUpload && e.mine && (
+                      <IconButton label={`Delete ${e.name}`} onClick={() => setConfirmDelete([e])}>
+                        <Trash2 size={15} />
+                      </IconButton>
+                    )}
+                    {mayDownload && (
+                      <IconButton
+                        label={`Download ${e.name}`}
+                        onClick={() => {
+                          setSelected(new Set([e.name]));
+                          setDest(settings?.downloadDir ?? "");
+                          setConfirm(true);
+                        }}
+                      >
+                        <Download size={15} />
+                      </IconButton>
+                    )}
                   </span>
                 </div>
               );
             })}
             {!loading && shown.length === 0 && (
-              <Empty icon={<FolderOpen size={20} />} title={filter ? "No matches" : "This folder is empty"} />
+              <Empty
+                icon={<FolderOpen size={20} />}
+                title={filter ? "No matches" : perm === "upload" ? "Nothing you uploaded is here" : "This folder is empty"}
+              >
+                {!filter && mayUpload && "Use Upload files or Upload folder to add something."}
+              </Empty>
             )}
           </div>
         </div>
@@ -363,12 +490,71 @@ export default function Browser() {
             <b>{sel.length}</b> selected{selFiles.length > 0 && <span className="muted"> · {bytes(selBytes)}{sel.length > selFiles.length ? " + folders" : ""}</span>}
           </span>
           <Button variant="ghost" onClick={() => setSelected(new Set())}>Clear</Button>
-          <Button variant="primary" icon={<Download size={15} />} onClick={() => { setDest(settings?.downloadDir ?? ""); setConfirm(true); }}>
-            {phone ? "Download" : "Download selected"}
-          </Button>
+          {mayUpload && selMine && (
+            <Button variant="danger" icon={<Trash2 size={15} />} onClick={() => setConfirmDelete(sel)}>
+              Delete
+            </Button>
+          )}
+          {mayDownload && (
+            <Button variant="primary" icon={<Download size={15} />} onClick={() => { setDest(settings?.downloadDir ?? ""); setConfirm(true); }}>
+              {phone ? "Download" : "Download selected"}
+            </Button>
+          )}
         </div>
       )}
       {total > entries.length && <span className="hint">Showing {entries.length} of {total} items. Scroll to load more.</span>}
+
+      {newFolder !== null && (
+        <Modal
+          title="New folder"
+          onClose={() => setNewFolder(null)}
+          footer={
+            <>
+              <Button variant="ghost" onClick={() => setNewFolder(null)}>Cancel</Button>
+              <Button variant="primary" loading={working} disabled={!newFolder.trim()} icon={<FolderPlus size={15} />} onClick={makeFolder}>
+                Create
+              </Button>
+            </>
+          }
+        >
+          <div className="field">
+            <span className="label">Name</span>
+            <input
+              className="input"
+              autoFocus
+              maxLength={200}
+              placeholder="Folder name"
+              value={newFolder}
+              onChange={(e) => setNewFolder(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && makeFolder()}
+            />
+            <span className="hint">Created in {[browse.shareName, ...path].join(" › ")} on {browse.peerName}. You can delete it again later.</span>
+          </div>
+        </Modal>
+      )}
+
+      {confirmDelete && (
+        <Modal
+          title={confirmDelete.length === 1 ? `Delete “${confirmDelete[0].name}”?` : `Delete ${confirmDelete.length} items?`}
+          onClose={() => !working && setConfirmDelete(null)}
+          footer={
+            <>
+              <Button variant="ghost" disabled={working} onClick={() => setConfirmDelete(null)}>Keep</Button>
+              <Button variant="danger" loading={working} icon={<Trash2 size={15} />} onClick={() => deleteItems(confirmDelete)}>
+                Delete from {browse.peerName}
+              </Button>
+            </>
+          }
+        >
+          <span>
+            {confirmDelete.some((e) => e.isDir)
+              ? "Folders are deleted with everything in them. "
+              : ""}
+            This removes {confirmDelete.length === 1 ? "it" : "them"} from {browse.peerName}'s computer and can't be undone. You can only delete what you
+            uploaded; a folder that someone else added files to stays.
+          </span>
+        </Modal>
+      )}
 
       {confirm && (
         <Modal

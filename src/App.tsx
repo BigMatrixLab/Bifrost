@@ -14,14 +14,18 @@ import {
   Settings as SettingsIcon,
   Sun,
   Upload,
+  X,
   XCircle,
 } from "lucide-react";
 import { useTheme } from "./theme";
 import { AccessRequests, ConnectDialog, Onboarding } from "./dialogs";
 import { FolderPickerHost } from "./android";
-import { isActive, speed } from "./format";
+import { noticeText } from "./api";
+import { ago, bytes, isActive } from "./format";
+import { SpeedMeter } from "./telemetry";
+import { MiniCalendar } from "./minical";
 import { useStore, type Page } from "./store";
-import { Button, Modal, usePhone } from "./ui";
+import { Button, IconButton, Modal, usePhone } from "./ui";
 import { useSlide } from "./slide";
 import Overview from "./pages/Overview";
 import Transfers from "./pages/Transfers";
@@ -88,7 +92,7 @@ export default function App() {
   const jobs = useMemo(() => Object.values(s.jobs), [s.jobs]);
   const activeCount = jobs.filter((j) => isActive(j.status)).length + s.outgoing.filter((o) => o.status === "sending" || o.status === "waiting").length;
   const attention = jobs.filter((j) => j.status === "needs_attention").length;
-  const down = jobs.filter((j) => j.status === "downloading").reduce((a, j) => a + j.speedBps, 0);
+  const latest = s.notices[0];
 
   const nav: { id: Page; label: string; short: string; icon: React.ReactNode; count?: number; hot?: boolean; alert?: boolean }[] = [
     { id: "overview", label: "Overview", short: "Home", icon: <LayoutGrid size={17} /> },
@@ -148,13 +152,43 @@ export default function App() {
             </button>
           )}
         </nav>
+        {!phone && latest && (
+          <div key={latest.id} className="side-notice" role="status" title={noticeText(latest)}>
+            <div className="sn-top">
+              <span className="sn-ico" aria-hidden="true">{latest.kind === "uploaded" ? <Upload size={13} /> : <Download size={13} />}</span>
+              <span className="sn-who truncate">{latest.deviceName}</span>
+              <span className="sn-when">{ago(latest.at)}</span>
+              <IconButton label="Dismiss" className="sn-x" onClick={() => s.dismissNotice(null)}>
+                <X size={12} />
+              </IconButton>
+            </div>
+            <span className="sn-what truncate">
+              {latest.kind === "uploaded" ? "Uploaded " : "Downloaded "}
+              {latest.files === 1 ? latest.firstName : `${latest.files} files`}
+            </span>
+            <span className="sn-where truncate">
+              {latest.kind === "uploaded" ? "to " : "from "}
+              {latest.shareName} · {bytes(latest.bytes)}
+            </span>
+            {s.notices.length > 1 && (
+              <button type="button" className="sn-more" onClick={() => { s.dismissNotice(null); s.setPage("activity"); }}>
+                +{s.notices.length - 1} more in Activity
+              </button>
+            )}
+          </div>
+        )}
+        {!phone && <MiniCalendar />}
         <div className="sidebar-foot">
-          <span className="me-name" title={s.settings?.deviceName}>{s.settings?.deviceName}</span>
-          <span className="me-sub">
-            <span className={`dot ${s.network?.online ? "ok" : "warn"}`} />
-            {s.network?.online ? "Online" : "Connecting to network…"}
-            {down > 0 && <span className="num" style={{ marginLeft: "auto" }}>↓ {speed(down)}</span>}
-          </span>
+          <div className="foot-row">
+            <span className="me">
+              <span className="me-name" title={s.settings?.deviceName}>{s.settings?.deviceName}</span>
+              <span className="me-sub">
+                <span className={`dot ${s.network?.online ? "ok" : "warn"}`} />
+                {s.network?.online ? "Online" : "Connecting to network…"}
+              </span>
+            </span>
+            {!phone && <SpeedMeter />}
+          </div>
         </div>
       </aside>
       <main className={`main page-${s.page}`}>
@@ -211,7 +245,7 @@ export default function App() {
         {s.toasts.map((t) => (
           <div key={t.id} className={`toast ${t.tone}`}>
             {t.tone === "ok" ? <CheckCircle2 size={16} /> : t.tone === "err" ? <XCircle size={16} /> : <Info size={16} />}
-            <span>{t.text}</span>
+            <span className="toast-text" title={t.text}>{t.text}</span>
           </div>
         ))}
       </div>

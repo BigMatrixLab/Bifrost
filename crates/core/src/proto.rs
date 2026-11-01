@@ -76,6 +76,41 @@ pub enum Request {
         peak_bps: f64,
         blocks: u64,
     },
+    /// Upload a file into a share (needs upload permission). `path` is the
+    /// destination including the file name; missing folders are created.
+    /// The owner answers `PutReady { have }` with the bytes it already holds
+    /// from an earlier attempt (a multiple of BLOCK). The client then sends
+    /// the rest as `[block][BLAKE3(block)]` per BLOCK and finishes its side;
+    /// the owner answers `Created { name }` with the final name (renamed
+    /// " (n)" if taken; an upload never replaces an existing file).
+    /// Older owners don't know it and drop the stream.
+    Put {
+        share: String,
+        path: Vec<String>,
+        size: u64,
+        mtime_ms: i64,
+    },
+    /// Forget the partial data of an upload that won't be continued.
+    PutAbort {
+        share: String,
+        path: Vec<String>,
+        size: u64,
+        mtime_ms: i64,
+    },
+    /// Create a folder (needs upload permission). With `unique`, a taken
+    /// name gets " (n)" and the answer names the folder actually created.
+    Mkdir {
+        share: String,
+        path: Vec<String>,
+        #[serde(default)]
+        unique: bool,
+    },
+    /// Delete a file or folder this device uploaded (needs upload
+    /// permission). Folders only if everything inside was uploaded by it.
+    Delete {
+        share: String,
+        path: Vec<String>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
@@ -95,6 +130,10 @@ pub enum HelloStatus {
 pub struct WireShare {
     pub id: String,
     pub name: String,
+    /// "download", "upload" or "both". Older owners leave it out, which
+    /// means download only.
+    #[serde(default)]
+    pub perm: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -111,6 +150,9 @@ pub struct WireEntry {
     pub dir: bool,
     pub size: u64,
     pub mtime_ms: i64,
+    /// Uploaded by the device asking, so it may delete it.
+    #[serde(default)]
+    pub mine: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -140,10 +182,25 @@ pub enum ErrCode {
 #[serde(tag = "r", rename_all = "snake_case")]
 pub enum Response {
     Hello(HelloResp),
-    List { entries: Vec<WireEntry>, total: u64 },
+    List {
+        entries: Vec<WireEntry>,
+        total: u64,
+        /// The asking device's current permission for the share, so it
+        /// notices changes without reconnecting. Absent from older owners.
+        #[serde(default)]
+        perm: Option<String>,
+    },
     Walk { files: Vec<WalkFile>, truncated: bool },
     Stat { size: u64, mtime_ms: i64, dir: bool },
     Chunk { len: u64 },
+    PutReady { have: u64 },
+    Created {
+        name: String,
+        /// For a finished upload: BLAKE3 of the whole saved file, so both
+        /// devices keep the same fingerprint in their history.
+        #[serde(default)]
+        fingerprint: Option<String>,
+    },
     Ack,
     Error { code: ErrCode, message: String },
 }

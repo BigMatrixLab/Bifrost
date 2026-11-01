@@ -149,6 +149,26 @@ pub struct ShareDto {
     pub created_at: i64,
     pub invitations: Vec<InvitationDto>,
     pub device_count: u32,
+    /// What invited devices may do: "download", "upload" or "both".
+    pub permission: String,
+}
+
+/// Normalizes a share permission: "download", "upload" or "both".
+/// Anything else (including a missing value from an older peer) is "download".
+pub fn normalize_permission(p: &str) -> &'static str {
+    match p {
+        "upload" => "upload",
+        "both" => "both",
+        _ => "download",
+    }
+}
+
+pub fn perm_can_download(p: &str) -> bool {
+    matches!(normalize_permission(p), "download" | "both")
+}
+
+pub fn perm_can_upload(p: &str) -> bool {
+    matches!(normalize_permission(p), "upload" | "both")
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -171,6 +191,8 @@ pub struct GrantDto {
 pub struct RemoteShareDto {
     pub id: String,
     pub name: String,
+    /// What the owner lets this device do: "download", "upload" or "both".
+    pub permission: String,
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -203,6 +225,8 @@ pub struct RemoteEntry {
     pub is_dir: bool,
     pub size: u64,
     pub modified_ms: i64,
+    /// Uploaded by this device, so it may delete it.
+    pub mine: bool,
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -211,6 +235,8 @@ pub struct ListResult {
     pub entries: Vec<RemoteEntry>,
     pub total: u64,
     pub offset: u32,
+    /// This device's current permission for the share.
+    pub permission: String,
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -323,6 +349,15 @@ pub struct Settings {
     /// The user's own relay servers (empty = n0's public relays, which are
     /// rate-limited). Applies after restarting Bifrost.
     pub relay_urls: String,
+    /// Permission for newly shared folders: "download", "upload" or "both".
+    pub default_share_permission: String,
+    /// Set once Bifrost turned on "start when I sign in" by itself (desktop),
+    /// so it happens on the first run only and the user's choice sticks.
+    pub autostart_v1: bool,
+    /// Set once closing the window moved to "keep running in the tray" for
+    /// existing installs.
+    #[serde(default)]
+    pub tray_v2: bool,
 }
 
 impl Default for Settings {
@@ -347,6 +382,9 @@ impl Default for Settings {
             route_v2: true,
             congestion_v2: true,
             relay_urls: String::new(),
+            default_share_permission: "download".into(),
+            autostart_v1: false,
+            tray_v2: true,
         }
     }
 }
@@ -368,6 +406,7 @@ impl Settings {
         }
         self.device_name = self.device_name.trim().chars().take(64).collect();
         self.relay_urls = self.relay_urls.trim().chars().take(1000).collect();
+        self.default_share_permission = normalize_permission(&self.default_share_permission).into();
         self
     }
     pub fn direct_only(&self) -> bool {
@@ -421,10 +460,96 @@ pub struct OutgoingDto {
     pub route: String,
 }
 
+/// A file this device is uploading into someone else's shared folder.
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct PushDto {
+    pub id: String,
+    pub peer_id: String,
+    pub peer_name: String,
+    pub share_id: String,
+    pub share_name: String,
+    pub local_path: String,
+    /// Destination inside the share (the owner may rename the last part
+    /// if the name is taken; `saved_as` is the final name).
+    pub remote_path: Vec<String>,
+    pub name: String,
+    pub saved_as: Option<String>,
+    pub size: u64,
+    pub sent_bytes: u64,
+    pub bps: f64,
+    /// "queued", "uploading", "retrying", "completed", "failed" or "canceled"
+    pub status: String,
+    pub error: Option<String>,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+
+/// A remote share this device keeps downloading new files from.
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncDto {
+    pub peer_id: String,
+    pub share_id: String,
+    pub dest_dir: String,
+    pub enabled_at: i64,
+    pub last_sync_at: Option<i64>,
+    pub last_error: Option<String>,
+    /// A check is running right now.
+    pub syncing: bool,
+}
+
+/// Downloads or uploads another device did in this device's shares,
+/// collected over a few seconds into one notice.
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct PeerNotice {
+    pub id: String,
+    /// "downloaded" or "uploaded"
+    pub kind: String,
+    pub peer_id: String,
+    pub device_name: String,
+    pub share_name: String,
+    pub files: u32,
+    /// The first file's name (all of them when there is one).
+    pub first_name: String,
+    pub bytes: u64,
+    pub at: i64,
+}
+
+/// A file another device is uploading into one of this device's shares.
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct IncomingDto {
+    pub id: String,
+    pub peer_id: String,
+    pub device_name: String,
+    pub share_id: String,
+    pub share_name: String,
+    /// Name it was sent with; `saved_as` is the name it got here.
+    pub name: String,
+    pub path: Vec<String>,
+    pub saved_as: Option<String>,
+    pub size: u64,
+    pub received_bytes: u64,
+    pub bps: f64,
+    /// "receiving", "interrupted" (the uploader may continue), "failed" or "completed"
+    pub status: String,
+    pub error: Option<String>,
+    pub started_at: i64,
+    pub updated_at: i64,
+    /// "direct", "relay" or "none"
+    pub route: String,
+}
+
 /// Events pushed to the UI.
 #[derive(Clone, Debug)]
 pub enum CoreEvent {
     Uploads(Vec<UploadDto>),
+    Pushes(Vec<PushDto>),
+    Incoming(Vec<IncomingDto>),
+    SyncsChanged,
+    PeerActivity(PeerNotice),
     Outgoing(Vec<OutgoingDto>),
     JoinStatus { message: String, safety_words: Option<Vec<String>> },
     HistoryChanged,
@@ -446,6 +571,10 @@ impl CoreEvent {
     pub fn name(&self) -> &'static str {
         match self {
             CoreEvent::Uploads(_) => "uploads",
+            CoreEvent::Pushes(_) => "pushes",
+            CoreEvent::Incoming(_) => "incoming",
+            CoreEvent::SyncsChanged => "syncs-changed",
+            CoreEvent::PeerActivity(_) => "peer-activity",
             CoreEvent::Outgoing(_) => "outgoing",
             CoreEvent::JoinStatus { .. } => "join-status",
             CoreEvent::HistoryChanged => "history-changed",
@@ -468,6 +597,10 @@ impl CoreEvent {
         use serde_json::json;
         match self {
             CoreEvent::Uploads(u) => serde_json::to_value(u).unwrap_or_default(),
+            CoreEvent::Pushes(p) => serde_json::to_value(p).unwrap_or_default(),
+            CoreEvent::Incoming(i) => serde_json::to_value(i).unwrap_or_default(),
+            CoreEvent::SyncsChanged => json!({}),
+            CoreEvent::PeerActivity(n) => serde_json::to_value(n).unwrap_or_default(),
             CoreEvent::Outgoing(o) => serde_json::to_value(o).unwrap_or_default(),
             CoreEvent::JoinStatus { message, safety_words } => {
                 json!({ "message": message, "safetyWords": safety_words })

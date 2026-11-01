@@ -1,6 +1,6 @@
 //! Shared state behind the public `Core` handle.
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU32, AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -85,6 +85,31 @@ impl OutgoingFile {
     }
 }
 
+/// A file another device is uploading into one of this device's shares.
+/// Keyed like the upload's temp file, so a resumed upload keeps its row.
+pub struct IncomingFile {
+    pub id: String,
+    pub peer: EndpointId,
+    pub share_id: String,
+    pub path: Vec<String>,
+    pub size: u64,
+    pub received: AtomicU64,
+    /// Streams currently writing it (0 or 1).
+    pub active: AtomicU32,
+    pub started_ms: i64,
+    pub last_ms: AtomicI64,
+    pub state: Mutex<IncomingState>,
+    /// (bytes at the last tick, smoothed bytes/s)
+    pub rate: Mutex<(u64, f64)>,
+}
+
+pub struct IncomingState {
+    /// "receiving", "interrupted", "failed" or "completed"
+    pub status: &'static str,
+    pub error: Option<String>,
+    pub saved_as: Option<String>,
+}
+
 /// A published invitation code: the code and the lookup endpoint that
 /// publishes its sealed record while the invitation is active.
 pub struct ShortCode {
@@ -134,6 +159,10 @@ impl JobSlots {
 }
 
 pub struct Inner {
+    /// The runtime the engine started on. Background work is spawned on it,
+    /// so `Core` methods may be called from any thread (Tauri runs plain,
+    /// non-async commands on the main thread, outside any runtime).
+    pub rt: tokio::runtime::Handle,
     pub db: Db,
     pub endpoint: Endpoint,
     pub data_dir: PathBuf,
@@ -161,6 +190,26 @@ pub struct Inner {
     pub congestion_active: &'static str,
     /// Sender-side diagnostics per (receiver, file), keyed like `outgoing`.
     pub send_diags: Mutex<HashMap<String, Arc<TransferDiag>>>,
+    // owner side of uploads into this device's shares
+    /// Temp files of uploads being received right now.
+    pub put_active: Mutex<HashSet<PathBuf>>,
+    /// Serializes choosing free names and deleting, so two uploads can't
+    /// claim the same name.
+    pub put_lock: Mutex<()>,
+    /// Uploads into this device's shares, for the Transfers page.
+    pub incoming_files: Mutex<HashMap<String, Arc<IncomingFile>>>,
+    // uploads from this device into others' shares
+    pub pushes: Mutex<HashMap<String, Arc<crate::push::PushJob>>>,
+    pub push_slots: tokio::sync::Semaphore,
+    /// Fired when the network comes back or changes: transfers waiting to
+    /// retry try again at once instead of finishing their backoff.
+    pub net_wake: Notify,
+    /// Folder syncs running a pass right now (peer|share).
+    pub syncing: Mutex<HashSet<String>>,
+    /// Asks the sync loop for a pass now (network back, sync turned on).
+    pub sync_wake: Notify,
+    /// Downloads and uploads by other devices, collected for one notice per batch.
+    pub peer_notices: Mutex<HashMap<String, crate::notice::Pending>>,
 }
 
 impl Inner {

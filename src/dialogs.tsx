@@ -13,7 +13,20 @@ import {
   Wifi,
   Zap,
 } from "lucide-react";
-import { android, api, errorText, on, type CreatedInvitation, type JoinResult, type Share } from "./api";
+import {
+  PERMISSION_OPTIONS,
+  android,
+  api,
+  canUpload,
+  errorText,
+  on,
+  permissionHint,
+  permissionText,
+  type CreatedInvitation,
+  type JoinResult,
+  type Share,
+  type SharePermission,
+} from "./api";
 import { isAndroid } from "./platform";
 import { neverExpires, until } from "./format";
 import { useStore } from "./store";
@@ -40,10 +53,11 @@ function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) 
 // ---------------------------------------------------------------- invite
 
 export function InviteDialog({ share, onClose }: { share: Share; onClose: () => void }) {
-  const { toast } = useStore();
+  const { toast, refreshShares } = useStore();
   const [expires, setExpires] = useState(86400);
   const [uses, setUses] = useState<number>(1);
   const [approval, setApproval] = useState(true);
+  const [perm, setPerm] = useState<SharePermission>(share.permission ?? "download");
   const [busy, setBusy] = useState(false);
   const [created, setCreated] = useState<CreatedInvitation | null>(null);
   const [, tick] = useState(0);
@@ -57,6 +71,11 @@ export function InviteDialog({ share, onClose }: { share: Share; onClose: () => 
   const create = async () => {
     setBusy(true);
     try {
+      // The permission belongs to the folder: it applies to everyone invited to it.
+      if (perm !== share.permission) {
+        await api.setSharePermission(share.id, perm);
+        refreshShares();
+      }
       // The 16-character code is the invitation people share; it lives as long as the invitation.
       setCreated(await api.createInvitation(share.id, expires, uses === 0 ? null : uses, approval, true));
     } catch (e) {
@@ -78,6 +97,7 @@ export function InviteDialog({ share, onClose }: { share: Share; onClose: () => 
     return (
       <Modal title={`Invite to “${share.name}”`} onClose={onClose} width={680} footer={<Button variant="primary" onClick={onClose}>Done</Button>}>
         <div className="inv-chips" aria-label="Invitation settings">
+          <span className={`inv-chip ${canUpload(perm) ? "on" : ""}`}>{permissionText(perm)}</span>
           <span className="inv-chip">{usesText}</span>
           <span className={`inv-chip ${inv.requireApproval ? "on" : ""}`}>{inv.requireApproval ? "Approval on" : "No approval"}</span>
         </div>
@@ -148,6 +168,13 @@ export function InviteDialog({ share, onClose }: { share: Share; onClose: () => 
       }
     >
       <div className="field">
+        <span className="label">Invited devices can</span>
+        <Segmented full label="Permission" value={perm} onChange={setPerm} options={PERMISSION_OPTIONS} />
+        <span className="hint">
+          {permissionHint(perm)} This applies to every device with access to this folder. You can change it any time on the Send page.
+        </span>
+      </div>
+      <div className="field">
         <span className="label">Invitation expires</span>
         <Segmented
           full
@@ -188,7 +215,11 @@ export function InviteDialog({ share, onClose }: { share: Share; onClose: () => 
       </div>
       <div className="notice">
         <Lock size={16} />
-        <span>They can only see and download from <b>{share.name}</b>. Nothing outside this folder is reachable, and they can't change or delete anything.</span>
+        <span>
+          {perm === "download" && <>They can only see and download from <b>{share.name}</b>. Nothing outside this folder is reachable, and they can't change or delete anything.</>}
+          {perm === "upload" && <>They can only add files to <b>{share.name}</b>. They can't see or download your files, and can delete only what they uploaded.</>}
+          {perm === "both" && <>They can download from and add files to <b>{share.name}</b>. Nothing outside this folder is reachable, and they can delete only what they uploaded; your files stay untouched.</>}
+        </span>
       </div>
     </Modal>
   );
@@ -259,7 +290,9 @@ export function ConnectDialog({ onClose }: { onClose: () => void }) {
               <span className="ico" style={{ width: 38, height: 38 }}><FolderOpen size={18} /></span>
               <span className="stack grow">
                 <span className="t" style={{ fontSize: 14 }}>{s.name}</span>
-                <span className="d">Browse and choose files</span>
+                <span className="d">
+                  {s.permission === "upload" ? "Add files" : s.permission === "both" ? "Browse, download and add files" : "Browse and choose files"}
+                </span>
               </span>
             </button>
           ))}

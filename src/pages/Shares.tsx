@@ -4,12 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 let pendingInvite: string | null = null;
 import { pickFolder } from "../platform";
 import { Ban, Check, Copy, FolderOpen, FolderUp, Link2, Pause, Play, Trash2, UserX } from "lucide-react";
-import { api, errorText, type Grant, type Invitation, type Share } from "../api";
+import { PERMISSION_OPTIONS, api, errorText, permissionHint, permissionText, type Grant, type Invitation, type Share } from "../api";
 import { InviteDialog } from "../dialogs";
 import { StorageAccessNotice } from "../android";
 import { ago, neverExpires, speed, until } from "../format";
 import { useStore } from "../store";
-import { Button, CodeCells, Empty, IconButton, Modal, Progress, SectionHeader, linkOf } from "../ui";
+import { Button, CodeCells, Empty, IconButton, Modal, Progress, SectionHeader, Segmented, linkOf } from "../ui";
 import { DeviceTile } from "./Overview";
 
 /** Opens the native folder picker and creates a share; returns the new share. */
@@ -33,10 +33,15 @@ export function useShareFolder() {
 
 /** One device that can open a share: the same tile as the Overview's device list. */
 function AccessRow({ g, onRevoke }: { g: Grant; onRevoke: () => void }) {
-  const { uploads } = useStore();
+  const { uploads, incoming } = useStore();
   const up = uploads.find((u) => u.peerId === g.peerId);
-  const busy = !!up && up.bps > 0;
-  const detail = busy ? `Downloading ${up!.files.join(", ")} · ${speed(up!.bps)}` : g.connected ? "Connected, idle" : `Last seen ${ago(g.lastSeenAt)}`;
+  const adding = incoming.filter((f) => f.peerId === g.peerId && f.shareId === g.shareId && f.status === "receiving");
+  const addBps = adding.reduce((s, f) => s + f.bps, 0);
+  const busy = (!!up && up.bps > 0) || adding.length > 0;
+  const parts: string[] = [];
+  if (up && up.bps > 0) parts.push(`Downloading ${up.files.join(", ")} · ${speed(up.bps)}`);
+  if (adding.length > 0) parts.push(`Uploading ${adding.map((f) => f.name).join(", ")}${addBps > 1 ? ` · ${speed(addBps)}` : ""}`);
+  const detail = parts.length ? parts.join(" · ") : g.connected ? "Connected, idle" : `Last seen ${ago(g.lastSeenAt)}`;
   const words = g.safetyWords?.length ? ` · safety words: ${g.safetyWords.join(" ")}` : "";
   return (
     <DeviceTile
@@ -116,7 +121,7 @@ function InviteRow({ i, onRevoke }: { i: Invitation; onRevoke: () => void }) {
 }
 
 function ShareCard({ share, onInvite }: { share: Share; onInvite: () => void }) {
-  const { grants, uploads, toast } = useStore();
+  const { grants, uploads, toast, refreshShares } = useStore();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const devices = grants.filter((g) => g.shareId === share.id);
   const invites = share.invitations.filter((i) => i.state === "active");
@@ -170,6 +175,23 @@ function ShareCard({ share, onInvite }: { share: Share; onInvite: () => void }) 
         </span>
       </header>
 
+      <div className="share-perm">
+        <span className="share-perm-text">
+          <span className="lab">Invited devices can</span>
+          <span className="hint">{permissionHint(share.permission)}</span>
+        </span>
+        <Segmented
+          label={`What invited devices can do in ${share.name}`}
+          value={share.permission ?? "download"}
+          options={PERMISSION_OPTIONS}
+          onChange={(v) => v !== share.permission && act(async () => {
+            await api.setSharePermission(share.id, v);
+            refreshShares();
+            toast(`“${share.name}”: ${permissionText(v).toLowerCase()}`, "ok");
+          })}
+        />
+      </div>
+
       <div className="share-body">
         <div className="share-col">
           <div className="share-col-head">
@@ -211,7 +233,7 @@ function ShareCard({ share, onInvite }: { share: Share; onInvite: () => void }) 
             </>
           }
         >
-          <span>All invitations and device access for this folder are removed immediately. Active downloads from it stop. Your files are not touched.</span>
+          <span>All invitations and device access for this folder are removed immediately. Active downloads and uploads stop. Your files, and files others uploaded, stay in the folder.</span>
         </Modal>
       )}
     </section>
@@ -270,7 +292,8 @@ export default function Shares() {
         </div>
         <div className="send-hud-cta">
           <span className="small muted">
-            Invited devices can browse and download from these folders only. They can't see anything else on this computer or change your files.
+            Invited devices reach these folders only, never anything else on this computer. You choose per folder whether they can download,
+            upload, or both; they can only delete what they uploaded.
           </span>
           <Button variant="primary" icon={<FolderUp size={15} />} onClick={shareFolder}>Share a folder</Button>
         </div>

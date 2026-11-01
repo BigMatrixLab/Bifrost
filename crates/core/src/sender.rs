@@ -19,7 +19,8 @@ use crate::inner::{Inner, PendingAccess};
 use crate::invite::token_hash;
 use crate::net::route_of;
 use crate::proto::*;
-use crate::types::{AccessRequest, CoreEvent};
+use crate::types::{perm_can_download, perm_can_upload, AccessRequest, CoreEvent};
+use crate::upload::{self as up, is_upload_temp};
 use crate::util::{
     now_ms, open_source, random_id, read_exact_at, short_peer, system_time_ms,
 };
@@ -130,27 +131,55 @@ async fn handle_stream(
         }
         Request::List { share, path, offset, limit } => {
             let resp = match authorize(inner, peer, &share) {
-                Ok(s) => list_dir(&s, &path, offset, limit.min(MAX_LIST_PAGE)).await,
+                Ok(s) => list_dir(inner, peer, &s, &path, offset, limit.min(MAX_LIST_PAGE)).await,
                 Err(r) => r,
             };
             write_frame(&mut send, &resp).await?;
         }
         Request::Walk { share, path } => {
-            let resp = match authorize(inner, peer, &share) {
+            let resp = match authorize_download(inner, peer, &share) {
                 Ok(s) => walk_dir(&s, &path).await,
                 Err(r) => r,
             };
             write_frame(&mut send, &resp).await?;
         }
         Request::Stat { share, path } => {
-            let resp = match authorize(inner, peer, &share) {
+            let resp = match authorize_download(inner, peer, &share) {
                 Ok(s) => stat(&s, &path).await,
                 Err(r) => r,
             };
             write_frame(&mut send, &resp).await?;
         }
+        Request::Put { share, path, size, mtime_ms } => match authorize_upload(inner, peer, &share) {
+            Ok(s) => up::handle_put(inner, peer, conn, &mut send, &mut recv, &s, path, size, mtime_ms).await?,
+            Err(r) => {
+                write_frame(&mut send, &r).await?;
+                let _ = recv.stop(VarInt::from_u32(1));
+            }
+        },
+        Request::PutAbort { share, path, size, mtime_ms } => {
+            let resp = match authorize_upload(inner, peer, &share) {
+                Ok(s) => up::handle_put_abort(inner, peer, &s, path, size, mtime_ms).await,
+                Err(r) => r,
+            };
+            write_frame(&mut send, &resp).await?;
+        }
+        Request::Mkdir { share, path, unique } => {
+            let resp = match authorize_upload(inner, peer, &share) {
+                Ok(s) => up::handle_mkdir(inner, peer, &s, path, unique).await,
+                Err(r) => r,
+            };
+            write_frame(&mut send, &resp).await?;
+        }
+        Request::Delete { share, path } => {
+            let resp = match authorize_upload(inner, peer, &share) {
+                Ok(s) => up::handle_delete(inner, peer, &s, path).await,
+                Err(r) => r,
+            };
+            write_frame(&mut send, &resp).await?;
+        }
         Request::Chunk { share, path, size, mtime_ms, chunk_size, index, from, have } => {
-            match authorize(inner, peer, &share).and_then(|s| held_reply(inner, peer, &share, &path).map_or(Ok(s), Err)) {
+            match authorize_download(inner, peer, &share).and_then(|s| held_reply(inner, peer, &share, &path).map_or(Ok(s), Err)) {
                 Ok(s) => {
                     let d = send_diag_for(inner, peer, &share, &path, size);
                     d.stages.request_read.record(request_read);
@@ -379,6 +408,24 @@ fn authorize(inner: &Inner, peer: EndpointId, share_id: &str) -> Result<ShareRow
     Ok(share)
 }
 
+/// Access plus download permission (folder downloads, file data).
+fn authorize_download(inner: &Inner, peer: EndpointId, share_id: &str) -> Result<ShareRow, Response> {
+    let s = authorize(inner, peer, share_id)?;
+    if !perm_can_download(&s.permission) {
+        return Err(Response::err(ErrCode::Denied, "The owner doesn't allow downloads from this folder."));
+    }
+    Ok(s)
+}
+
+/// Access plus upload permission (adding files and folders, deleting own uploads).
+pub(crate) fn authorize_upload(inner: &Inner, peer: EndpointId, share_id: &str) -> Result<ShareRow, Response> {
+    let s = authorize(inner, peer, share_id)?;
+    if !perm_can_upload(&s.permission) {
+        return Err(Response::err(ErrCode::Denied, "The owner doesn't allow uploads to this folder."));
+    }
+    Ok(s)
+}
+
 fn granted_shares(inner: &Inner, peer: EndpointId) -> Vec<WireShare> {
     let peer_s = peer.to_string();
     let grants = inner.db.list_grants().unwrap_or_default();
@@ -386,7 +433,7 @@ fn granted_shares(inner: &Inner, peer: EndpointId) -> Vec<WireShare> {
     shares
         .into_iter()
         .filter(|s| s.active && grants.iter().any(|g| g.peer_id == peer_s && g.share_id == s.id))
-        .map(|s| WireShare { id: s.id, name: s.name })
+        .map(|s| WireShare { id: s.id, name: s.name, perm: Some(s.permission) })
         .collect()
 }
 
@@ -567,6 +614,8 @@ async fn record_sent(inner: &Arc<Inner>, peer: EndpointId, share: &ShareRow, r: 
     of.verified.store(true, Ordering::Relaxed);
     of.last_ms.store(now_ms(), Ordering::Relaxed);
     inner.emit(CoreEvent::Outgoing(crate::outgoing_list(inner)));
+    let file_name = r.path.last().cloned().unwrap_or_default();
+    crate::notice::record(inner, "downloaded", peer, &share.name, &file_name, r.size);
     if !settings.history_on() {
         return Response::Ack;
     }
@@ -626,9 +675,14 @@ pub fn resolve_in_share(root: &Path, comps: &[String]) -> Result<PathBuf, Respon
     Ok(real)
 }
 
-async fn list_dir(share: &ShareRow, path: &[String], offset: u32, limit: u32) -> Response {
+/// One page of a folder. Marks what the asking device uploaded itself; with
+/// upload-only permission it sees nothing else (a drop box).
+async fn list_dir(inner: &Inner, peer: EndpointId, share: &ShareRow, path: &[String], offset: u32, limit: u32) -> Response {
     let root = PathBuf::from(&share.root_path);
     let path = path.to_vec();
+    let perm = share.permission.clone();
+    let only_mine = !perm_can_download(&perm);
+    let owned = if perm_can_upload(&perm) { up::owned_map(inner, &share.id, peer) } else { Default::default() };
     tokio::task::spawn_blocking(move || {
         let dir = match resolve_in_share(&root, &path) {
             Ok(d) => d,
@@ -646,17 +700,21 @@ async fn list_dir(share: &ShareRow, path: &[String], offset: u32, limit: u32) ->
             }
             let Ok(meta) = e.metadata() else { continue };
             let name = e.file_name().to_string_lossy().to_string();
-            entries.push(WireEntry {
-                name,
-                dir: ft.is_dir(),
-                size: if ft.is_dir() { 0 } else { meta.len() },
-                mtime_ms: system_time_ms(meta.modified()),
-            });
+            if ft.is_file() && is_upload_temp(&name) {
+                continue;
+            }
+            let size = if ft.is_dir() { 0 } else { meta.len() };
+            let mtime_ms = system_time_ms(meta.modified());
+            let mine = up::entry_is_mine(&owned, &path, &name, ft.is_dir(), meta.len(), mtime_ms);
+            if only_mine && !mine {
+                continue;
+            }
+            entries.push(WireEntry { name, dir: ft.is_dir(), size, mtime_ms, mine });
         }
         entries.sort_by(|a, b| b.dir.cmp(&a.dir).then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase())));
         let total = entries.len() as u64;
         let page = entries.into_iter().skip(offset as usize).take(limit.max(1) as usize).collect();
-        Response::List { entries: page, total }
+        Response::List { entries: page, total, perm: Some(perm) }
     })
     .await
     .unwrap_or_else(|_| Response::err(ErrCode::Io, "internal error"))
@@ -681,6 +739,9 @@ async fn walk_dir(share: &ShareRow, path: &[String]) -> Response {
                     continue;
                 }
                 let name = e.file_name().to_string_lossy().to_string();
+                if ft.is_file() && is_upload_temp(&name) {
+                    continue;
+                }
                 let mut r = rel.clone();
                 r.push(name);
                 if ft.is_dir() {

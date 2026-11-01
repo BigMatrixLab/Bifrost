@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { BatteryCharging, Bell, Copy, FolderLock, Info, Lock } from "lucide-react";
-import { android, api, errorText, type Settings as S } from "../api";
+import { PERMISSION_OPTIONS, android, api, errorText, permissionHint, type Settings as S } from "../api";
 import { isAndroid, pickFolder } from "../platform";
 import { useStorageAccess } from "../android";
 import { mbit } from "../format";
@@ -20,9 +20,9 @@ function Row({ label, hint, children }: { label: string; hint?: React.ReactNode;
   );
 }
 
-// `value` is KiB/s (0 = unlimited); shown as MB/s. Keep three decimals so a
-// small limit (e.g. 50 KiB/s = 0.049) never displays as "0".
-const kibToMbText = (kib: number) => (kib ? String(Number((kib / 1024).toFixed(3))) : "");
+// `value` is KiB/s (0 = unlimited); shown as MB/s with up to two decimals.
+// A limit below 0.01 MB/s shows as 0.01 rather than "0".
+const kibToMbText = (kib: number) => (kib ? String(Math.max(0.01, Number((kib / 1024).toFixed(2)))) : "");
 
 function LimitInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const [text, setText] = useState(kibToMbText(value));
@@ -80,7 +80,7 @@ export default function Settings() {
   };
   const streamsCap = (settings.parallelStreams * 1_000_000) / 0.2; // bytes/s at 200 ms RTT
 
-  const limitText = (kib: number) => (kib ? `${Number((kib / 1024).toFixed(2))} MB/s` : "Unlimited");
+  const limitText = (kib: number) => (kib ? `${Math.max(0.01, Number((kib / 1024).toFixed(2)))} MB/s` : "Unlimited");
 
   return (
     <div className="page page-settings">
@@ -113,6 +113,17 @@ export default function Settings() {
                 Change…
               </Button>
             </div>
+          </Row>
+          <Row
+            label="Default permission for shared folders"
+            hint={<>What invited devices can do in a folder you share from now on. {permissionHint(settings.defaultSharePermission)} You can change it per folder on the Send page.</>}
+          >
+            <Segmented
+              label="Default permission for shared folders"
+              value={settings.defaultSharePermission ?? "download"}
+              onChange={(v) => save({ defaultSharePermission: v })}
+              options={PERMISSION_OPTIONS}
+            />
           </Row>
           {!isAndroid() && (<>
           <Toggle

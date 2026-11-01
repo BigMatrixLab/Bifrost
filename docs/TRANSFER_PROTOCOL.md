@@ -17,8 +17,10 @@ The higher-level overview (pairing, invitations, history, platform integration) 
 | `crates/core/src/types.rs` | User settings that affect transfers (`parallel_streams`, `chunk_size_mib`, limits, congestion) |
 | `crates/core/src/lib.rs` | Creates download jobs (`chunk_size`, `total_chunks`, `.rlpart` path) |
 | `crates/core/src/diag.rs` | Transfer diagnostics: stage timers, stream gauges, route tracking, JSON summaries ([DIAGNOSTICS.md](DIAGNOSTICS.md)) |
+| `crates/core/src/upload.rs` | Owner side of uploads: `Put`, `PutAbort`, `Mkdir`, `Delete`, who-uploaded-what checks |
+| `crates/core/src/push.rs` | Uploader side: in-memory upload queue, one `Put` stream per file, retries |
 
-Roles: the **sender** is the device that shares a folder and runs the server side. The **receiver** opens the connection, sends every request, and pulls data. The sender never pushes data on its own.
+Roles: the **sender** (also called the **owner**) is the device that shares a folder and runs the server side. The **receiver** opens the connection and sends every request. For downloads it pulls data. For uploads (section 14) it sends data on a stream it opened itself. The owner never opens streams or sends data unasked.
 
 ---
 
@@ -114,18 +116,22 @@ sender -> receiver:  [len][{"r":"chunk","len":L}]
 | Request | Response | Used for |
 |---|---|---|
 | `Hello { v, token?, device_name }` | `Hello { status, … }`, possibly preceded by `Hello { status: pending }` frames | First request on every new connection; pairing with an invitation token |
-| `List { share, path, offset, limit }` | `List { entries, total }` | Browsing one folder page |
+| `List { share, path, offset, limit }` | `List { entries, total, perm? }` | Browsing one folder page. Entries carry `mine`; `perm` is the asker's current permission |
 | `Walk { share, path }` | `Walk { files, truncated }` | Expanding a folder download into files |
 | `Stat { share, path }` | `Stat { size, mtime_ms, dir }` | Job creation, and checking the source at the start of every download pass |
 | `Chunk { share, path, size, mtime_ms, chunk_size, index, from, have? }` | `Chunk { len }` then the data stream | File data |
 | `Receipt { … }` | `Ack` | Sent once after a file is verified, so the sender keeps a history entry |
+| `Put { share, path, size, mtime_ms }` | `PutReady { have }`, then the receiver streams blocks, then `Created { name, fingerprint }` | Uploading one file (section 14) |
+| `PutAbort { share, path, size, mtime_ms }` | `Ack` | Dropping the owner's partial copy of a canceled upload |
+| `Mkdir { share, path, unique? }` | `Created { name }` | New folder; folder uploads |
+| `Delete { share, path }` | `Ack` | Deleting a file or folder the asker uploaded |
 
 Any request can get `Error { code, message }` instead.
 
 ### Stream lifecycle (sender, `handle_stream`)
 
 1. Accept a bi stream, read one request frame (30 s timeout).
-2. Authorize: the share must be active and the peer must hold a grant for it (`authorize`). This happens on every request, not once per connection.
+2. Authorize: the share must be active and the peer must hold a grant for it (`authorize`). Then the share's permission must allow the request (see the permission table in section 14). This happens on every request, not once per connection, so a permission change applies to the next request.
 3. Write the response (and chunk data).
 4. `finish()` the send side and wait for the peer to acknowledge (`stopped()`).
 
@@ -343,6 +349,8 @@ For chunk streams, `READ_TIMEOUT` and `STALL_TIMEOUT` fire only if no chunk byte
 | `bad_request` | `Fatal` | Failed |
 | (stream/connection errors, timeouts) | `Network` | Drop connection, backoff and retry |
 
+For uploads (`push.rs`), `in_use` and `paused` are retried with backoff. Every other error code fails the upload, and the user can retry it. Stream and connection errors are retried up to 6 attempts.
+
 ### Stream and connection codes
 
 | Code | Sent by | Meaning |
@@ -350,6 +358,8 @@ For chunk streams, `READ_TIMEOUT` and `STALL_TIMEOUT` fire only if no chunk byte
 | Stream reset 2 | Sender | File changed while serving the chunk |
 | Stream reset 3 | Sender | Route switched to relay in direct-only mode |
 | Stop 0 | Receiver | Cancelled, corrupt block, or relay in direct-only mode |
+| Stop 1 | Owner | Upload refused mid-stream; the reason is the `Error` frame already written |
+| Stream reset 2 | Uploader | Local file changed while uploading; it starts over |
 | Connection close 401 | Sender | Invalid invitation token |
 | Connection close 0 | Receiver | Denied, or connection reset |
 
@@ -367,8 +377,12 @@ For chunk streams, `READ_TIMEOUT` and `STALL_TIMEOUT` fire only if no chunk byte
 | `chunks(job_id, idx, hash, scheme)` | Finished chunks and their chunk hash |
 | `partials(job_id, idx, done, hashes)` | Verified prefix of an unfinished chunk: bytes done (block-aligned) and the packed 32-byte block hashes |
 | `<dest>.rlpart` | Pre-allocated data file; written at final offsets |
+| `shares.permission` (owner) | `download`, `upload` or `both` per share |
+| `remote_shares.permission` (receiver) | Last permission the owner reported for each share |
+| `uploads(share_id, path, peer_id, is_dir, size, mtime_ms)` (owner) | What each device uploaded, for the delete check |
+| `.bfup-<device>-<file>.rlpart` (owner, in the destination folder) | Verified prefix of an unfinished upload |
 
-On restart, `spawn_job` restores counters from these rows, and `transfer_pass` reconciles them with the `.rlpart` file.
+On restart, `spawn_job` restores counters from these rows, and `transfer_pass` reconciles them with the `.rlpart` file. The uploader's queue is in memory only, so it is empty after a restart. The owner's partial upload file survives a restart. Its name comes from the uploader, share, destination path, size and mtime, so uploading the same unchanged file to the same place again continues from it. If that never happens, the hidden partial file stays on the owner's disk. A folder upload always creates a fresh folder name, so it can't continue after a restart.
 
 ---
 
@@ -379,6 +393,7 @@ On restart, `spawn_job` restores counters from these rows, and `transfer_pass` r
 - **Breaking changes** (bump `PROTOCOL_VERSION`): the frame header, the block layout or hash placement, `BLOCK`, the chunk hash formula, or the meaning of existing fields.
 - `BLOCK` is also baked into stored state. Changing it makes existing `partials` rows fail the hash-count check (they are dropped and re-downloaded) and changes scheme-2 chunk hashes, so finished chunks of in-progress jobs would fail the final check and be fetched again. A new chunk hash scheme number is the clean way to handle this.
 - Keep `MAX_CHUNK` ≥ the largest `chunk_size_mib` the settings allow, or new receivers will get `BadRequest` from old senders.
+- Uploads were added without a version bump. `WireShare.perm`, `List.perm` and `WireEntry.mine` are optional, so old peers ignore them. A missing `perm` means download only, so a new receiver never sends `Put`, `Mkdir` or `Delete` to an old owner. An old owner would drop those requests as undecodable anyway.
 
 ---
 
@@ -421,3 +436,82 @@ The following were confirmed with the diagnostics added later; see [DIAGNOSTICS.
 10. **BBRv3 can stay pinned at its minimum window with no loss.** The existing e2e suite (4 tests in parallel on loopback) failed in 10 of 35 runs with BBR and 0 of 24 with Cubic (one-sided Fisher exact p ≈ 0.003); the unmodified code failed 2 of 10. In the failing runs a transfer crawled at 37–39 KB/s for 60–120 s. Every failure with sender interval samples showed the same state on the sender's path: `cwnd` 5808 bytes (4 × 1452, BBR's `MinPipeCwnd`), a pacing rate of 46–60 KB/s, a bandwidth estimate of ~375 kbit/s, 0 lost packets and 0 congestion events. In some runs the receiver's own controller was also at the minimum window with a pacing rate of 2–7 KB/s. noq-proto marks its BBRv3 as experimental, and its internal state (phase, app-limited flag) isn't exposed, so the trigger hasn't been isolated: three variants of a dedicated reproduction (rate-limited phase, then pause and resume or a second file, with up to 4 pairs and background load) gave 0 slow runs in 31. A 40 KB/s stall with zero loss matches the 10–50 KB/s symptom. It was later seen on a real LAN too (30 s at the 4-packet window, pacing 24–139 KB/s, no loss), and the loopback benchmark (512 MiB, 12 streams) gave Cubic 193–236 MiB/s in 6 of 6 runs while BBR managed 48–116 MiB/s in one session and hung in 3 of 4 sessions. The default is now Cubic.
 
 11. **Rate-limited relay plus a deep queue causes the surge-and-drop pattern.** In the cross-network field run (sender behind an address-varying NAT, so hole punching failed and every byte went through n0's public relay, which logged "rate-limiting this endpoint"), the sender's Cubic window grew to 3.6–28 MB, RTT reached 2–33 s, 10–30 % of packets were lost, 5 s intervals swung between 0 and 2.4 MiB/s, 10 streams hit the 90 s stall timeout, the connection idled out once and the reconnect took 4.5 minutes. The average was 0.44 MiB/s. The receiver's adaptive window (section 8) bounds this queue: on a local relay limited to 512 KiB/s with an 8 MiB burst, Cubic went from RTT p50 1.2 s, 4.4 % loss and an interval coefficient of variation of 0.69 to RTT 214 ms and a CV of 0.01 at the same steady rate. The relay's own limit remains the ceiling; only a direct path or an own relay goes faster.
+
+---
+
+## 14. Uploads into a shared folder
+
+Each share has a permission chosen by its owner: `download` (the default, and the only behaviour before uploads existed), `upload` or `both`. New shares get `Settings.default_share_permission`. The owner can change a share's permission at any time (`Core::set_share_permission`). Because every request is authorized again, a change applies to the next request. A running upload also checks again every 16 blocks and stops if uploading was turned off.
+
+| Request | `download` | `upload` | `both` |
+|---|---|---|---|
+| `List` | Everything | Only items the asker uploaded (a drop box) | Everything |
+| `Walk`, `Stat`, `Chunk` | Yes | Denied | Yes |
+| `Put`, `PutAbort`, `Mkdir`, `Delete` | Denied | Yes | Yes |
+| `Receipt`, `Hello` | Yes | Yes | Yes |
+
+The receiver learns its permission from `WireShare.perm` in `Hello`, and again from `List.perm` on every listing. It caches the value in `remote_shares.permission`, and the UI shows upload controls only when uploading is allowed.
+
+### Upload of one file (`push::push_once`, `upload::handle_put`)
+
+```mermaid
+sequenceDiagram
+    participant U as Uploader (receiver)
+    participant O as Owner (sender)
+    U->>O: Put {share, path, size, mtime_ms}
+    Note over O: authorize (upload), create missing folders, open temp file
+    O-->>U: PutReady {have}
+    U->>O: block+hash, block+hash, … (from have), FIN
+    Note over O: verify each block, write, fsync, set mtime, pick a free name
+    O-->>U: Created {name}
+```
+
+1. `path` is the destination including the file name. The owner applies `sanitize_filename` to every component, so names that are invalid on its system are replaced consistently. Missing folders are created, and each one is recorded as uploaded by the asker.
+2. The data goes to `.bfup-<device>-<file>.rlpart` in the destination folder:
+   - `<device>` is 16 hex characters of BLAKE3(uploader's public key).
+   - `<file>` is 16 hex characters of BLAKE3(`share|path|size|mtime_ms`).
+
+   Listings and folder walks never show these files. Only one stream at a time may write a given temp file; a second one gets `in_use`.
+3. `have` is how much of the temp file is already there. It is the whole file if complete, otherwise rounded down to whole 1 MiB blocks. Blocks are written only after their hash checks out, so this prefix is verified data.
+4. The uploader sends the rest in the same layout as chunk data: `[block (≤ 1 MiB)][BLAKE3(block), 32 bytes]` up to `size`. It then finishes its side.
+   - Before finishing, it checks that the local file's size and mtime haven't changed. If they have, it resets the stream with code 2 and starts over.
+   - It takes tokens from `upload_limiter` per block. The owner takes tokens from `download_limiter`.
+5. The owner verifies each block and writes it at its offset.
+   - On a bad hash, a write error or a permission change, it writes an `Error` frame and stops the stream with code 1. The uploader's next write fails, and it reads that frame for the reason.
+   - If the stream breaks, the owner syncs what it has and keeps the temp file.
+6. When all bytes are in, the owner calls `fsync` and reads the whole file back to compute its fingerprint: BLAKE3 over the BLAKE3 hashes of its 1 MiB blocks (the same formula as `chunk_hash_from_blocks`). It then sets the uploader's mtime and moves the file to a free name under `put_lock`.
+   - It uses a hard link plus delete, so an existing file is never replaced. Where hard links aren't supported, it falls back to rename after an existence check.
+   - It records the final path, size and mtime in `uploads`, then answers `Created { name, fingerprint }`.
+7. The uploader computes the same fingerprint from its local file, reading the blocks before `have` again on a resumed upload. If the two fingerprints differ, the upload fails. If they match, both devices add a history entry with that fingerprint: "sent" on the uploader, "received" on the owner.
+
+While a file arrives, the owner tracks it in memory (`Inner::incoming_files`, keyed like the temp file, so a resumed upload keeps its row). The Transfers page shows it under "Uploads to your folders" as receiving, interrupted (the uploader may still continue it), failed, or completed. The `incoming` event updates it every second.
+
+A folder upload first sends `Mkdir { unique: true }` for the top folder, so it gets its own free name ("Photos (1)"). The upload never merges into an existing folder. Empty subfolders get `Mkdir { unique: false }`. Files are then queued with paths below that folder. The uploader runs two files at a time (`push_slots`) and retries stream and connection errors with backoff, up to 6 attempts. A retry continues from the owner's `have`. Canceling an upload sends `PutAbort`, which deletes the temp file unless a stream is still writing it.
+
+### Delete (`upload::handle_delete`)
+
+The owner accepts a delete only if all of these hold:
+- The path resolves inside the share and isn't a symlink.
+- The item is recorded in `uploads` for the asking device.
+- A file still has the recorded size and mtime. A file the owner edited, or a different file now at the same path, can't be deleted remotely.
+- For a folder, every item inside, recursively, passes the same check. Symlinks, other devices' items, the owner's files, or another device's unfinished upload inside make the whole delete fail. The device's own unfinished uploads inside don't.
+
+The check and the delete run under `put_lock`. Afterwards the `uploads` rows for the path and everything below it are removed. `WireEntry.mine` uses the same check, so the UI offers Delete only where it would succeed.
+
+---
+
+## 15. Resuming, auto-sync and owner notices
+
+**Resuming.** Unfinished transfers start again by themselves.
+- On launch, `Core::start` restarts every download that was running or waiting. It also restarts downloads that needed attention, except one whose file changed on the sender (the user picks the new version).
+- Uploads are stored in the `pushes` table and restarted by `push::restore`.
+- A network error never fails an upload. It waits and retries with the same backoff as downloads, and gives up its upload slot while waiting.
+- When `network_watch` sees the device come back online or move to another network, it fires `Inner::net_wake`. Every download and upload waiting in backoff tries again at once, and synced folders are checked.
+
+**Auto-sync** (`sync.rs`, tables `sync_shares` and `sync_seen`). For a remote share with download permission, the receiver sends `Walk` for the whole share every 60 s, and also when the network comes back or the user asks.
+- It downloads every file path it hasn't recorded in `sync_seen` into the chosen folder, using the normal job queue (`queue_files`). A file already there with the same size is only recorded.
+- Turned on for new files only, the first check records everything present without downloading it.
+- Paths that are gone from the share are forgotten, so a file that comes back is downloaded again.
+- Sync never deletes or overwrites anything on the receiver. A file the owner deletes stays, and so does a file the user deleted locally while it still exists on the owner's side; it is not downloaded again. Turning sync off keeps all downloaded files.
+
+**Owner notices** (`notice.rs`). When a receiver's `Receipt` arrives (it downloaded and verified a file) or an upload completes, the owner counts it per device, share and kind. Each batch becomes one notice once no file was added for 3 s, or 20 s after its first file. The notice is a `peer-activity` event, which the UI shows as a toast and in the sidebar, plus a system notification if notifications are on.

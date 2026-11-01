@@ -74,6 +74,112 @@ export interface Share {
   createdAt: number;
   invitations: Invitation[];
   deviceCount: number;
+  permission: SharePermission;
+}
+
+/** What invited devices may do in a shared folder. */
+export type SharePermission = "download" | "upload" | "both";
+
+export const PERMISSION_OPTIONS: { value: SharePermission; label: string }[] = [
+  { value: "download", label: "Download" },
+  { value: "upload", label: "Upload" },
+  { value: "both", label: "Both" },
+];
+
+export function permissionText(p: SharePermission | undefined): string {
+  return p === "upload" ? "Upload only" : p === "both" ? "Download and upload" : "Download only";
+}
+
+/** One sentence for the owner: what invited devices can do. */
+export function permissionHint(p: SharePermission | undefined): string {
+  switch (p) {
+    case "upload":
+      return "They can add files and delete what they added, but can't see or download anything else.";
+    case "both":
+      return "They can download everything, add files, and delete only what they added themselves.";
+    default:
+      return "They can browse and download. They can't add, change or delete anything.";
+  }
+}
+
+export const canDownload = (p: SharePermission | undefined) => p !== "upload";
+export const canUpload = (p: SharePermission | undefined) => p === "upload" || p === "both";
+
+export interface RemoteShare {
+  id: string;
+  name: string;
+  permission: SharePermission;
+}
+
+/** A remote shared folder this device downloads new files from automatically. */
+export interface SyncInfo {
+  peerId: string;
+  shareId: string;
+  destDir: string;
+  enabledAt: number;
+  lastSyncAt: number | null;
+  lastError: string | null;
+  syncing: boolean;
+}
+
+/** Another device downloaded from or uploaded to one of this device's folders. */
+export interface PeerNotice {
+  id: string;
+  kind: "downloaded" | "uploaded";
+  peerId: string;
+  deviceName: string;
+  shareName: string;
+  files: number;
+  firstName: string;
+  bytes: number;
+  at: number;
+}
+
+/** "Lena's laptop downloaded report.pdf from “Client deliveries”" */
+export function noticeText(n: PeerNotice): string {
+  const what = n.files === 1 ? n.firstName : `${n.files} files`;
+  return n.kind === "uploaded" ? `${n.deviceName} uploaded ${what} to “${n.shareName}”` : `${n.deviceName} downloaded ${what} from “${n.shareName}”`;
+}
+
+/** A file another device is uploading into one of this device's shared folders. */
+export interface Incoming {
+  id: string;
+  peerId: string;
+  deviceName: string;
+  shareId: string;
+  shareName: string;
+  name: string;
+  path: string[];
+  savedAs: string | null;
+  size: number;
+  receivedBytes: number;
+  bps: number;
+  /** interrupted: the uploader may still continue it. */
+  status: "receiving" | "interrupted" | "failed" | "completed";
+  error: string | null;
+  startedAt: number;
+  updatedAt: number;
+  route: string;
+}
+
+/** A file this device is uploading into someone else's shared folder. */
+export interface Push {
+  id: string;
+  peerId: string;
+  peerName: string;
+  shareId: string;
+  shareName: string;
+  localPath: string;
+  remotePath: string[];
+  name: string;
+  savedAs: string | null;
+  size: number;
+  sentBytes: number;
+  bps: number;
+  status: "queued" | "uploading" | "retrying" | "completed" | "failed" | "canceled";
+  error: string | null;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface Grant {
@@ -100,7 +206,7 @@ export interface Remote {
   peerId: string;
   peerShort: string;
   name: string;
-  shares: { id: string; name: string }[];
+  shares: RemoteShare[];
   createdAt: number;
   lastSeenAt: number;
   status: PeerStatus;
@@ -112,12 +218,16 @@ export interface RemoteEntry {
   isDir: boolean;
   size: number;
   modifiedMs: number;
+  /** Uploaded by this device, so it may delete it. */
+  mine: boolean;
 }
 
 export interface ListResult {
   entries: RemoteEntry[];
   total: number;
   offset: number;
+  /** This device's current permission for the share. */
+  permission: SharePermission;
 }
 
 export interface AccessRequest {
@@ -192,6 +302,8 @@ export interface Settings {
   historyRetention: "forever" | "365" | "90" | "30" | "off";
   historyNames: boolean;
   relayUrls: string;
+  /** Permission for newly shared folders. */
+  defaultSharePermission: SharePermission;
 }
 
 /** A finished transfer kept on this device, with its privacy receipt. */
@@ -226,7 +338,7 @@ export interface Bootstrap {
 export interface JoinResult {
   peerId: string;
   senderName: string;
-  shares: { id: string; name: string }[];
+  shares: RemoteShare[];
   safetyWords: string[];
 }
 
@@ -234,6 +346,7 @@ export interface LocalDir {
   path: string;
   parent: string | null;
   dirs: string[];
+  files: { name: string; size: number }[];
   root: string;
 }
 
@@ -247,7 +360,26 @@ export const api = {
   networkStatus: () => invoke<NetworkStatus>("network_status"),
   updateSettings: (settings: Settings) => invoke<Settings>("update_settings", { settings }),
   listShares: () => invoke<Share[]>("list_shares"),
-  createShare: (path: string, name?: string) => invoke<Share>("create_share", { path, name: name ?? null }),
+  createShare: (path: string, name?: string, permission?: SharePermission) =>
+    invoke<Share>("create_share", { path, name: name ?? null, permission: permission ?? null }),
+  setSharePermission: (id: string, permission: SharePermission) => invoke<Share>("set_share_permission", { id, permission }),
+  startUpload: (peerId: string, shareId: string, dir: string[], paths: string[]) =>
+    invoke<string[]>("start_upload", { peerId, shareId, dir, paths }),
+  listPushes: () => invoke<Push[]>("list_pushes"),
+  cancelPush: (id: string) => invoke<void>("cancel_push", { id }),
+  retryPush: (id: string) => invoke<void>("retry_push", { id }),
+  removePush: (id: string) => invoke<void>("remove_push", { id }),
+  clearPushes: () => invoke<void>("clear_pushes"),
+  listSyncs: () => invoke<SyncInfo[]>("list_syncs"),
+  enableSync: (peerId: string, shareId: string, destDir: string | null, includeExisting: boolean) =>
+    invoke<SyncInfo>("enable_sync", { peerId, shareId, destDir, includeExisting }),
+  disableSync: (peerId: string, shareId: string) => invoke<void>("disable_sync", { peerId, shareId }),
+  syncNow: () => invoke<void>("sync_now"),
+  listIncoming: () => invoke<Incoming[]>("list_incoming"),
+  removeIncoming: (id: string) => invoke<void>("remove_incoming", { id }),
+  clearIncoming: () => invoke<void>("clear_incoming"),
+  remoteMkdir: (peerId: string, shareId: string, path: string[]) => invoke<string>("remote_mkdir", { peerId, shareId, path }),
+  remoteDelete: (peerId: string, shareId: string, path: string[]) => invoke<void>("remote_delete", { peerId, shareId, path }),
   setShareActive: (id: string, active: boolean) => invoke<void>("set_share_active", { id, active }),
   deleteShare: (id: string) => invoke<void>("delete_share", { id }),
   createInvitation: (shareId: string, expiresInSecs: number, maxUses: number | null, requireApproval: boolean, withCode: boolean) =>

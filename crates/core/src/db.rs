@@ -22,6 +22,18 @@ pub struct ShareRow {
     pub name: String,
     pub active: bool,
     pub created_at: i64,
+    /// "download", "upload" or "both"
+    pub permission: String,
+}
+
+/// A file or folder a remote device created in one of this device's shares.
+/// `path` is the share-relative path, components joined with '/'.
+#[derive(Clone, Debug)]
+pub struct UploadRow {
+    pub path: String,
+    pub is_dir: bool,
+    pub size: u64,
+    pub mtime_ms: i64,
 }
 
 #[derive(Clone, Debug)]
@@ -182,6 +194,71 @@ CREATE TABLE IF NOT EXISTS invitation_codes(
   invitation_id TEXT PRIMARY KEY, code TEXT NOT NULL, sealed TEXT NOT NULL);
 "#;
 
+/// Per-share permission (owner side), the permission a remote share grants
+/// this device (receiver side), and who uploaded what into this device's
+/// shares, so a device can only delete what it uploaded.
+const SCHEMA_V5: &str = r#"
+ALTER TABLE shares ADD COLUMN permission TEXT NOT NULL DEFAULT 'download';
+ALTER TABLE remote_shares ADD COLUMN permission TEXT NOT NULL DEFAULT 'download';
+CREATE TABLE IF NOT EXISTS uploads(
+  share_id TEXT NOT NULL, path TEXT NOT NULL, peer_id TEXT NOT NULL, is_dir INTEGER NOT NULL,
+  size INTEGER NOT NULL, mtime_ms INTEGER NOT NULL, created_at INTEGER NOT NULL,
+  PRIMARY KEY(share_id, path)) WITHOUT ROWID;
+CREATE INDEX IF NOT EXISTS uploads_peer ON uploads(share_id, peer_id);
+"#;
+
+/// Uploads from this device (so they continue after a restart), and
+/// auto-synced remote shares with the files each sync has already seen.
+const SCHEMA_V6: &str = r#"
+CREATE TABLE IF NOT EXISTS pushes(
+  id TEXT PRIMARY KEY, peer_id TEXT NOT NULL, peer_name TEXT NOT NULL, share_id TEXT NOT NULL,
+  share_name TEXT NOT NULL, local_path TEXT NOT NULL, remote_path TEXT NOT NULL, size INTEGER NOT NULL,
+  mtime_ms INTEGER NOT NULL, status TEXT NOT NULL, error TEXT, saved_as TEXT,
+  created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL,
+  direct_bytes INTEGER NOT NULL DEFAULT 0, relay_bytes INTEGER NOT NULL DEFAULT 0,
+  active_ms INTEGER NOT NULL DEFAULT 0, peak_bps REAL NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS sync_shares(
+  peer_id TEXT NOT NULL, share_id TEXT NOT NULL, dest_dir TEXT NOT NULL, created_at INTEGER NOT NULL,
+  baseline_done INTEGER NOT NULL DEFAULT 0, last_sync_at INTEGER, last_error TEXT,
+  PRIMARY KEY(peer_id, share_id));
+CREATE TABLE IF NOT EXISTS sync_seen(
+  peer_id TEXT NOT NULL, share_id TEXT NOT NULL, path TEXT NOT NULL,
+  PRIMARY KEY(peer_id, share_id, path)) WITHOUT ROWID;
+"#;
+
+/// An upload from this device into another device's share.
+#[derive(Clone, Debug)]
+pub struct PushRow {
+    pub id: String,
+    pub peer_id: String,
+    pub peer_name: String,
+    pub share_id: String,
+    pub share_name: String,
+    pub local_path: String,
+    pub remote_path: Vec<String>,
+    pub size: u64,
+    pub mtime_ms: i64,
+    pub status: String,
+    pub error: Option<String>,
+    pub saved_as: Option<String>,
+    pub created_at: i64,
+    pub updated_at: i64,
+    pub stats: JobStats,
+}
+
+/// A remote share this device downloads new files from automatically.
+#[derive(Clone, Debug)]
+pub struct SyncRow {
+    pub peer_id: String,
+    pub share_id: String,
+    pub dest_dir: String,
+    pub created_at: i64,
+    /// Set once the files present when sync was turned on were recorded (or queued).
+    pub baseline_done: bool,
+    pub last_sync_at: Option<i64>,
+    pub last_error: Option<String>,
+}
+
 /// Verified prefix of a chunk: (chunk index, bytes done, block hashes).
 pub type Partial = (u64, u64, Vec<[u8; 32]>);
 
@@ -222,6 +299,14 @@ impl Db {
             conn.execute_batch(SCHEMA_V4)?;
             conn.pragma_update(None, "user_version", 4)?;
         }
+        if version < 5 {
+            conn.execute_batch(SCHEMA_V5)?;
+            conn.pragma_update(None, "user_version", 5)?;
+        }
+        if version < 6 {
+            conn.execute_batch(SCHEMA_V6)?;
+            conn.pragma_update(None, "user_version", 6)?;
+        }
         Ok(Db { conn: Mutex::new(conn) })
     }
 
@@ -251,8 +336,8 @@ impl Db {
 
     pub fn insert_share(&self, s: &ShareRow) -> Result<()> {
         self.conn.lock().execute(
-            "INSERT INTO shares(id,root_path,display_name,active,created_at) VALUES(?1,?2,?3,?4,?5)",
-            params![s.id, s.root_path, s.name, s.active, s.created_at],
+            "INSERT INTO shares(id,root_path,display_name,active,created_at,permission) VALUES(?1,?2,?3,?4,?5,?6)",
+            params![s.id, s.root_path, s.name, s.active, s.created_at, s.permission],
         )?;
         Ok(())
     }
@@ -260,16 +345,18 @@ impl Db {
     pub fn list_shares(&self) -> Result<Vec<ShareRow>> {
         let c = self.conn.lock();
         let mut st = c.prepare(
-            "SELECT id,root_path,display_name,active,created_at FROM shares ORDER BY created_at",
+            "SELECT id,root_path,display_name,active,created_at,permission FROM shares ORDER BY created_at",
         )?;
         let rows = st
             .query_map([], |r| {
+                let perm: String = r.get(5)?;
                 Ok(ShareRow {
                     id: r.get(0)?,
                     root_path: r.get(1)?,
                     name: r.get(2)?,
                     active: r.get(3)?,
                     created_at: r.get(4)?,
+                    permission: crate::types::normalize_permission(&perm).to_string(),
                 })
             })?
             .collect::<rusqlite::Result<Vec<_>>>()?;
@@ -287,13 +374,218 @@ impl Db {
         Ok(())
     }
 
+    pub fn set_share_permission(&self, id: &str, permission: &str) -> Result<()> {
+        self.conn
+            .lock()
+            .execute("UPDATE shares SET permission=?2 WHERE id=?1", params![id, permission])?;
+        Ok(())
+    }
+
     pub fn delete_share(&self, id: &str) -> Result<()> {
         let mut c = self.conn.lock();
         let tx = c.transaction()?;
         tx.execute("DELETE FROM shares WHERE id=?1", params![id])?;
         tx.execute("DELETE FROM invitations WHERE share_id=?1", params![id])?;
         tx.execute("DELETE FROM grants WHERE share_id=?1", params![id])?;
+        tx.execute("DELETE FROM uploads WHERE share_id=?1", params![id])?;
         tx.commit()?;
+        Ok(())
+    }
+
+    // ---------------------------------------------------------------- uploads from this device
+
+    pub fn save_push(&self, p: &PushRow) -> Result<()> {
+        self.conn.lock().execute(
+            "INSERT OR REPLACE INTO pushes(id,peer_id,peer_name,share_id,share_name,local_path,remote_path,size,mtime_ms,
+               status,error,saved_as,created_at,updated_at,direct_bytes,relay_bytes,active_ms,peak_bps)
+             VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18)",
+            params![
+                p.id,
+                p.peer_id,
+                p.peer_name,
+                p.share_id,
+                p.share_name,
+                p.local_path,
+                serde_json::to_string(&p.remote_path)?,
+                p.size as i64,
+                p.mtime_ms,
+                p.status,
+                p.error,
+                p.saved_as,
+                p.created_at,
+                p.updated_at,
+                p.stats.direct_bytes as i64,
+                p.stats.relay_bytes as i64,
+                p.stats.active_ms as i64,
+                p.stats.peak_bps,
+            ],
+        )?;
+        Ok(())
+    }
+
+    pub fn list_pushes(&self) -> Result<Vec<PushRow>> {
+        let c = self.conn.lock();
+        let mut st = c.prepare(
+            "SELECT id,peer_id,peer_name,share_id,share_name,local_path,remote_path,size,mtime_ms,status,error,saved_as,
+               created_at,updated_at,direct_bytes,relay_bytes,active_ms,peak_bps FROM pushes",
+        )?;
+        let rows = st
+            .query_map([], |r| {
+                let rp: String = r.get(6)?;
+                Ok(PushRow {
+                    id: r.get(0)?,
+                    peer_id: r.get(1)?,
+                    peer_name: r.get(2)?,
+                    share_id: r.get(3)?,
+                    share_name: r.get(4)?,
+                    local_path: r.get(5)?,
+                    remote_path: serde_json::from_str(&rp).unwrap_or_default(),
+                    size: r.get::<_, i64>(7)? as u64,
+                    mtime_ms: r.get(8)?,
+                    status: r.get(9)?,
+                    error: r.get(10)?,
+                    saved_as: r.get(11)?,
+                    created_at: r.get(12)?,
+                    updated_at: r.get(13)?,
+                    stats: JobStats {
+                        direct_bytes: r.get::<_, i64>(14)? as u64,
+                        relay_bytes: r.get::<_, i64>(15)? as u64,
+                        active_ms: r.get::<_, i64>(16)? as u64,
+                        peak_bps: r.get(17)?,
+                    },
+                })
+            })?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        Ok(rows)
+    }
+
+    pub fn delete_push(&self, id: &str) -> Result<()> {
+        self.conn.lock().execute("DELETE FROM pushes WHERE id=?1", params![id])?;
+        Ok(())
+    }
+
+    pub fn delete_finished_pushes(&self) -> Result<()> {
+        self.conn.lock().execute("DELETE FROM pushes WHERE status='completed'", [])?;
+        Ok(())
+    }
+
+    // ---------------------------------------------------------------- auto-sync of remote shares
+
+    pub fn upsert_sync(&self, s: &SyncRow) -> Result<()> {
+        self.conn.lock().execute(
+            "INSERT INTO sync_shares(peer_id,share_id,dest_dir,created_at,baseline_done,last_sync_at,last_error)
+             VALUES(?1,?2,?3,?4,?5,?6,?7)
+             ON CONFLICT(peer_id,share_id) DO UPDATE SET dest_dir=excluded.dest_dir, baseline_done=excluded.baseline_done,
+               last_sync_at=excluded.last_sync_at, last_error=excluded.last_error",
+            params![s.peer_id, s.share_id, s.dest_dir, s.created_at, s.baseline_done, s.last_sync_at, s.last_error],
+        )?;
+        Ok(())
+    }
+
+    pub fn list_syncs(&self) -> Result<Vec<SyncRow>> {
+        let c = self.conn.lock();
+        let mut st = c.prepare(
+            "SELECT peer_id,share_id,dest_dir,created_at,baseline_done,last_sync_at,last_error FROM sync_shares",
+        )?;
+        let rows = st
+            .query_map([], |r| {
+                Ok(SyncRow {
+                    peer_id: r.get(0)?,
+                    share_id: r.get(1)?,
+                    dest_dir: r.get(2)?,
+                    created_at: r.get(3)?,
+                    baseline_done: r.get(4)?,
+                    last_sync_at: r.get(5)?,
+                    last_error: r.get(6)?,
+                })
+            })?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        Ok(rows)
+    }
+
+    /// Turns sync off and forgets what it had seen.
+    pub fn delete_sync(&self, peer_id: &str, share_id: &str) -> Result<()> {
+        let mut c = self.conn.lock();
+        let tx = c.transaction()?;
+        tx.execute("DELETE FROM sync_shares WHERE peer_id=?1 AND share_id=?2", params![peer_id, share_id])?;
+        tx.execute("DELETE FROM sync_seen WHERE peer_id=?1 AND share_id=?2", params![peer_id, share_id])?;
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub fn sync_seen(&self, peer_id: &str, share_id: &str) -> Result<std::collections::HashSet<String>> {
+        let c = self.conn.lock();
+        let mut st = c.prepare("SELECT path FROM sync_seen WHERE peer_id=?1 AND share_id=?2")?;
+        let rows = st
+            .query_map(params![peer_id, share_id], |r| r.get::<_, String>(0))?
+            .collect::<rusqlite::Result<std::collections::HashSet<_>>>()?;
+        Ok(rows)
+    }
+
+    pub fn remove_sync_seen(&self, peer_id: &str, share_id: &str, paths: &[String]) -> Result<()> {
+        let mut c = self.conn.lock();
+        let tx = c.transaction()?;
+        {
+            let mut st = tx.prepare("DELETE FROM sync_seen WHERE peer_id=?1 AND share_id=?2 AND path=?3")?;
+            for p in paths {
+                st.execute(params![peer_id, share_id, p])?;
+            }
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
+    pub fn add_sync_seen(&self, peer_id: &str, share_id: &str, paths: &[String]) -> Result<()> {
+        let mut c = self.conn.lock();
+        let tx = c.transaction()?;
+        {
+            let mut st = tx.prepare("INSERT OR IGNORE INTO sync_seen(peer_id,share_id,path) VALUES(?1,?2,?3)")?;
+            for p in paths {
+                st.execute(params![peer_id, share_id, p])?;
+            }
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
+    // ---------------------------------------------------------------- uploads (who created what in a share)
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn record_upload(&self, share_id: &str, path: &str, peer_id: &str, is_dir: bool, size: u64, mtime_ms: i64) -> Result<()> {
+        self.conn.lock().execute(
+            "INSERT INTO uploads(share_id,path,peer_id,is_dir,size,mtime_ms,created_at) VALUES(?1,?2,?3,?4,?5,?6,?7)
+             ON CONFLICT(share_id,path) DO UPDATE SET peer_id=excluded.peer_id, is_dir=excluded.is_dir,
+               size=excluded.size, mtime_ms=excluded.mtime_ms, created_at=excluded.created_at",
+            params![share_id, path, peer_id, is_dir, size as i64, mtime_ms, now_ms()],
+        )?;
+        Ok(())
+    }
+
+    /// Everything one device uploaded into a share.
+    pub fn uploads_by_peer(&self, share_id: &str, peer_id: &str) -> Result<Vec<UploadRow>> {
+        let c = self.conn.lock();
+        let mut st = c.prepare(
+            "SELECT path,is_dir,size,mtime_ms FROM uploads WHERE share_id=?1 AND peer_id=?2",
+        )?;
+        let rows = st
+            .query_map(params![share_id, peer_id], |r| {
+                Ok(UploadRow {
+                    path: r.get(0)?,
+                    is_dir: r.get(1)?,
+                    size: r.get::<_, i64>(2)? as u64,
+                    mtime_ms: r.get(3)?,
+                })
+            })?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        Ok(rows)
+    }
+
+    /// Forgets a path and everything below it.
+    pub fn delete_uploads_under(&self, share_id: &str, path: &str) -> Result<()> {
+        self.conn.lock().execute(
+            "DELETE FROM uploads WHERE share_id=?1 AND (path=?2 OR substr(path,1,length(?2)+1)=?2||'/')",
+            params![share_id, path],
+        )?;
         Ok(())
     }
 
@@ -464,21 +756,32 @@ impl Db {
         Ok(())
     }
 
-    pub fn set_remote_shares(&self, peer_id: &str, shares: &[(String, String)]) -> Result<()> {
+    /// Replaces the shares a remote offers: (id, name, permission).
+    pub fn set_remote_shares(&self, peer_id: &str, shares: &[(String, String, String)]) -> Result<()> {
         let mut c = self.conn.lock();
         let tx = c.transaction()?;
         tx.execute("DELETE FROM remote_shares WHERE peer_id=?1", params![peer_id])?;
-        for (id, name) in shares {
+        for (id, name, perm) in shares {
             tx.execute(
-                "INSERT INTO remote_shares(peer_id,share_id,name) VALUES(?1,?2,?3)",
-                params![peer_id, id, name],
+                "INSERT INTO remote_shares(peer_id,share_id,name,permission) VALUES(?1,?2,?3,?4)",
+                params![peer_id, id, name, perm],
             )?;
         }
         tx.commit()?;
         Ok(())
     }
 
-    pub fn list_remotes(&self) -> Result<Vec<(RemoteRow, Vec<(String, String)>)>> {
+    /// Updates the cached permission of one remote share. Returns whether it changed.
+    pub fn set_remote_share_permission(&self, peer_id: &str, share_id: &str, permission: &str) -> Result<bool> {
+        let n = self.conn.lock().execute(
+            "UPDATE remote_shares SET permission=?3 WHERE peer_id=?1 AND share_id=?2 AND permission<>?3",
+            params![peer_id, share_id, permission],
+        )?;
+        Ok(n > 0)
+    }
+
+    /// Remotes with their shares: (id, name, permission).
+    pub fn list_remotes(&self) -> Result<Vec<(RemoteRow, Vec<(String, String, String)>)>> {
         let c = self.conn.lock();
         let mut st = c.prepare(
             "SELECT peer_id,name,relay_url,created_at,last_seen_at FROM remotes ORDER BY last_seen_at DESC",
@@ -494,11 +797,11 @@ impl Db {
                 })
             })?
             .collect::<rusqlite::Result<Vec<_>>>()?;
-        let mut st2 = c.prepare("SELECT share_id,name FROM remote_shares WHERE peer_id=?1 ORDER BY name")?;
+        let mut st2 = c.prepare("SELECT share_id,name,permission FROM remote_shares WHERE peer_id=?1 ORDER BY name")?;
         let mut out = Vec::new();
         for r in remotes {
             let shares = st2
-                .query_map(params![r.peer_id], |row| Ok((row.get(0)?, row.get(1)?)))?
+                .query_map(params![r.peer_id], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?
                 .collect::<rusqlite::Result<Vec<_>>>()?;
             out.push((r, shares));
         }
@@ -528,6 +831,8 @@ impl Db {
         let tx = c.transaction()?;
         tx.execute("DELETE FROM remotes WHERE peer_id=?1", params![peer_id])?;
         tx.execute("DELETE FROM remote_shares WHERE peer_id=?1", params![peer_id])?;
+        tx.execute("DELETE FROM sync_shares WHERE peer_id=?1", params![peer_id])?;
+        tx.execute("DELETE FROM sync_seen WHERE peer_id=?1", params![peer_id])?;
         tx.commit()?;
         Ok(())
     }

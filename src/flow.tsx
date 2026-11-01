@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
-import { speed } from "./format";
+import { bytes, speed, totalRates } from "./format";
 import { useStore } from "./store";
 
 /**
@@ -62,19 +62,18 @@ function demoFlow(now: number): Flow {
  * that explain the shape of the line: pauses, reconnects and route changes.
  */
 export function FlowProvider({ children }: { children: ReactNode }) {
-  const { jobs, uploads } = useStore();
-  const latest = useRef({ jobs, uploads });
-  latest.current = { jobs, uploads };
+  const { jobs, uploads, pushes, incoming } = useStore();
+  const latest = useRef({ jobs, uploads, pushes, incoming });
+  latest.current = { jobs, uploads, pushes, incoming };
   const [flow, setFlow] = useState<Flow>(() => (import.meta.env.MODE === "mock" ? demoFlow(Date.now()) : { samples: [], marks: [] }));
   const prev = useRef<Record<string, { status: string; route: string }>>({});
 
   useEffect(() => {
     const tick = () => {
       const now = Date.now();
-      const { jobs, uploads } = latest.current;
+      const { jobs, uploads, pushes, incoming } = latest.current;
       const list = Object.values(jobs);
-      const down = list.filter((j) => j.status === "downloading").reduce((a, j) => a + j.speedBps, 0);
-      const up = uploads.reduce((a, u) => a + u.bps, 0);
+      const { down, up } = totalRates(list, uploads, pushes, incoming);
       const marks: FlowMark[] = [];
       const seen: Record<string, { status: string; route: string }> = {};
       for (const j of list) {
@@ -181,9 +180,8 @@ const CAP_HALF = CAP / Math.sqrt(3);
 export function LiveFlow() {
   const { samples, marks } = useFlow();
   // The legend reads the same live figures as the rest of the screen.
-  const { jobs, uploads } = useStore();
-  const nowDown = Object.values(jobs).filter((j) => j.status === "downloading").reduce((a, j) => a + j.speedBps, 0);
-  const nowUp = uploads.reduce((a, u) => a + u.bps, 0);
+  const { jobs, uploads, pushes, incoming } = useStore();
+  const { down: nowDown, up: nowUp } = totalRates(jobs, uploads, pushes, incoming);
   const box = useRef<HTMLDivElement>(null);
   const [w, setW] = useState(640);
   // Pointer position over the plot (px), so the cursor follows time as data scrolls under it.
@@ -260,7 +258,8 @@ export function LiveFlow() {
   const near = (ticks: number[], v: number) => (v > 0 && ticks.length ? ticks.reduce((b, t) => (Math.abs(t - v) < Math.abs(b - v) ? t : b)) : null);
   const litDown = hv ? near([...downTicks, 0], hv.down) : null;
   const litUp = hv ? near(upTicks, hv.up) : null;
-  const tick = (v: number) => (v === 0 ? "0" : speed(v).replace("/s", ""));
+  // Axis ticks are round values; they don't need the two decimals of a live rate.
+  const tick = (v: number) => (v === 0 ? "0" : bytes(v));
 
   const hx = hv ? x(hv.t) : 0;
   const flip = hx > w - 250;

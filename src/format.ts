@@ -1,4 +1,24 @@
-import type { JobStatus } from "./api";
+import type { Incoming, Job, JobStatus, Push, Upload } from "./api";
+
+/**
+ * Total speed this device receives and sends, from every kind of transfer:
+ * down = its downloads + others uploading into its folders;
+ * up = others downloading from it + its uploads into others' folders.
+ */
+export function totalRates(
+  jobs: Record<string, Job> | Job[],
+  uploads: Upload[],
+  pushes: Push[],
+  incoming: Incoming[],
+): { down: number; up: number } {
+  const list = Array.isArray(jobs) ? jobs : Object.values(jobs);
+  const down =
+    list.filter((j) => j.status === "downloading").reduce((a, j) => a + (j.speedBps || 0), 0) +
+    incoming.filter((f) => f.status === "receiving").reduce((a, f) => a + (f.bps || 0), 0);
+  const up =
+    uploads.reduce((a, u) => a + (u.bps || 0), 0) + pushes.filter((p) => p.status === "uploading").reduce((a, p) => a + (p.bps || 0), 0);
+  return { down, up };
+}
 
 export function bytes(n: number): string {
   if (!Number.isFinite(n) || n < 0) return "–";
@@ -9,16 +29,32 @@ export function bytes(n: number): string {
     v /= 1024;
     i++;
   }
-  return i === 0 ? `${n} B` : `${v >= 100 ? v.toFixed(0) : v.toFixed(1)} ${u[i]}`;
+  return i === 0 ? `${Math.round(n)} B` : `${v >= 100 ? v.toFixed(0) : v.toFixed(1)} ${u[i]}`;
 }
 
+/** A transfer rate split for display: { value: "11.60", unit: "MB/s" }; value "–" when idle. */
+export function speedParts(bps: number): { value: string; unit: string } {
+  if (!Number.isFinite(bps) || bps < 1) return { value: "–", unit: "" };
+  const u = ["B/s", "KB/s", "MB/s", "GB/s", "TB/s"];
+  let i = 0;
+  let v = bps;
+  // Switch unit before the rounded value would read 1024.00.
+  while (v >= 1023.995 && i < u.length - 1) {
+    v /= 1024;
+    i++;
+  }
+  return { value: v.toFixed(2), unit: u[i] };
+}
+
+/** A transfer rate with two decimals: "191.02 B/s", "11.60 MB/s". */
 export function speed(bps: number): string {
-  if (!bps || bps < 1) return "–";
-  return `${bytes(bps)}/s`;
+  const p = speedParts(bps);
+  return p.unit ? `${p.value} ${p.unit}` : p.value;
 }
 
 export function mbit(bps: number): string {
-  return `${((bps * 8) / 1_000_000).toFixed(bps * 8 >= 100_000_000 ? 0 : 1)} Mbit/s`;
+  if (!Number.isFinite(bps) || bps < 0) return "–";
+  return `${((bps * 8) / 1_000_000).toFixed(2)} Mbit/s`;
 }
 
 export function duration(secs: number | null | undefined): string {

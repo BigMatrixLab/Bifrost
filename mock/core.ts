@@ -13,24 +13,24 @@ const NEVER = 253_402_300_799_000;
 const inv = (o: any) => ({ state: "active", hasShortCode: !!o.shortCode, ...o });
 export const data: Record<string, any> = {
   bootstrap: {
-    settings: { deviceName: "Berlin-Studio", downloadDir: "C:\\Users\\Lena\\Downloads\\Bifrost", parallelStreams: 12, maxConcurrentJobs: 2, maxConnections: 8, downloadLimitKbps: 0, uploadLimitKbps: 0, connectionMode: "allow_relay", congestion: "cubic", chunkSizeMib: 16, lowPriority: true, notifications: true, closeToTray: true, onboarded: (window as any).__onboarded ?? true, historyRetention: "365", historyNames: true, relayUrls: "" },
+    settings: { deviceName: "Berlin-Studio", downloadDir: "C:\\Users\\Lena\\Downloads\\Bifrost", parallelStreams: 12, maxConcurrentJobs: 2, maxConnections: 8, downloadLimitKbps: 0, uploadLimitKbps: 0, connectionMode: "allow_relay", congestion: "cubic", chunkSizeMib: 16, lowPriority: true, notifications: true, closeToTray: true, onboarded: (window as any).__onboarded ?? true, historyRetention: "365", historyNames: true, relayUrls: "", defaultSharePermission: "download" },
     network: { endpointId: "9f3c1e7a2b4d6f8091a3c5e7f9b1d3f5a7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7", endpointShort: "9f3c1e7a", online: true, relayUrl: "https://euc1-1.relay.n0.iroh-canary.iroh.link./", directAddrs: 3 },
     platform: (window as any).__platform ?? "windows",
     version: "0.1.0", dataDir: "C:\\Users\\Lena\\AppData\\Roaming\\app.relayless.desktop",
   },
   // Every state the UI can show, for checking the design in a browser.
   list_shares: [
-    { id: "s1", name: "Client deliveries", rootPath: "D:\\Research\\Client deliveries", active: true, createdAt: now - 86400e3, deviceCount: 3,
+    { id: "s1", name: "Client deliveries", rootPath: "D:\\Research\\Client deliveries", active: true, createdAt: now - 86400e3, deviceCount: 3, permission: "both",
       invitations: [
         inv({ id: "i1", shareId: "s1", expiresAt: now + 22 * 3600e3, createdAt: now - 2 * 3600e3, maxUses: 1, useCount: 0, requireApproval: true, shortCode: "Q4TM-8HXR-2WNP-K7DA" }),
         inv({ id: "i4", shareId: "s1", expiresAt: NEVER, createdAt: now - 3 * 86400e3, maxUses: null, useCount: 3, requireApproval: true, shortCode: "M3VA-7KQE-XN2T-9PHD" }),
         inv({ id: "i5", shareId: "s1", expiresAt: now + 7 * 3600e3, createdAt: now - 17 * 3600e3, maxUses: 5, useCount: 2, requireApproval: false, shortCode: "TB6W-4RJN-8ZCK-2YFM" }),
         inv({ id: "i3", shareId: "s1", expiresAt: now + 2 * 3600e3, createdAt: now - 22 * 3600e3, maxUses: null, useCount: 2, requireApproval: false, shortCode: null }),
       ] },
-    { id: "s3", name: "Call of Duty - Modern Warfare III", rootPath: "D:\\Game\\Call of Duty - Modern Warfare III", active: true, createdAt: now - 3600e3, deviceCount: 0,
+    { id: "s3", name: "Call of Duty - Modern Warfare III", rootPath: "D:\\Game\\Call of Duty - Modern Warfare III", active: true, createdAt: now - 3600e3, deviceCount: 0, permission: "download",
       invitations: [inv({ id: "i6", shareId: "s3", expiresAt: now + 25 * 60e3, createdAt: now - 3575 * 1000, maxUses: 1, useCount: 0, requireApproval: true, shortCode: "H8DX-3QWN-6TAV-K4ZR" })] },
-    { id: "s4", name: "Photos 2026", rootPath: "E:\\Pictures\\2026", active: true, createdAt: now - 600e3, deviceCount: 0, invitations: [] },
-    { id: "s2", name: "Video Archive", rootPath: "E:\\Archive\\Video", active: false, createdAt: now - 5 * 86400e3, deviceCount: 0, invitations: [] },
+    { id: "s4", name: "Photos 2026", rootPath: "E:\\Pictures\\2026", active: true, createdAt: now - 600e3, deviceCount: 0, permission: "upload", invitations: [] },
+    { id: "s2", name: "Video Archive", rootPath: "E:\\Archive\\Video", active: false, createdAt: now - 5 * 86400e3, deviceCount: 0, permission: "download", invitations: [] },
   ],
   list_grants: [
     { peerId: "77aa88bb99", peerShort: "77aa88bb", deviceName: "Lena's laptop", shareId: "s1", shareName: "Client deliveries", createdAt: now - 86400e3, lastSeenAt: now, connected: true, route: st("direct", 184), safetyWords: ["harbor", "quill", "maple", "orbit", "tulip"] },
@@ -38,9 +38,9 @@ export const data: Record<string, any> = {
     { peerId: "99ee00ff11", peerShort: "99ee00ff", deviceName: "Old tablet", shareId: "s1", shareName: "Client deliveries", createdAt: now - 20 * 86400e3, lastSeenAt: now - 4 * 86400e3, connected: false, route: st("none", null), safetyWords: ["coral", "dune", "fern", "lotus", "raven"] },
   ],
   list_remotes: [
-    { peerId: "a1b2c3d4e5", peerShort: "a1b2c3d4", name: "Dhaka-Edit-Bay", shares: [{ id: "s1", name: "Film masters" }, { id: "s2", name: "Archive" }], createdAt: now - 2 * 86400e3, lastSeenAt: now, status: { peerId: "a1b2c3d4e5", state: "connected", route: st("direct", 176), message: null }, safetyWords: ["cedar", "lantern", "otter", "quartz", "violet"] },
-    { peerId: "c0ffee1234", peerShort: "c0ffee12", name: "Office-NAS", shares: [{ id: "s7", name: "Projects" }], createdAt: now - 6 * 86400e3, lastSeenAt: now, status: { peerId: "c0ffee1234", state: "connected", route: st("relay", 268), message: null }, safetyWords: ["delta", "garnet", "hazel", "nectar", "pixel"] },
-    { peerId: "ffee", peerShort: "ffee0011", name: "Home server", shares: [{ id: "s9", name: "Shared" }], createdAt: now - 9 * 86400e3, lastSeenAt: now - 3 * 86400e3, status: { peerId: "ffee", state: "disconnected", route: st("none", null), message: null }, safetyWords: ["bison", "ember", "kettle", "plum", "summit"] },
+    { peerId: "a1b2c3d4e5", peerShort: "a1b2c3d4", name: "Dhaka-Edit-Bay", shares: [{ id: "s1", name: "Film masters", permission: "both" }, { id: "s2", name: "Archive", permission: "download" }], createdAt: now - 2 * 86400e3, lastSeenAt: now, status: { peerId: "a1b2c3d4e5", state: "connected", route: st("direct", 176), message: null }, safetyWords: ["cedar", "lantern", "otter", "quartz", "violet"] },
+    { peerId: "c0ffee1234", peerShort: "c0ffee12", name: "Office-NAS", shares: [{ id: "s7", name: "Projects", permission: "upload" }], createdAt: now - 6 * 86400e3, lastSeenAt: now, status: { peerId: "c0ffee1234", state: "connected", route: st("relay", 268), message: null }, safetyWords: ["delta", "garnet", "hazel", "nectar", "pixel"] },
+    { peerId: "ffee", peerShort: "ffee0011", name: "Home server", shares: [{ id: "s9", name: "Shared", permission: "download" }], createdAt: now - 9 * 86400e3, lastSeenAt: now - 3 * 86400e3, status: { peerId: "ffee", state: "disconnected", route: st("none", null), message: null }, safetyWords: ["bison", "ember", "kettle", "plum", "summit"] },
   ],
   list_jobs: [
     job({ id: "j1", displayName: "feature-film-master-4k.mov", size: 64 * GB, doneBytes: 27.4 * GB, status: "downloading", speedBps: 11.6 * 1024 * 1024, etaSecs: 3270 }),
@@ -66,12 +66,16 @@ export const data: Record<string, any> = {
     entries: [
       { name: "2024", isDir: true, size: 0, modifiedMs: now - 300 * 86400e3 },
       { name: "2025", isDir: true, size: 0, modifiedMs: now - 100 * 86400e3 },
-      { name: "subtitles", isDir: true, size: 0, modifiedMs: now - 10 * 86400e3 },
+      { name: "subtitles", isDir: true, size: 0, modifiedMs: now - 10 * 86400e3, mine: true },
       ...Array.from({ length: 60 }, (_, i) => ({ name: `scene-${String(i + 1).padStart(3, "0")}-take-${(i % 4) + 1}.mov`, isDir: false, size: (300 + i * 37) * 1024 * 1024, modifiedMs: now - i * 86400e3 })),
       { name: "feature-film-master-4k.mov", isDir: false, size: 64 * GB, modifiedMs: now - 2 * 86400e3 },
-      { name: "README.md", isDir: false, size: 4200, modifiedMs: now - 2 * 86400e3 },
-    ], total: 65, offset: 0,
+      { name: "README.md", isDir: false, size: 4200, modifiedMs: now - 2 * 86400e3, mine: true },
+    ], total: 65, offset: 0, permission: "both",
   },
+  list_pushes: [
+    { id: "p1", peerId: "a1b2c3d4e5", peerName: "Dhaka-Edit-Bay", shareId: "s1", shareName: "Film masters", localPath: "C:\\Users\\Lena\\Videos\\notes-reel-3.mov", remotePath: ["notes-reel-3.mov"], name: "notes-reel-3.mov", savedAs: null, size: 3.4 * GB, sentBytes: 1.1 * GB, bps: 6.2 * 1024 * 1024, status: "uploading", error: null, createdAt: now - 300e3, updatedAt: now },
+    { id: "p2", peerId: "a1b2c3d4e5", peerName: "Dhaka-Edit-Bay", shareId: "s1", shareName: "Film masters", localPath: "C:\\Users\\Lena\\Documents\\subtitles\\en.srt", remotePath: ["subtitles", "en.srt"], name: "en.srt", savedAs: "en.srt", size: 84000, sentBytes: 84000, bps: 0, status: "completed", error: null, createdAt: now - 900e3, updatedAt: now - 880e3 },
+  ],
   create_invitation: {
     invitation: { id: "i2", shareId: "s1", expiresAt: now + 86400e3, maxUses: 1, useCount: 0, requireApproval: true, createdAt: now, state: "active", hasShortCode: true, shortCode: "K7QM-9XRT-4HWD-P2NA" },
     invite: "RL1-T7QBZK2M4XHV9RCN3EWP5Y8AFJDG6SLQ2TMVK7XB4NHC9REW3PY5AF8JDG2KLQ6TMV7XB4NHC9REW3PY5AF8JDG2KLQ6TMVBZK2M4XHV9RCN3EWP5Y8AFJDG",
@@ -135,16 +139,24 @@ data.list_outgoing = [
   { id: "o1", peerId: "77aa88bb99", deviceName: "Lena's laptop", shareName: "Client deliveries", name: "scene-014-take-2.mov", path: ["scene-014-take-2.mov"], size: 6.4 * GB, sentBytes: 2.71 * GB, bps: 3.4 * 1024 * 1024, status: "sending", startedAt: now - 900e3, updatedAt: now, route: "direct" },
   { id: "o2", peerId: "77aa88bb99", deviceName: "Lena's laptop", shareName: "Client deliveries", name: "color-grade-notes.pdf", path: ["color-grade-notes.pdf"], size: 4.2 * 1024 * 1024, sentBytes: 4.2 * 1024 * 1024, bps: 0, status: "verified", startedAt: now - 1200e3, updatedAt: now - 600e3 },
 ];
+data.list_syncs = [
+  { peerId: "a1b2c3d4e5", shareId: "s1", destDir: "C:\\Users\\Lena\\Downloads\\Bifrost\\Film masters", enabledAt: now - 86400e3, lastSyncAt: now - 40e3, lastError: null, syncing: false },
+];
+data.list_incoming = [
+  { id: "in1", peerId: "77aa88bb99", deviceName: "Lena's laptop", shareId: "s1", shareName: "Client deliveries", name: "review-notes.pdf", path: ["feedback", "review-notes.pdf"], savedAs: null, size: 48 * 1024 * 1024, receivedBytes: 21 * 1024 * 1024, bps: 2.1 * 1024 * 1024, status: "receiving", error: null, startedAt: now - 30e3, updatedAt: now, route: "direct" },
+  { id: "in2", peerId: "55cc66dd77", deviceName: "Studio-iMac", shareId: "s1", shareName: "Client deliveries", name: "logo-final.png", path: ["logo-final.png"], savedAs: "logo-final (1).png", size: 3.2 * 1024 * 1024, receivedBytes: 3.2 * 1024 * 1024, bps: 0, status: "completed", error: null, startedAt: now - 700e3, updatedAt: now - 690e3, route: "relay" },
+];
 data["plugin:relayless-android|has_all_files_access"] = { granted: false };
 data["plugin:relayless-android|battery_status"] = { unrestricted: false };
-data["list_local_dir"] = { path: "/storage/emulated/0", parent: null, root: "/storage/emulated/0", dirs: ["Alarms", "DCIM", "Documents", "Download", "Movies", "Music", "Pictures"] };
+data["list_local_dir"] = { path: "/storage/emulated/0", parent: null, root: "/storage/emulated/0", dirs: ["Alarms", "DCIM", "Documents", "Download", "Movies", "Music", "Pictures"], files: [{ name: "notes.txt", size: 2200 }, { name: "trip.mp4", size: 412 * 1024 * 1024 }] };
 export async function invoke<T>(cmd: string, _args?: any): Promise<T> {
   await new Promise((r) => setTimeout(r, 30));
   if (cmd === "create_share") {
     // Like the engine: the share is named after the folder and listed first.
     const path = String(_args?.path ?? "");
     const name = _args?.name || path.split(/[\\/]/).filter(Boolean).pop() || "Shared folder";
-    const share = { id: `s${Date.now()}`, name, rootPath: path, active: true, createdAt: Date.now(), deviceCount: 0, invitations: [] };
+    const permission = _args?.permission || data.bootstrap.settings.defaultSharePermission || "download";
+    const share = { id: `s${Date.now()}`, name, rootPath: path, active: true, createdAt: Date.now(), deviceCount: 0, permission, invitations: [] };
     data.list_shares = [share, ...data.list_shares];
     return JSON.parse(JSON.stringify(share));
   }
@@ -152,6 +164,64 @@ export async function invoke<T>(cmd: string, _args?: any): Promise<T> {
   if (cmd in sendStatus) {
     const o = data.list_outgoing.find((x: any) => x.id === _args?.id);
     if (o) Object.assign(o, { status: sendStatus[cmd], bps: 0 });
+    return undefined as T;
+  }
+  if (cmd === "set_share_permission") {
+    const s = data.list_shares.find((x: any) => x.id === _args?.id);
+    if (s) s.permission = _args?.permission;
+    return JSON.parse(JSON.stringify(s));
+  }
+  if (cmd === "update_settings") return JSON.parse(JSON.stringify((data.bootstrap.settings = _args?.settings)));
+  if (cmd === "remote_mkdir") {
+    const name = String(_args?.path?.[_args.path.length - 1] ?? "New folder");
+    data.list_remote_dir.entries.unshift({ name, isDir: true, size: 0, modifiedMs: Date.now(), mine: true });
+    data.list_remote_dir.total += 1;
+    return name as T;
+  }
+  if (cmd === "remote_delete") {
+    const name = _args?.path?.[_args.path.length - 1];
+    data.list_remote_dir.entries = data.list_remote_dir.entries.filter((e: any) => e.name !== name);
+    data.list_remote_dir.total = data.list_remote_dir.entries.length;
+    return undefined as T;
+  }
+  if (cmd === "start_upload") {
+    const ids = (_args?.paths ?? []).map((p: string, i: number) => {
+      const name = p.split(/[\\/]/).filter(Boolean).pop() || "file";
+      const id = `p${Date.now()}${i}`;
+      data.list_pushes.unshift({ id, peerId: _args.peerId, peerName: "Dhaka-Edit-Bay", shareId: _args.shareId, shareName: "Film masters", localPath: p, remotePath: [..._args.dir, name], name, savedAs: null, size: 120 * 1024 * 1024, sentBytes: 0, bps: 0, status: "queued", error: null, createdAt: Date.now(), updatedAt: Date.now() });
+      return id;
+    });
+    return ids as T;
+  }
+  const pushStatus: Record<string, string> = { cancel_push: "canceled", retry_push: "queued" };
+  if (cmd in pushStatus) {
+    const p = data.list_pushes.find((x: any) => x.id === _args?.id);
+    if (p) Object.assign(p, { status: pushStatus[cmd], bps: 0 });
+    return undefined as T;
+  }
+  if (cmd === "remove_push") {
+    data.list_pushes = data.list_pushes.filter((x: any) => x.id !== _args?.id);
+    return undefined as T;
+  }
+  if (cmd === "enable_sync") {
+    const s = { peerId: _args.peerId, shareId: _args.shareId, destDir: _args.destDir || "C:\\Users\\Lena\\Downloads\\Bifrost\\Synced", enabledAt: Date.now(), lastSyncAt: null, lastError: null, syncing: false };
+    data.list_syncs = [...data.list_syncs.filter((x: any) => !(x.peerId === s.peerId && x.shareId === s.shareId)), s];
+    return JSON.parse(JSON.stringify(s));
+  }
+  if (cmd === "disable_sync") {
+    data.list_syncs = data.list_syncs.filter((x: any) => !(x.peerId === _args?.peerId && x.shareId === _args?.shareId));
+    return undefined as T;
+  }
+  if (cmd === "remove_incoming") {
+    data.list_incoming = data.list_incoming.filter((x: any) => x.id !== _args?.id);
+    return undefined as T;
+  }
+  if (cmd === "clear_incoming") {
+    data.list_incoming = data.list_incoming.filter((x: any) => x.status !== "completed");
+    return undefined as T;
+  }
+  if (cmd === "clear_pushes") {
+    data.list_pushes = data.list_pushes.filter((x: any) => x.status !== "completed");
     return undefined as T;
   }
   if (cmd === "remove_outgoing") {
