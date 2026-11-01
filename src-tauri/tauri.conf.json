@@ -36,7 +36,13 @@
       "nsis": {
         "installMode": "currentUser",
         "displayLanguageSelector": false,
-        "installerIcon": "icons/icon.ico"
+        "installerIcon": "icons/icon.ico",
+        "uninstallerIcon": "icons/icon.ico",
+        "template": "windows/installer.nsi",
+        "installerHooks": "windows/installer-hooks.nsh",
+        "sidebarImage": "windows/art/sidebar.bmp",
+        "headerImage": "windows/art/header.bmp",
+        "uninstallerHeaderImage": "windows/art/header.bmp"
       }
     }
   }

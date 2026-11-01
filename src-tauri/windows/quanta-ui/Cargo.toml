@@ -1,0 +1,22 @@
+[package]
+name = "quanta_ui"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "NSIS plugin that draws the Quanta installer's controls in the app's style"
+
+[lib]
+crate-type = ["cdylib"]
+
+# NSIS (and its plugins) are 32-bit: build with build.ps1, which targets
+# i686-pc-windows-msvc with a static CRT so the DLL needs no redistributable.
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+# Not part of the app's workspace.
+[workspace]

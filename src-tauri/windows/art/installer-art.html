@@ -1,0 +1,145 @@
+<!doctype html>
+<!--
+  Source art for the Windows installer's bitmaps, in the app's dark HUD style.
+  render.ps1 opens this page through the demo server (so the app's fonts
+  load) as  ?part=sidebar  (164 x 314, the welcome / finish pages' left
+  panel) and  ?part=header  (150 x 57, the top-right of the other pages),
+  screenshots it and saves 24-bit BMPs next to this file.
+  Colours follow src/styles.css: --surface #0b0b0d, --accent #4ade80.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      @font-face {
+        font-family: "Oxanium";
+        src: url("/node_modules/@fontsource-variable/oxanium/files/oxanium-latin-wght-normal.woff2") format("woff2");
+        font-weight: 200 800;
+      }
+      @font-face {
+        font-family: "JetBrains Mono";
+        src: url("/node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2") format("woff2");
+        font-weight: 100 800;
+      }
+      html,
+      body {
+        margin: 0;
+        background: #0b0b0d;
+        overflow: hidden;
+      }
+      .art {
+        position: relative;
+        overflow: hidden;
+        background: #0b0b0d;
+      }
+      /* Dense dot field, like the throughput chart. */
+      .dots {
+        position: absolute;
+        inset: 0;
+        background-image: radial-gradient(circle, rgba(255, 255, 255, 0.11) 0.7px, transparent 0.9px);
+        background-size: 6px 6px;
+        background-position: 3px 3px;
+      }
+      .glow {
+        position: absolute;
+        inset: 0;
+      }
+      /* HUD corner brackets. */
+      .brackets {
+        position: absolute;
+        inset: 8px;
+        --c: #4ade80;
+        --l: 12px;
+        background:
+          linear-gradient(var(--c), var(--c)) top left / var(--l) 1.5px,
+          linear-gradient(var(--c), var(--c)) top left / 1.5px var(--l),
+          linear-gradient(var(--c), var(--c)) top right / var(--l) 1.5px,
+          linear-gradient(var(--c), var(--c)) top right / 1.5px var(--l),
+          linear-gradient(var(--c), var(--c)) bottom left / var(--l) 1.5px,
+          linear-gradient(var(--c), var(--c)) bottom left / 1.5px var(--l),
+          linear-gradient(var(--c), var(--c)) bottom right / var(--l) 1.5px,
+          linear-gradient(var(--c), var(--c)) bottom right / 1.5px var(--l);
+        background-repeat: no-repeat;
+      }
+      .logo {
+        position: absolute;
+        filter: drop-shadow(0 0 10px rgba(74, 222, 128, 0.45));
+      }
+      .word {
+        position: absolute;
+        font-family: "Oxanium", sans-serif;
+        font-weight: 700;
+        color: #f2f2f2;
+        letter-spacing: 0.32em;
+        white-space: nowrap;
+      }
+      .tag {
+        position: absolute;
+        font-family: "JetBrains Mono", monospace;
+        color: #6a6a6a;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+      /* Segmented meter, like the app's progress bars. */
+      .meter {
+        position: absolute;
+        height: 6px;
+        background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.13) 0 3px, transparent 3px 5px);
+      }
+      .meter i {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        background: #4ade80;
+        box-shadow: 0 0 8px rgba(74, 222, 128, 0.5);
+      }
+      .meter b {
+        position: absolute;
+        top: -4px;
+        width: 3px;
+        height: 14px;
+        background: #4ade80;
+        box-shadow: 0 0 8px rgba(74, 222, 128, 0.7);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      // The app logo (src-tauri/icons/app-icon.svg) without its tile: a "Q"
+      // of twelve ring segments and a tail.
+      const Q = (size) => `
+        <svg width="${size}" height="${size}" viewBox="220 220 600 600" xmlns="http://www.w3.org/2000/svg">
+          <path fill="none" stroke="#4ade80" stroke-width="76"
+            d="M735.4 442.3A250 250 0 0 1 735.4 537.7M726.4 571.4A250 250 0 0 1 704.3 618.8M618.8 704.3A250 250 0 0 1 571.4 726.4M537.7 735.4A250 250 0 0 1 442.3 735.4M408.6 726.4A250 250 0 0 1 326 678.7M301.3 654A250 250 0 0 1 253.6 571.4M244.6 537.7A250 250 0 0 1 244.6 442.3M253.6 408.6A250 250 0 0 1 301.3 326M326 301.3A250 250 0 0 1 408.6 253.6M442.3 244.6A250 250 0 0 1 537.7 244.6M571.4 253.6A250 250 0 0 1 654 301.3M678.7 326A250 250 0 0 1 726.4 408.6" />
+          <path d="M605 605 L795 795" stroke="#4ade80" stroke-width="68" stroke-linecap="square" />
+        </svg>`;
+
+      const part = new URLSearchParams(location.search).get("part") || "sidebar";
+      const root = document.getElementById("root");
+
+      if (part === "sidebar") {
+        const W = 164, H = 314;
+        root.innerHTML = `
+          <div class="art" style="width:${W}px;height:${H}px">
+            <div class="dots" style="inset:8px;background-position:0 0;mask-image:radial-gradient(130px 190px at 50% 40%, #000 45%, rgba(0,0,0,0.35) 100%)"></div>
+            <div class="glow" style="background:radial-gradient(120px 120px at 50% 36%, rgba(74,222,128,0.16), transparent 70%)"></div>
+            <div class="brackets"></div>
+            <div class="logo" style="left:${(W - 64) / 2}px;top:92px">${Q(64)}</div>
+            <div class="word" style="left:0;right:0;top:184px;text-align:center;font-size:15px;padding-left:0.32em">QUANTA</div>
+            <div class="meter" style="left:34px;width:96px;top:220px"><i style="width:60px"></i><b style="left:58px"></b></div>
+          </div>`;
+      } else {
+        const W = 150, H = 57;
+        root.innerHTML = `
+          <div class="art" style="width:${W}px;height:${H}px">
+            <div class="dots" style="mask-image:linear-gradient(90deg, transparent 0%, #000 70%)"></div>
+            <div class="glow" style="background:radial-gradient(60px 40px at 118px 50%, rgba(74,222,128,0.18), transparent 70%)"></div>
+            <div class="logo" style="left:${W - 34 - 16}px;top:${(H - 34) / 2}px">${Q(34)}</div>
+          </div>`;
+      }
+    </script>
+  </body>
+</html>

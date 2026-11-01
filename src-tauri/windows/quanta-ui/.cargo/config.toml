@@ -1,0 +1,6 @@
+[build]
+target = "i686-pc-windows-msvc"
+
+# Static CRT: the plugin must load on machines without the VC++ runtime.
+[target.i686-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]

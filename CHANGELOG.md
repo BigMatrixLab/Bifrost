@@ -5,6 +5,7 @@ Notable changes to Quanta. Releases are published automatically from `main` as `
 ## Unreleased
 
 ### Changed
+- **The Windows installer matches the app:** dark pages and title bar, the Q logo in the sidebar and header, Space Grotesk text, a solid green main button with outlined HUD-style secondary buttons, green check boxes and radio buttons, bordered text fields and the app's segmented progress meter. The uninstaller uses the same look. Sources: `src-tauri/windows/` (NSIS hooks and template, the `quanta_ui` drawing plugin with `quanta-ui/build.ps1`, the fonts under the SIL OFL, and the art with its render script).
 - **Relayless is now Quanta**, with a new icon: a "Q" made of discrete ring segments. The installer is `Quanta-Setup-<version>-x64.exe` and installs as Quanta; your devices, shares, history and settings carry over (they are stored under the same app ID). Uninstall the old "Relayless" entry afterwards. New installs save downloads to `Downloads\Quanta` (phones: `Download/Quanta`); existing installs keep their folder. The wire protocol is unchanged, so Quanta and Relayless devices still work together.
 
 ### Added
