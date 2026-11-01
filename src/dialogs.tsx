@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Check,
   Copy,
@@ -53,11 +53,11 @@ function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) 
 // ---------------------------------------------------------------- invite
 
 export function InviteDialog({ share, onClose }: { share: Share; onClose: () => void }) {
-  const { toast, refreshShares } = useStore();
+  const { toast, settings } = useStore();
   const [expires, setExpires] = useState(86400);
   const [uses, setUses] = useState<number>(1);
   const [approval, setApproval] = useState(true);
-  const [perm, setPerm] = useState<SharePermission>(share.permission ?? "download");
+  const [perm, setPerm] = useState<SharePermission>(settings?.defaultSharePermission ?? "download");
   const [busy, setBusy] = useState(false);
   const [created, setCreated] = useState<CreatedInvitation | null>(null);
   const [, tick] = useState(0);
@@ -71,13 +71,9 @@ export function InviteDialog({ share, onClose }: { share: Share; onClose: () => 
   const create = async () => {
     setBusy(true);
     try {
-      // The permission belongs to the folder: it applies to everyone invited to it.
-      if (perm !== share.permission) {
-        await api.setSharePermission(share.id, perm);
-        refreshShares();
-      }
       // The 16-character code is the invitation people share; it lives as long as the invitation.
-      setCreated(await api.createInvitation(share.id, expires, uses === 0 ? null : uses, approval, true));
+      // Devices that join with it get exactly this permission.
+      setCreated(await api.createInvitation(share.id, expires, uses === 0 ? null : uses, approval, true, perm));
     } catch (e) {
       toast(errorText(e), "err");
     } finally {
@@ -168,10 +164,11 @@ export function InviteDialog({ share, onClose }: { share: Share; onClose: () => 
       }
     >
       <div className="field">
-        <span className="label">Invited devices can</span>
+        <span className="label">Devices joining with this invitation can</span>
         <Segmented full label="Permission" value={perm} onChange={setPerm} options={PERMISSION_OPTIONS} />
         <span className="hint">
-          {permissionHint(perm)} This applies to every device with access to this folder. You can change it any time on the Send page.
+          {permissionHint(perm)} Only devices that join with this invitation get it; others keep their own access. You can change it per
+          device any time on the Send page.
         </span>
       </div>
       <div className="field">
@@ -226,6 +223,100 @@ export function InviteDialog({ share, onClose }: { share: Share; onClose: () => 
 }
 
 // ---------------------------------------------------------------- connect
+
+/** Characters invitation codes use (core: invite::CODE_ALPHABET). */
+const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTVWXYZ23456789";
+const CODE_LEN = 16;
+
+/** Letters and digits of what was typed, upper case, at most 16. */
+function codeChars(s: string) {
+  return s.replace(/[^A-Z0-9]/gi, "").toUpperCase().slice(0, CODE_LEN);
+}
+
+/** A complete 16-character code that only uses characters codes can contain. */
+function codeReady(s: string) {
+  const c = codeChars(s);
+  return c.length === CODE_LEN && c.split("").every((ch) => CODE_ALPHABET.includes(ch));
+}
+
+/** "K7QM9XRT4H" -> "K7QM 9XRT 4H" */
+function groupCode(chars: string) {
+  return (chars.match(/.{1,4}/g) ?? []).join(" ");
+}
+
+/**
+ * The invitation code as 16 equal cells in four groups of four. Typing or
+ * pasting fills them in order and stops at 16; spaces, dashes and lower case
+ * are handled. Every letter and digit can be typed; ones codes never contain
+ * (I, L, O, U, 0, 1) are marked so a misread code is caught before connecting.
+ */
+function CodeEntry({ value, onChange, onSubmit }: { value: string; onChange: (v: string) => void; onSubmit: () => void }) {
+  const ref = useRef<HTMLInputElement>(null);
+  const [focused, setFocused] = useState(false);
+  const chars = codeChars(value);
+  const bad = chars.split("").filter((c) => !CODE_ALPHABET.includes(c));
+
+  useEffect(() => {
+    ref.current?.focus({ preventScroll: true });
+  }, []);
+
+  // Anything past the 16th character is ignored.
+  const set = (raw: string) => onChange(groupCode(codeChars(raw)));
+  const keepCaretAtEnd = () => {
+    const el = ref.current;
+    if (el) el.setSelectionRange(el.value.length, el.value.length);
+  };
+
+  return (
+    <>
+      <div className={`code-entry ${focused ? "focused" : ""}`} onMouseDown={(e) => { e.preventDefault(); ref.current?.focus(); }}>
+        <div className="ce-groups" aria-hidden="true">
+          {[0, 1, 2, 3].map((g) => (
+            <span className="ce-group" key={g}>
+              {[0, 1, 2, 3].map((c) => {
+                const i = g * 4 + c;
+                const ch = chars[i];
+                // The next cell to fill shows a blinking caret.
+                const cur = focused && i === chars.length;
+                return (
+                  <i key={c} className={`${ch ? (CODE_ALPHABET.includes(ch) ? "on" : "bad") : ""} ${cur ? "cur" : ""}`}>
+                    {ch ?? ""}
+                  </i>
+                );
+              })}
+            </span>
+          ))}
+        </div>
+        <input
+          id="inv"
+          ref={ref}
+          className="ce-input"
+          value={value}
+          onChange={(e) => set(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          onSelect={keepCaretAtEnd}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              onSubmit();
+            }
+          }}
+          autoComplete="off"
+          autoCapitalize="characters"
+          spellCheck={false}
+          maxLength={CODE_LEN + 3}
+          aria-label="Invitation code, 16 characters"
+        />
+      </div>
+      <span className={`hint ${bad.length ? "warn-text" : ""}`}>
+        {bad.length
+          ? `Invitation codes never contain ${Array.from(new Set(bad)).join(", ")} (Bifrost leaves out I, L, O, U, 0 and 1 because they're easy to mix up). Check the marked characters with the sender.`
+          : `${chars.length} of ${CODE_LEN} · Codes look like K7QM-9XRT-4HWD-P2NA. Type or paste it.`}
+      </span>
+    </>
+  );
+}
 
 export function ConnectDialog({ onClose }: { onClose: () => void }) {
   const { openBrowser, toast } = useStore();
@@ -304,11 +395,12 @@ export function ConnectDialog({ onClose }: { onClose: () => void }) {
   return (
     <Modal
       title="Connect with a code"
+      width={460}
       onClose={onClose}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" loading={busy} disabled={!input.trim()} onClick={join} icon={<KeyRound size={15} />}>
+          <Button variant="primary" loading={busy} disabled={!codeReady(input)} onClick={join} icon={<KeyRound size={15} />}>
             Connect
           </Button>
         </>
@@ -316,22 +408,7 @@ export function ConnectDialog({ onClose }: { onClose: () => void }) {
     >
       <div className="field">
         <label htmlFor="inv">Invitation code</label>
-        {/* Still accepts full RL1-… invitations and 12-character codes from older versions. */}
-        <textarea
-          id="inv"
-          className="input mono code-input"
-          rows={1}
-          placeholder="Enter the 16-character code, like K7QM-9XRT-4HWD-P2NA"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey && input.trim() && !busy) {
-              e.preventDefault();
-              join();
-            }
-          }}
-          spellCheck={false}
-        />
+        <CodeEntry value={input} onChange={setInput} onSubmit={() => codeReady(input) && !busy && join()} />
       </div>
       {busy && status && (
         <div className="notice accent">
@@ -394,8 +471,15 @@ export function AccessRequests() {
         </div>
       </div>
       <span>
-        used your invitation and wants to browse and download from <b>“{req.shareName}”</b>. Only allow devices you expect.
+        used your invitation and wants to open <b>“{req.shareName}”</b>. Only allow devices you expect.
       </span>
+      <div className="notice">
+        <Lock size={16} />
+        <span>
+          <b>{permissionText(req.permission)}</b>, as set in the invitation. {permissionHint(req.permission)} You can change it later on the
+          Send page.
+        </span>
+      </div>
       {req.safetyWords?.length > 0 && (
         <div className="words-block">
           <span className="label">Safety words</span>

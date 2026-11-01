@@ -331,7 +331,6 @@ impl Core {
                 .map(|i| inv_dto(i, now, codes.get(&i.id).map(|c| c.code.clone())))
                 .collect(),
             device_count: grants.iter().filter(|g| g.share_id == s.id).count() as u32,
-            permission: s.permission.clone(),
         }
     }
 
@@ -341,16 +340,9 @@ impl Core {
         Ok(self.inner.db.list_shares()?.iter().map(|s| self.share_dto(s, &invs, &grants)).collect())
     }
 
-    /// Shares a folder with the default permission from Settings.
+    /// Shares a folder. What each invited device may do is set per
+    /// invitation (and can be changed per device), not per folder.
     pub fn create_share(&self, path: &str, name: Option<String>) -> Result<ShareDto> {
-        self.create_share_with(path, name, None)
-    }
-
-    /// Shares a folder. `permission` ("download", "upload" or "both") falls
-    /// back to the default from Settings. Sharing a folder that is already
-    /// shared resumes it and, if given, applies the permission.
-    pub fn create_share_with(&self, path: &str, name: Option<String>, permission: Option<String>) -> Result<ShareDto> {
-        let permission = permission.as_deref().map(normalize_permission).map(String::from);
         let p = std::fs::canonicalize(path).map_err(|_| anyhow!("That folder doesn't exist."))?;
         if !p.is_dir() {
             bail!("Choose a folder, not a file.");
@@ -362,9 +354,6 @@ impl Core {
         let existing = self.inner.db.list_shares()?;
         if let Some(s) = existing.iter().find(|s| Path::new(&s.root_path) == Path::new(&display)) {
             self.inner.db.set_share_active(&s.id, true)?;
-            if let Some(perm) = &permission {
-                self.inner.db.set_share_permission(&s.id, perm)?;
-            }
             self.inner.emit(CoreEvent::SharesChanged);
             return self
                 .list_shares()?
@@ -375,34 +364,32 @@ impl Core {
         let name = name
             .filter(|n| !n.trim().is_empty())
             .unwrap_or_else(|| p.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "Shared folder".into()));
-        let permission = permission.unwrap_or_else(|| self.inner.settings().default_share_permission);
-        let row = ShareRow {
-            id: random_id(),
-            root_path: display,
-            name: name.clone(),
-            active: true,
-            created_at: now_ms(),
-            permission: normalize_permission(&permission).into(),
-        };
+        let row = ShareRow { id: random_id(), root_path: display, name: name.clone(), active: true, created_at: now_ms() };
         self.inner.db.insert_share(&row)?;
-        self.inner.log("info", &format!("Started sharing \"{name}\" ({})", permission_text(&row.permission)), None);
+        self.inner.log("info", &format!("Started sharing \"{name}\""), None);
         self.inner.emit(CoreEvent::SharesChanged);
         Ok(self.share_dto(&row, &[], &[]))
     }
 
-    /// Changes what invited devices may do in a share. Applies to their next
-    /// request; uploads in progress stop if uploading is no longer allowed.
-    pub fn set_share_permission(&self, id: &str, permission: &str) -> Result<ShareDto> {
-        let share = self.inner.db.get_share(id)?.ok_or_else(|| anyhow!("Unknown share."))?;
+    /// Changes what one device may do in one share. Applies to its next
+    /// request; an upload in progress stops if uploading is no longer allowed.
+    pub fn set_device_permission(&self, peer_id: &str, share_id: &str, permission: &str) -> Result<()> {
         let perm = normalize_permission(permission);
-        if share.permission != perm {
-            self.inner.db.set_share_permission(id, perm)?;
-            self.inner.log("info", &format!("\"{}\" is now {}", share.name, permission_text(perm)), None);
-            self.inner.emit(CoreEvent::SharesChanged);
+        let grant = self
+            .inner
+            .db
+            .list_grants()?
+            .into_iter()
+            .find(|g| g.peer_id == peer_id && g.share_id == share_id)
+            .ok_or_else(|| anyhow!("That device no longer has access to this folder."))?;
+        if grant.permission != perm {
+            self.inner.db.set_grant_permission(peer_id, share_id, perm)?;
+            let share = self.inner.db.get_share(share_id)?.map(|s| s.name).unwrap_or_default();
+            self.inner.log("info", &format!("{} can now {} in \"{share}\"", grant.device_name, permission_verb(perm)), None);
+            self.inner.emit(CoreEvent::GrantsChanged);
         }
-        self.list_shares()?.into_iter().find(|d| d.id == id).ok_or_else(|| anyhow!("share vanished"))
+        Ok(())
     }
-
     pub fn set_share_active(&self, id: &str, active: bool) -> Result<()> {
         self.inner.db.set_share_active(id, active)?;
         if !active {
@@ -452,6 +439,7 @@ impl Core {
 
     // ------------------------------------------------------------------ invitations
 
+    /// An invitation with the default permission from Settings.
     pub async fn create_invitation(
         &self,
         share_id: &str,
@@ -460,6 +448,22 @@ impl Core {
         require_approval: bool,
         with_code: bool,
     ) -> Result<CreatedInvitation> {
+        self.create_invitation_with(share_id, expires_in_secs, max_uses, require_approval, with_code, None).await
+    }
+
+    /// An invitation whose devices get `permission` ("download", "upload" or
+    /// "both"; the default from Settings when `None`).
+    pub async fn create_invitation_with(
+        &self,
+        share_id: &str,
+        expires_in_secs: u64,
+        max_uses: Option<u32>,
+        require_approval: bool,
+        with_code: bool,
+        permission: Option<String>,
+    ) -> Result<CreatedInvitation> {
+        let permission =
+            normalize_permission(&permission.unwrap_or_else(|| self.inner.settings().default_share_permission)).to_string();
         let share = self.inner.db.get_share(share_id)?.ok_or_else(|| anyhow!("Unknown share."))?;
         if !share.active {
             bail!("Resume sharing this folder first.");
@@ -488,6 +492,7 @@ impl Core {
             require_approval,
             revoked_at: None,
             created_at: now,
+            permission,
         };
         self.inner.db.insert_invitation(&row)?;
         let encoded = invite.encode();
@@ -504,7 +509,11 @@ impl Core {
                 }
             }
         }
-        self.inner.log("info", &format!("Created an invitation for \"{}\"", share.name), None);
+        self.inner.log(
+            "info",
+            &format!("Created an invitation for \"{}\" ({})", share.name, permission_text(&row.permission)),
+            None,
+        );
         self.inner.emit(CoreEvent::SharesChanged);
         Ok(CreatedInvitation {
             invitation: inv_dto(&row, now, short_code.clone()),
@@ -571,6 +580,7 @@ impl Core {
                     last_seen_at: g.last_seen_at,
                     connected: conn.is_some(),
                     route: conn.as_ref().map(route_of).unwrap_or_else(RouteInfo::none),
+                    permission: g.permission,
                 }
             })
             .collect())
@@ -1267,14 +1277,24 @@ fn inv_dto(i: &InvitationRow, now: i64, code: Option<String>) -> InvitationDto {
         state: i.state(now).into(),
         has_short_code: code.is_some(),
         short_code: code,
+        permission: i.permission.clone(),
     }
 }
 
-fn permission_text(p: &str) -> &'static str {
+pub(crate) fn permission_text(p: &str) -> &'static str {
     match normalize_permission(p) {
         "upload" => "upload only",
         "both" => "download and upload",
         _ => "download only",
+    }
+}
+
+/// "download", "upload", "download and upload" (for "X can now …").
+fn permission_verb(p: &str) -> &'static str {
+    match normalize_permission(p) {
+        "upload" => "only upload",
+        "both" => "download and upload",
+        _ => "only download",
     }
 }
 

@@ -130,8 +130,8 @@ async fn handle_stream(
             handle_hello(inner, peer, conn, &mut send, v, token, device_name).await?;
         }
         Request::List { share, path, offset, limit } => {
-            let resp = match authorize(inner, peer, &share) {
-                Ok(s) => list_dir(inner, peer, &s, &path, offset, limit.min(MAX_LIST_PAGE)).await,
+            let resp = match authorize_perm(inner, peer, &share) {
+                Ok((s, perm)) => list_dir(inner, peer, &s, perm, &path, offset, limit.min(MAX_LIST_PAGE)).await,
                 Err(r) => r,
             };
             write_frame(&mut send, &resp).await?;
@@ -391,37 +391,44 @@ pub fn flush_send_diags(inner: &Inner, idle: Option<Duration>, outcome: &str) {
 
 // ------------------------------------------------------------------ authorization
 
-fn authorize(inner: &Inner, peer: EndpointId, share_id: &str) -> Result<ShareRow, Response> {
+/// The share, if it is active and this device has access, with what this
+/// device may do there (its own permission, from the invitation it joined with).
+fn authorize_perm(inner: &Inner, peer: EndpointId, share_id: &str) -> Result<(ShareRow, String), Response> {
     let share = match inner.db.get_share(share_id) {
         Ok(Some(s)) if s.active => s,
         _ => return Err(Response::err(ErrCode::Denied, "This folder is no longer shared.")),
     };
     let peer_s = peer.to_string();
-    let granted = inner
+    let perm = inner
         .db
         .list_grants()
-        .map(|g| g.iter().any(|g| g.peer_id == peer_s && g.share_id == share_id))
-        .unwrap_or(false);
-    if !granted {
-        return Err(Response::err(ErrCode::Denied, "The sender has not given this device access."));
+        .ok()
+        .and_then(|g| g.into_iter().find(|g| g.peer_id == peer_s && g.share_id == share_id))
+        .map(|g| g.permission);
+    match perm {
+        Some(p) => Ok((share, p)),
+        None => Err(Response::err(ErrCode::Denied, "The sender has not given this device access.")),
     }
-    Ok(share)
+}
+
+fn authorize(inner: &Inner, peer: EndpointId, share_id: &str) -> Result<ShareRow, Response> {
+    authorize_perm(inner, peer, share_id).map(|(s, _)| s)
 }
 
 /// Access plus download permission (folder downloads, file data).
 fn authorize_download(inner: &Inner, peer: EndpointId, share_id: &str) -> Result<ShareRow, Response> {
-    let s = authorize(inner, peer, share_id)?;
-    if !perm_can_download(&s.permission) {
-        return Err(Response::err(ErrCode::Denied, "The owner doesn't allow downloads from this folder."));
+    let (s, perm) = authorize_perm(inner, peer, share_id)?;
+    if !perm_can_download(&perm) {
+        return Err(Response::err(ErrCode::Denied, "The owner doesn't allow this device to download from this folder."));
     }
     Ok(s)
 }
 
 /// Access plus upload permission (adding files and folders, deleting own uploads).
 pub(crate) fn authorize_upload(inner: &Inner, peer: EndpointId, share_id: &str) -> Result<ShareRow, Response> {
-    let s = authorize(inner, peer, share_id)?;
-    if !perm_can_upload(&s.permission) {
-        return Err(Response::err(ErrCode::Denied, "The owner doesn't allow uploads to this folder."));
+    let (s, perm) = authorize_perm(inner, peer, share_id)?;
+    if !perm_can_upload(&perm) {
+        return Err(Response::err(ErrCode::Denied, "The owner doesn't allow this device to upload to this folder."));
     }
     Ok(s)
 }
@@ -432,8 +439,11 @@ fn granted_shares(inner: &Inner, peer: EndpointId) -> Vec<WireShare> {
     let shares = inner.db.list_shares().unwrap_or_default();
     shares
         .into_iter()
-        .filter(|s| s.active && grants.iter().any(|g| g.peer_id == peer_s && g.share_id == s.id))
-        .map(|s| WireShare { id: s.id, name: s.name, perm: Some(s.permission) })
+        .filter(|s| s.active)
+        .filter_map(|s| {
+            let g = grants.iter().find(|g| g.peer_id == peer_s && g.share_id == s.id)?;
+            Some(WireShare { id: s.id, name: s.name, perm: Some(g.permission.clone()) })
+        })
         .collect()
 }
 
@@ -548,6 +558,7 @@ async fn handle_hello(
             share_name: share.name.clone(),
             created_at: now_ms(),
             safety_words: crate::words::safety_words(inner.endpoint.id().as_bytes(), peer.as_bytes()),
+            permission: inv.permission.clone(),
         };
         inner.pending.lock().insert(req.id.clone(), PendingAccess { request: req.clone(), respond: tx });
         inner.emit(CoreEvent::AccessRequested(req.clone()));
@@ -568,9 +579,14 @@ async fn handle_hello(
             return Ok(());
         }
     }
-    inner.db.upsert_grant(&peer_s, &share.id, &device_name)?;
+    // The device gets exactly what this invitation allows.
+    inner.db.upsert_grant(&peer_s, &share.id, &device_name, &inv.permission)?;
     inner.db.increment_invitation_use(&inv.id)?;
-    inner.log("success", &format!("{} can now open \"{}\"", device_name, share.name), None);
+    inner.log(
+        "success",
+        &format!("{} can now open \"{}\" ({})", device_name, share.name, crate::permission_text(&inv.permission)),
+        None,
+    );
     inner.emit(CoreEvent::GrantsChanged);
     inner.emit(CoreEvent::SharesChanged);
     write_frame(send, &reply(HelloStatus::Approved, granted_shares(inner, peer), None)).await?;
@@ -677,10 +693,9 @@ pub fn resolve_in_share(root: &Path, comps: &[String]) -> Result<PathBuf, Respon
 
 /// One page of a folder. Marks what the asking device uploaded itself; with
 /// upload-only permission it sees nothing else (a drop box).
-async fn list_dir(inner: &Inner, peer: EndpointId, share: &ShareRow, path: &[String], offset: u32, limit: u32) -> Response {
+async fn list_dir(inner: &Inner, peer: EndpointId, share: &ShareRow, perm: String, path: &[String], offset: u32, limit: u32) -> Response {
     let root = PathBuf::from(&share.root_path);
     let path = path.to_vec();
-    let perm = share.permission.clone();
     let only_mine = !perm_can_download(&perm);
     let owned = if perm_can_upload(&perm) { up::owned_map(inner, &share.id, peer) } else { Default::default() };
     tokio::task::spawn_blocking(move || {

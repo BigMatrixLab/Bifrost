@@ -78,6 +78,7 @@ export function DeviceTile({
   action,
   busy = false,
   title,
+  access,
 }: {
   name: string;
   dir: "in" | "out";
@@ -89,9 +90,11 @@ export function DeviceTile({
   busy?: boolean;
   /** Tooltip on the name (e.g. the device's ID and safety words). */
   title?: string;
+  /** Optional column before the link readout (the Send page's access picker). */
+  access?: React.ReactNode;
 }) {
   return (
-    <div className={`dev-tile link-${link}`}>
+    <div className={`dev-tile link-${link} ${access ? "has-access" : ""}`}>
       <span className="dev-node" aria-hidden="true">
         <Monitor size={15} />
       </span>
@@ -105,6 +108,7 @@ export function DeviceTile({
           <span className={`truncate ${busy ? "dev-busy" : ""}`}>{detail}</span>
         </span>
       </span>
+      {access && <span className="dev-access">{access}</span>}
       <LinkReadout link={link} rtt={rtt} />
       <span className="dev-act">{action}</span>
     </div>

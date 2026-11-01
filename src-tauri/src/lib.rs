@@ -128,13 +128,13 @@ fn list_shares(s: State<AppState>) -> CmdResult<Vec<ShareDto>> {
 }
 
 #[tauri::command]
-fn create_share(s: State<AppState>, path: String, name: Option<String>, permission: Option<String>) -> CmdResult<ShareDto> {
-    s.core.create_share_with(&path, name, permission).map_err(err)
+fn create_share(s: State<AppState>, path: String, name: Option<String>) -> CmdResult<ShareDto> {
+    s.core.create_share(&path, name).map_err(err)
 }
 
 #[tauri::command]
-fn set_share_permission(s: State<AppState>, id: String, permission: String) -> CmdResult<ShareDto> {
-    s.core.set_share_permission(&id, &permission).map_err(err)
+fn set_device_permission(s: State<AppState>, peer_id: String, share_id: String, permission: String) -> CmdResult<()> {
+    s.core.set_device_permission(&peer_id, &share_id, &permission).map_err(err)
 }
 
 #[tauri::command]
@@ -242,9 +242,10 @@ async fn create_invitation(
     max_uses: Option<u32>,
     require_approval: bool,
     with_code: bool,
+    permission: Option<String>,
 ) -> CmdResult<CreatedInvitation> {
     s.core
-        .create_invitation(&share_id, expires_in_secs, max_uses, require_approval, with_code)
+        .create_invitation_with(&share_id, expires_in_secs, max_uses, require_approval, with_code, permission)
         .await
         .map_err(err)
 }
@@ -728,7 +729,7 @@ pub fn run() {
             update_settings,
             list_shares,
             create_share,
-            set_share_permission,
+            set_device_permission,
             start_upload,
             list_pushes,
             cancel_push,

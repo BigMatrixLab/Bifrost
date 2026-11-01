@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { api, errorText, type Job } from "./api";
-import { isActive, bytes, duration, speed, STATUS_TEXT } from "./format";
+import { isActive, bytes, duration, speed, statusTone, STATUS_TEXT } from "./format";
 import { useStore } from "./store";
 import { Button } from "./ui";
 import { ChunkRing, LinkLine } from "./hud";
@@ -83,7 +83,12 @@ export function FocusTransfer({
   const verified = job.status === "completed" ? 1 : job.verifiedBytes / size;
   const done = job.doneBytes / size;
   const attention = job.status === "needs_attention" || job.status === "failed";
-  const state = attention ? "attention" : job.status === "paused" ? "paused" : "active";
+  // One traffic-light tone for the whole card (corner marks, glow, ring,
+  // status line): green while data moves, yellow while waiting or paused,
+  // red when it needs attention. Queued counts as waiting.
+  const t = statusTone(job.status);
+  const tone = t === "err" ? "err" : t === "ok" ? "ok" : "warn";
+  const state = tone === "err" ? "attention" : tone === "warn" ? "paused" : "active";
   const integ = integrity[job.id];
   const checking = job.status === "verifying" && integ ? integ.checked / Math.max(1, integ.total) : null;
   const pctShown = (checking ?? verified) * 100;
@@ -105,7 +110,7 @@ export function FocusTransfer({
   return (
     <div className={`focus-wrap ${compact ? "compact" : ""}`}>
       <section
-        className={`panel focus ${attention ? "attn" : ""}`}
+        className={`panel focus ftone-${tone} ${attention ? "attn" : ""}`}
         aria-label="Active transfer"
         onKeyDown={(e) => {
           if (!paged || (e.target as HTMLElement).closest("input, textarea")) return;
@@ -156,7 +161,7 @@ export function FocusTransfer({
             </span>
           </ChunkRing>
           <div className="focus-facts">
-            <span className={`lab ${moving || attention ? "red" : ""}`}>{head}</span>
+            <span className="lab focus-status">{head}</span>
             <span className="focus-name selectable" title={job.remotePath.join(" / ")}>{job.displayName}</span>
             <span className="focus-path num faint truncate">{job.remotePath.slice(0, -1).join(" / ") || "Shared folder root"}</span>
             {attention && job.error && <span className="focus-err small">{job.error}</span>}

@@ -56,6 +56,8 @@ export interface Invitation {
   hasShortCode: boolean;
   /** The 16-character code while it is published (sender only). */
   shortCode: string | null;
+  /** What a device that joins with it may do. */
+  permission: SharePermission;
 }
 
 export interface CreatedInvitation {
@@ -74,10 +76,9 @@ export interface Share {
   createdAt: number;
   invitations: Invitation[];
   deviceCount: number;
-  permission: SharePermission;
 }
 
-/** What invited devices may do in a shared folder. */
+/** What one device may do in a shared folder (set by its invitation, changeable per device). */
 export type SharePermission = "download" | "upload" | "both";
 
 export const PERMISSION_OPTIONS: { value: SharePermission; label: string }[] = [
@@ -90,7 +91,7 @@ export function permissionText(p: SharePermission | undefined): string {
   return p === "upload" ? "Upload only" : p === "both" ? "Download and upload" : "Download only";
 }
 
-/** One sentence for the owner: what invited devices can do. */
+/** One sentence for the owner: what a device with this permission can do. */
 export function permissionHint(p: SharePermission | undefined): string {
   switch (p) {
     case "upload":
@@ -193,6 +194,8 @@ export interface Grant {
   connected: boolean;
   route: RouteInfo;
   safetyWords: string[];
+  /** What this device may do in this folder. */
+  permission: SharePermission;
 }
 
 export interface PeerStatus {
@@ -239,6 +242,8 @@ export interface AccessRequest {
   shareName: string;
   createdAt: number;
   safetyWords: string[];
+  /** What the device gets if approved. */
+  permission: SharePermission;
 }
 
 export interface Activity {
@@ -302,7 +307,7 @@ export interface Settings {
   historyRetention: "forever" | "365" | "90" | "30" | "off";
   historyNames: boolean;
   relayUrls: string;
-  /** Permission for newly shared folders. */
+  /** Permission new invitations start with. */
   defaultSharePermission: SharePermission;
 }
 
@@ -360,9 +365,9 @@ export const api = {
   networkStatus: () => invoke<NetworkStatus>("network_status"),
   updateSettings: (settings: Settings) => invoke<Settings>("update_settings", { settings }),
   listShares: () => invoke<Share[]>("list_shares"),
-  createShare: (path: string, name?: string, permission?: SharePermission) =>
-    invoke<Share>("create_share", { path, name: name ?? null, permission: permission ?? null }),
-  setSharePermission: (id: string, permission: SharePermission) => invoke<Share>("set_share_permission", { id, permission }),
+  createShare: (path: string, name?: string) => invoke<Share>("create_share", { path, name: name ?? null }),
+  setDevicePermission: (peerId: string, shareId: string, permission: SharePermission) =>
+    invoke<void>("set_device_permission", { peerId, shareId, permission }),
   startUpload: (peerId: string, shareId: string, dir: string[], paths: string[]) =>
     invoke<string[]>("start_upload", { peerId, shareId, dir, paths }),
   listPushes: () => invoke<Push[]>("list_pushes"),
@@ -382,8 +387,14 @@ export const api = {
   remoteDelete: (peerId: string, shareId: string, path: string[]) => invoke<void>("remote_delete", { peerId, shareId, path }),
   setShareActive: (id: string, active: boolean) => invoke<void>("set_share_active", { id, active }),
   deleteShare: (id: string) => invoke<void>("delete_share", { id }),
-  createInvitation: (shareId: string, expiresInSecs: number, maxUses: number | null, requireApproval: boolean, withCode: boolean) =>
-    invoke<CreatedInvitation>("create_invitation", { shareId, expiresInSecs, maxUses, requireApproval, withCode }),
+  createInvitation: (
+    shareId: string,
+    expiresInSecs: number,
+    maxUses: number | null,
+    requireApproval: boolean,
+    withCode: boolean,
+    permission: SharePermission,
+  ) => invoke<CreatedInvitation>("create_invitation", { shareId, expiresInSecs, maxUses, requireApproval, withCode, permission }),
   revokeInvitation: (id: string) => invoke<void>("revoke_invitation", { id }),
   listGrants: () => invoke<Grant[]>("list_grants"),
   revokeDevice: (peerId: string) => invoke<void>("revoke_device", { peerId }),

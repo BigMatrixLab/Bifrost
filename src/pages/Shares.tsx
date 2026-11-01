@@ -1,15 +1,26 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 /** Share created via the folder picker that should open its invite dialog next. */
 let pendingInvite: string | null = null;
 import { pickFolder } from "../platform";
-import { Ban, Check, Copy, FolderOpen, FolderUp, Link2, Pause, Play, Trash2, UserX } from "lucide-react";
-import { PERMISSION_OPTIONS, api, errorText, permissionHint, permissionText, type Grant, type Invitation, type Share } from "../api";
+import { ArrowDownUp, Ban, Check, ChevronDown, Copy, Download, FolderOpen, FolderUp, Link2, Pause, Play, Trash2, Upload, UserX } from "lucide-react";
+import {
+  PERMISSION_OPTIONS,
+  api,
+  canUpload,
+  errorText,
+  permissionText,
+  type Grant,
+  type Invitation,
+  type Share,
+  type SharePermission,
+} from "../api";
 import { InviteDialog } from "../dialogs";
 import { StorageAccessNotice } from "../android";
 import { ago, neverExpires, speed, until } from "../format";
 import { useStore } from "../store";
-import { Button, CodeCells, Empty, IconButton, Modal, Progress, SectionHeader, Segmented, linkOf } from "../ui";
+import { Button, CodeCells, Empty, IconButton, Modal, Progress, SectionHeader, linkOf } from "../ui";
 import { DeviceTile } from "./Overview";
 
 /** Opens the native folder picker and creates a share; returns the new share. */
@@ -31,6 +42,124 @@ export function useShareFolder() {
   }, [toast, setPage, refreshShares]);
 }
 
+const PERM_ICON: Record<SharePermission, React.ReactNode> = {
+  download: <Download size={13} />,
+  upload: <Upload size={13} />,
+  both: <ArrowDownUp size={13} />,
+};
+const PERM_MENU: { value: SharePermission; label: string; sub: string }[] = [
+  { value: "download", label: "Download only", sub: "Browse and download. Can't add or delete." },
+  { value: "upload", label: "Upload only", sub: "Add files; sees and deletes only its own." },
+  { value: "both", label: "Download and upload", sub: "Everything, but deletes only its own." },
+];
+
+/**
+ * What one device may do in one folder: a labelled picker in its own column
+ * of the device row, opening a menu right under it. Changing it affects only
+ * this device, from its next request.
+ */
+function DevicePermission({ g }: { g: Grant }) {
+  const { toast, refreshGrants } = useStore();
+  const [menu, setMenu] = useState<{ left: number; top: number; up: boolean } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const btn = useRef<HTMLButtonElement>(null);
+  const perm = (g.permission ?? "download") as SharePermission;
+
+  const close = useCallback(() => setMenu(null), []);
+  useEffect(() => {
+    if (!menu) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as HTMLElement;
+      if (!t.closest(".perm-menu") && !btn.current?.contains(t)) close();
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("mousedown", onDown);
+    window.addEventListener("resize", close);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("mousedown", onDown);
+      window.removeEventListener("resize", close);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [menu, close]);
+
+  const toggle = () => {
+    if (menu) return close();
+    const r = btn.current?.getBoundingClientRect();
+    if (!r) return;
+    const width = 260;
+    const up = r.bottom + 190 > window.innerHeight;
+    setMenu({ left: Math.max(8, Math.min(r.right - width, window.innerWidth - width - 8)), top: up ? r.top - 6 : r.bottom + 6, up });
+  };
+
+  const change = async (v: SharePermission) => {
+    close();
+    if (v === perm) return;
+    setBusy(true);
+    try {
+      await api.setDevicePermission(g.peerId, g.shareId, v);
+      refreshGrants();
+      toast(`${g.deviceName} can now ${v === "both" ? "download and upload" : v === "upload" ? "only upload" : "only download"} in “${g.shareName}”`, "ok");
+    } catch (e) {
+      toast(errorText(e), "err");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <span className="perm-field">
+        <button
+          ref={btn}
+          type="button"
+          className={`perm-pick p-${perm} ${menu ? "open" : ""}`}
+          aria-haspopup="menu"
+          aria-expanded={!!menu}
+          aria-label={`${g.deviceName}'s access: ${permissionText(perm)}. Change`}
+          disabled={busy}
+          onClick={toggle}
+        >
+          <span className="pp-ico">{PERM_ICON[perm]}</span>
+          <span className="pp-text">{PERMISSION_OPTIONS.find((o) => o.value === perm)?.label}</span>
+          <ChevronDown size={13} className="pp-chev" />
+        </button>
+      </span>
+      {menu &&
+        createPortal(
+          <div
+            className={`perm-menu ${menu.up ? "up" : ""}`}
+            role="menu"
+            style={{ left: menu.left, top: menu.top }}
+            aria-label={`What ${g.deviceName} can do in ${g.shareName}`}
+          >
+            <span className="perm-menu-head">{g.deviceName} can</span>
+            {PERM_MENU.map((o) => (
+              <button
+                key={o.value}
+                type="button"
+                role="menuitemradio"
+                aria-checked={o.value === perm}
+                className={`perm-opt p-${o.value} ${o.value === perm ? "on" : ""}`}
+                onClick={() => change(o.value)}
+                autoFocus={o.value === perm}
+              >
+                <span className="pp-ico">{PERM_ICON[o.value]}</span>
+                <span className="stack" style={{ gap: 1, minWidth: 0 }}>
+                  <span className="po-label">{o.label}</span>
+                  <span className="po-sub">{o.sub}</span>
+                </span>
+                {o.value === perm && <Check size={14} className="po-check" />}
+              </button>
+            ))}
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}
 /** One device that can open a share: the same tile as the Overview's device list. */
 function AccessRow({ g, onRevoke }: { g: Grant; onRevoke: () => void }) {
   const { uploads, incoming } = useStore();
@@ -52,6 +181,7 @@ function AccessRow({ g, onRevoke }: { g: Grant; onRevoke: () => void }) {
       title={`${g.peerShort}${words}`}
       link={linkOf(g.connected, g.route?.kind)}
       rtt={g.route?.rttMs ?? null}
+      access={<DevicePermission g={g} />}
       action={
         <IconButton label={`Remove access for ${g.deviceName}`} onClick={onRevoke}>
           <UserX size={15} />
@@ -104,6 +234,9 @@ function InviteRow({ i, onRevoke }: { i: Invitation; onRevoke: () => void }) {
         {/* Tags and revoke wrap together, never apart. */}
         <span className="inv-side">
           <span className="inv-tags">
+            <span className={`inv-tag ${canUpload(i.permission) ? "up" : ""}`} title={`Devices that join with it: ${permissionText(i.permission).toLowerCase()}`}>
+              {PERMISSION_OPTIONS.find((o) => o.value === (i.permission ?? "download"))?.label}
+            </span>
             <span className="inv-tag" title="Devices that joined / allowed">Uses {uses}</span>
             <span className={`inv-tag ${i.requireApproval ? "warn" : ""}`}>{i.requireApproval ? "Approval" : "Open"}</span>
           </span>
@@ -121,7 +254,7 @@ function InviteRow({ i, onRevoke }: { i: Invitation; onRevoke: () => void }) {
 }
 
 function ShareCard({ share, onInvite }: { share: Share; onInvite: () => void }) {
-  const { grants, uploads, toast, refreshShares } = useStore();
+  const { grants, uploads, toast } = useStore();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const devices = grants.filter((g) => g.shareId === share.id);
   const invites = share.invitations.filter((i) => i.state === "active");
@@ -174,23 +307,6 @@ function ShareCard({ share, onInvite }: { share: Share; onInvite: () => void }) 
           </IconButton>
         </span>
       </header>
-
-      <div className="share-perm">
-        <span className="share-perm-text">
-          <span className="lab">Invited devices can</span>
-          <span className="hint">{permissionHint(share.permission)}</span>
-        </span>
-        <Segmented
-          label={`What invited devices can do in ${share.name}`}
-          value={share.permission ?? "download"}
-          options={PERMISSION_OPTIONS}
-          onChange={(v) => v !== share.permission && act(async () => {
-            await api.setSharePermission(share.id, v);
-            refreshShares();
-            toast(`“${share.name}”: ${permissionText(v).toLowerCase()}`, "ok");
-          })}
-        />
-      </div>
 
       <div className="share-body">
         <div className="share-col">
@@ -292,8 +408,8 @@ export default function Shares() {
         </div>
         <div className="send-hud-cta">
           <span className="small muted">
-            Invited devices reach these folders only, never anything else on this computer. You choose per folder whether they can download,
-            upload, or both; they can only delete what they uploaded.
+            Invited devices reach these folders only, never anything else on this computer. Each invitation says whether its device can
+            download, upload or both, and you can change it per device. They can only delete what they uploaded.
           </span>
           <Button variant="primary" icon={<FolderUp size={15} />} onClick={shareFolder}>Share a folder</Button>
         </div>

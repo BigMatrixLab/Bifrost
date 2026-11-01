@@ -92,11 +92,12 @@ async fn upload_permissions_and_owner_only_delete() {
     let guest = Core::start(opts(&tmp.path().join("g"), "Guest PC")).await.unwrap();
     auto_approve(&owner);
 
-    // New shares take the default from Settings: download only.
+    // New invitations take the default from Settings: download only.
     let share = owner.create_share(shared.to_str().unwrap(), None).unwrap();
-    assert_eq!(share.permission, "download");
     guest.add_peer_addr(owner.endpoint_addr());
     let inv = owner.create_invitation(&share.id, 3600, Some(1), true, false).await.unwrap();
+    assert_eq!(inv.invitation.permission, "download");
+    let guest_id = guest.endpoint_id();
     let joined = guest.join(&inv.invite).await.unwrap();
     assert_eq!(joined.shares[0].permission, "download");
     let peer = joined.peer_id.clone();
@@ -106,9 +107,10 @@ async fn upload_permissions_and_owner_only_delete() {
     assert!(err.to_string().contains("doesn't allow uploads"), "{err}");
     assert!(guest.remote_mkdir(&peer, &share.id, vec!["x".into()]).await.is_err(), "mkdir needs upload permission");
 
-    // The owner allows both; the guest learns it from the next listing.
-    let changed = owner.set_share_permission(&share.id, "both").unwrap();
-    assert_eq!(changed.permission, "both");
+    // The owner allows this device both; it learns it from the next listing.
+    owner.set_device_permission(&guest_id, &share.id, "both").unwrap();
+    let g = owner.list_grants().unwrap().into_iter().find(|g| g.peer_id == guest_id).unwrap();
+    assert_eq!(g.permission, "both");
     let listed = guest.list_remote_dir(&peer, &share.id, vec![], 0, 100).await.unwrap();
     assert_eq!(listed.permission, "both");
     assert_eq!(guest.list_remotes().unwrap()[0].shares[0].permission, "both");
@@ -181,7 +183,7 @@ async fn upload_permissions_and_owner_only_delete() {
     assert!(!shared.join("album").exists());
 
     // Upload only: a drop box. The guest sees only its own items and can't download.
-    owner.set_share_permission(&share.id, "upload").unwrap();
+    owner.set_device_permission(&guest_id, &share.id, "upload").unwrap();
     let root = names(&guest, &peer, &share.id, &[]).await;
     assert_eq!(root, vec![("album (1)".to_string(), true)], "only the guest's own folder is visible");
     let dl = guest
@@ -190,19 +192,21 @@ async fn upload_permissions_and_owner_only_delete() {
     assert!(dl.is_err(), "downloads are refused with upload-only permission");
 
     // Download only again: no uploads, no deletes.
-    owner.set_share_permission(&share.id, "download").unwrap();
+    owner.set_device_permission(&guest_id, &share.id, "download").unwrap();
     assert!(guest.remote_delete(&peer, &share.id, vec!["album (1)".into()]).await.is_err());
     assert!(shared.join("album (1)").is_dir());
     let root = names(&guest, &peer, &share.id, &[]).await;
     assert!(root.iter().any(|(n, _)| n == "owners.txt"));
 
-    // Settings default applies to new shares.
+    // Settings default applies to new invitations.
+
     let mut s = owner.settings();
     s.default_share_permission = "both".into();
     owner.update_settings(s).unwrap();
     let other = tmp.path().join("other");
     std::fs::create_dir_all(&other).unwrap();
-    assert_eq!(owner.create_share(other.to_str().unwrap(), None).unwrap().permission, "both");
+    let other_share = owner.create_share(other.to_str().unwrap(), None).unwrap();
+    assert_eq!(owner.create_invitation(&other_share.id, 3600, None, true, false).await.unwrap().invitation.permission, "both");
     let mut s = owner.settings();
     s.default_share_permission = "nonsense".into();
     assert_eq!(owner.update_settings(s).unwrap().default_share_permission, "download");
@@ -221,11 +225,11 @@ async fn other_devices_uploads_are_protected() {
     let a = Core::start(opts(&tmp.path().join("a"), "A")).await.unwrap();
     let b = Core::start(opts(&tmp.path().join("b"), "B")).await.unwrap();
     auto_approve(&owner);
-    let share = owner.create_share_with(shared.to_str().unwrap(), None, Some("both".into())).unwrap();
+    let share = owner.create_share(shared.to_str().unwrap(), None).unwrap();
     let mut peer = String::new();
     for c in [&a, &b] {
         c.add_peer_addr(owner.endpoint_addr());
-        let inv = owner.create_invitation(&share.id, 3600, Some(1), true, false).await.unwrap();
+        let inv = owner.create_invitation_with(&share.id, 3600, Some(1), true, false, Some("both".into())).await.unwrap();
         peer = c.join(&inv.invite).await.unwrap().peer_id;
     }
 
@@ -261,9 +265,9 @@ async fn interrupted_upload_resumes_from_owner_copy() {
     let owner = Core::start(opts(&tmp.path().join("o"), "Owner")).await.unwrap();
     let guest = Core::start(opts(&tmp.path().join("g"), "Guest")).await.unwrap();
     auto_approve(&owner);
-    let share = owner.create_share_with(shared.to_str().unwrap(), None, Some("upload".into())).unwrap();
+    let share = owner.create_share(shared.to_str().unwrap(), None).unwrap();
     guest.add_peer_addr(owner.endpoint_addr());
-    let inv = owner.create_invitation(&share.id, 3600, Some(1), true, false).await.unwrap();
+    let inv = owner.create_invitation_with(&share.id, 3600, Some(1), true, false, Some("upload".into())).await.unwrap();
     let peer = guest.join(&inv.invite).await.unwrap().peer_id;
 
     // Slow the guest down so the upload can be cut off part-way.
@@ -304,4 +308,65 @@ async fn interrupted_upload_resumes_from_owner_copy() {
     assert_eq!(hash(&shared.join("big.bin")), hash(&local.join("big.bin")));
     let left: Vec<_> = std::fs::read_dir(&shared).unwrap().flatten().filter(|e| e.file_name().to_string_lossy().ends_with(".rlpart")).collect();
     assert!(left.is_empty());
+}
+
+/// Permission belongs to each device's access, set by the invitation it
+/// joined with: two devices in the same folder can have different rights.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn each_device_gets_its_invitations_permission() {
+    let tmp = tempfile::tempdir().unwrap();
+    let shared = tmp.path().join("shared");
+    make_file(&shared.join("owners.txt"), 2000, 1);
+    let local = tmp.path().join("local");
+    make_file(&local.join("drop.txt"), 1500, 2);
+    let drop_path = local.join("drop.txt").to_string_lossy().to_string();
+
+    let owner = Core::start(opts(&tmp.path().join("o"), "Owner")).await.unwrap();
+    let viewer = Core::start(opts(&tmp.path().join("v"), "Viewer")).await.unwrap();
+    let dropper = Core::start(opts(&tmp.path().join("d"), "Dropper")).await.unwrap();
+    auto_approve(&owner);
+    let share = owner.create_share(shared.to_str().unwrap(), None).unwrap();
+
+    let join = |c: Core, perm: &'static str| {
+        let owner = owner.clone();
+        let share_id = share.id.clone();
+        async move {
+            c.add_peer_addr(owner.endpoint_addr());
+            let inv = owner.create_invitation_with(&share_id, 3600, Some(1), true, false, Some(perm.into())).await.unwrap();
+            assert_eq!(inv.invitation.permission, perm);
+            let j = c.join(&inv.invite).await.unwrap();
+            assert_eq!(j.shares[0].permission, perm, "the device learns its own permission");
+            j.peer_id
+        }
+    };
+    let peer = join(viewer.clone(), "download").await;
+    join(dropper.clone(), "upload").await;
+
+    let grants = owner.list_grants().unwrap();
+    let of = |id: String| grants.iter().find(|g| g.peer_id == id).unwrap().permission.clone();
+    assert_eq!(of(viewer.endpoint_id()), "download");
+    assert_eq!(of(dropper.endpoint_id()), "upload");
+
+    // The viewer can download but not upload; the dropper the other way round.
+    assert!(viewer.start_upload(&peer, &share.id, vec![], vec![drop_path.clone()]).await.is_err());
+    let names_v: Vec<String> = viewer.list_remote_dir(&peer, &share.id, vec![], 0, 100).await.unwrap().entries.into_iter().map(|e| e.name).collect();
+    assert_eq!(names_v, vec!["owners.txt".to_string()]);
+    dropper.start_upload(&peer, &share.id, vec![], vec![drop_path.clone()]).await.unwrap();
+    let done = wait_pushes(&dropper).await;
+    assert_eq!(done[0].status, "completed", "{done:#?}");
+    let dl = dropper
+        .start_download(&peer, &share.id, vec![DownloadItem { path: vec!["owners.txt".into()], is_dir: false }], None)
+        .await;
+    assert!(dl.is_err(), "upload-only device can't download");
+    let names_d: Vec<String> = dropper.list_remote_dir(&peer, &share.id, vec![], 0, 100).await.unwrap().entries.into_iter().map(|e| e.name).collect();
+    assert_eq!(names_d, vec!["drop.txt".to_string()], "upload-only sees only its own files");
+
+    // Changing one device leaves the other as it was.
+    owner.set_device_permission(&viewer.endpoint_id(), &share.id, "both").unwrap();
+    let grants = owner.list_grants().unwrap();
+    let of = |id: String| grants.iter().find(|g| g.peer_id == id).unwrap().permission.clone();
+    assert_eq!(of(viewer.endpoint_id()), "both");
+    assert_eq!(of(dropper.endpoint_id()), "upload");
+    assert_eq!(viewer.list_remote_dir(&peer, &share.id, vec![], 0, 100).await.unwrap().permission, "both");
+    assert_eq!(dropper.list_remote_dir(&peer, &share.id, vec![], 0, 100).await.unwrap().permission, "upload");
 }

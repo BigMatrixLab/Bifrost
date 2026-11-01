@@ -7540,3 +7540,371 @@ html {
     aspect-ratio: 1 / 0.62;
   }
 }
+
+/* Send page: each device's own permission, a tag that opens its editor. */
+.share-col .dev-act {
+  min-width: 0;
+  gap: 6px;
+  align-items: center;
+}
+.perm-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: none;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.perm-btn:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+.perm-btn.up:hover {
+  color: var(--accent);
+  border-color: rgba(var(--accent-rgb), 0.7);
+}
+.inv-tag.up {
+  color: var(--accent);
+  border-color: rgba(var(--accent-rgb), 0.4);
+}
+
+/* Connect dialog: the code as 16 equal cells in four groups of four, like
+   the code the sender sees. A transparent input over the cells takes typing
+   and paste. */
+.code-entry {
+  position: relative;
+  padding: 12px;
+  border: 1px solid var(--border);
+  background: rgba(var(--ink-rgb), 0.02);
+  cursor: text;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.code-entry.focused {
+  border-color: rgba(var(--accent-rgb), 0.6);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.ce-groups {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.ce-group {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 3px;
+}
+.ce-group i {
+  position: relative;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  font-style: normal;
+  font-family: "Cascadia Mono", Consolas, ui-monospace, monospace;
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--text-3);
+  border: 1px solid rgba(var(--ink-rgb), 0.1);
+  background: rgba(var(--ink-rgb), 0.025);
+  transition: border-color 0.12s, color 0.12s, background 0.12s;
+}
+/* An empty cell shows a faint dot. */
+.ce-group i:empty::before {
+  content: "";
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(var(--ink-rgb), 0.16);
+}
+.ce-group i.on {
+  color: var(--accent);
+  border-color: rgba(var(--accent-rgb), 0.35);
+  background: linear-gradient(180deg, rgba(var(--accent-rgb), 0.1), rgba(var(--accent-rgb), 0.03));
+  text-shadow: 0 0 10px rgba(var(--accent-rgb), 0.4);
+}
+.ce-group i.cur {
+  border-color: rgba(var(--accent-rgb), 0.7);
+}
+.ce-group i.cur::before {
+  content: "";
+  width: 2px;
+  height: 20px;
+  border-radius: 0;
+  background: var(--accent);
+  animation: ce-blink 1s steps(1) infinite;
+}
+@keyframes ce-blink {
+  50% {
+    opacity: 0;
+  }
+}
+.ce-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  border: 0;
+  padding: 0;
+  font-size: 16px;
+  cursor: text;
+}
+@media (max-width: 640px) {
+  .ce-groups {
+    gap: 6px;
+  }
+  .ce-group {
+    gap: 2px;
+  }
+  .ce-group i {
+    height: 34px;
+    font-size: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ce-group i.cur::before {
+    animation: none;
+  }
+}
+/* A character invitation codes never contain (I, L, O, U, 0, 1). */
+.ce-group i.bad {
+  color: var(--err);
+  border-color: rgba(var(--err-rgb), 0.55);
+  background: rgba(var(--err-rgb), 0.08);
+}
+
+/* Active transfer card: corner marks, background glow, status line and
+   pager follow the transfer's state, like its ring (green moving, yellow
+   waiting or paused, red needs attention). */
+.focus.ftone-ok {
+  --ftone: var(--ok);
+  --ftone-rgb: var(--ok-rgb);
+}
+.focus.ftone-warn {
+  --ftone: var(--warn);
+  --ftone-rgb: var(--warn-rgb);
+}
+.focus.ftone-err {
+  --ftone: var(--err);
+  --ftone-rgb: var(--err-rgb);
+}
+.focus[class*="ftone-"] {
+  --mark: var(--ftone);
+  background-image: var(--cm-img);
+  background-size: var(--cm-size);
+  background-position: var(--cm-pos);
+}
+.focus.ftone-err.attn {
+  background-image: var(--cm-img), var(--hazard);
+  background-size: var(--cm-size), 4px 100%;
+  background-position: var(--cm-pos), left top;
+}
+.focus .focus-status {
+  color: var(--ftone, var(--accent));
+}
+.focus .focus-dots i.on {
+  background: var(--ftone, var(--accent));
+}
+
+/* Desktop chrome: a slimmer top bar (44px) with compact buttons, and the
+   sidebar's logo row exactly as tall, so both header lines run straight
+   across the window. */
+@media (min-width: 761px) {
+  :root {
+    --topbar-h: 44px;
+  }
+  .topbar {
+    height: var(--topbar-h);
+    padding: 0 20px;
+  }
+  .topbar-actions {
+    gap: 6px;
+  }
+  .topbar-actions .btn {
+    height: 28px;
+    padding: 0 10px;
+    font-size: 10.5px;
+  }
+  .topbar-actions .btn svg {
+    width: 13px;
+    height: 13px;
+  }
+  .theme-toggle {
+    width: 28px;
+    height: 28px;
+  }
+  .theme-toggle svg {
+    width: 14px;
+    height: 14px;
+  }
+  .sidebar {
+    padding-top: 0;
+  }
+  .brand,
+  .brand:is(*) {
+    box-sizing: border-box;
+    height: var(--topbar-h);
+    flex: none;
+    padding: 0 20px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+/* Send page device rows: an "Access" column with a clear picker, the same
+   width on every row so they line up, then the link readout. */
+.dev-tile.has-access {
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+}
+.dev-access {
+  display: flex;
+}
+.perm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.perm-pick {
+  --pc: var(--text-2);
+  --pc-rgb: var(--ink-rgb);
+  width: 128px;
+  height: 30px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  padding: 0 8px 0 9px;
+  border: 1px solid rgba(var(--pc-rgb), 0.45);
+  background: rgba(var(--pc-rgb), 0.08);
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.perm-pick.p-download {
+  --pc: var(--series-out);
+  --pc-rgb: var(--out-rgb);
+}
+.perm-pick.p-upload {
+  --pc: var(--warn);
+  --pc-rgb: var(--warn-rgb);
+}
+.perm-pick.p-both {
+  --pc: var(--accent);
+  --pc-rgb: var(--accent-rgb);
+}
+.perm-pick:hover:not(:disabled),
+.perm-pick.open {
+  border-color: var(--pc);
+  background: rgba(var(--pc-rgb), 0.16);
+}
+.perm-pick .pp-ico {
+  display: grid;
+  color: var(--pc);
+}
+.perm-pick .pp-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.perm-pick .pp-chev {
+  color: var(--text-2);
+  transition: transform 0.15s;
+}
+.perm-pick.open .pp-chev {
+  transform: rotate(180deg);
+}
+.perm-menu {
+  position: fixed;
+  z-index: 70;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  background: var(--elev);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow);
+  animation: perm-menu-in 0.14s ease-out;
+}
+.perm-menu.up {
+  transform: translateY(-100%);
+  animation: none;
+}
+@keyframes perm-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+.perm-menu-head {
+  padding: 4px 8px 6px;
+  font-family: var(--font-display);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.perm-opt {
+  --pc: var(--series-out);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.perm-opt.p-upload {
+  --pc: var(--warn);
+}
+.perm-opt.p-both {
+  --pc: var(--accent);
+}
+.perm-opt:hover,
+.perm-opt:focus-visible {
+  background: var(--hover);
+  outline: none;
+}
+.perm-opt.on {
+  border-color: rgba(var(--ink-rgb), 0.12);
+  background: rgba(var(--ink-rgb), 0.04);
+}
+.perm-opt .pp-ico {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  color: var(--pc);
+  border: 1px solid currentColor;
+  opacity: 0.9;
+}
+.po-label {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.po-sub {
+  font-size: 11px;
+  color: var(--text-3);
+}
+.po-check {
+  color: var(--accent);
+}
+@media (max-width: 760px) {
+  .dev-tile.has-access .dev-access {
+    grid-column: 2 / -1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .perm-menu {
+    animation: none;
+  }
+}

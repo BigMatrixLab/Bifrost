@@ -127,6 +127,8 @@ pub struct InvitationDto {
     pub has_short_code: bool,
     /// The 16-character code while it is published (shown on the sender only).
     pub short_code: Option<String>,
+    /// What a device that joins with it may do: "download", "upload" or "both".
+    pub permission: String,
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -149,8 +151,6 @@ pub struct ShareDto {
     pub created_at: i64,
     pub invitations: Vec<InvitationDto>,
     pub device_count: u32,
-    /// What invited devices may do: "download", "upload" or "both".
-    pub permission: String,
 }
 
 /// Normalizes a share permission: "download", "upload" or "both".
@@ -184,6 +184,8 @@ pub struct GrantDto {
     pub connected: bool,
     pub route: RouteInfo,
     pub safety_words: Vec<String>,
+    /// What this device may do in this share: "download", "upload" or "both".
+    pub permission: String,
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -250,6 +252,8 @@ pub struct AccessRequest {
     pub share_name: String,
     pub created_at: i64,
     pub safety_words: Vec<String>,
+    /// What the device gets if approved (from its invitation).
+    pub permission: String,
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -349,7 +353,8 @@ pub struct Settings {
     /// The user's own relay servers (empty = n0's public relays, which are
     /// rate-limited). Applies after restarting Bifrost.
     pub relay_urls: String,
-    /// Permission for newly shared folders: "download", "upload" or "both".
+    /// Permission new invitations start with: "download", "upload" or "both".
+    /// (Named for when permission was per folder; kept so saved settings load.)
     pub default_share_permission: String,
     /// Set once Bifrost turned on "start when I sign in" by itself (desktop),
     /// so it happens on the first run only and the user's choice sticks.

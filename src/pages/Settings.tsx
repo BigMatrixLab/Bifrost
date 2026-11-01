@@ -115,11 +115,11 @@ export default function Settings() {
             </div>
           </Row>
           <Row
-            label="Default permission for shared folders"
-            hint={<>What invited devices can do in a folder you share from now on. {permissionHint(settings.defaultSharePermission)} You can change it per folder on the Send page.</>}
+            label="Default permission for invitations"
+            hint={<>What a device joining with a new invitation can do, unless you pick something else when inviting. {permissionHint(settings.defaultSharePermission)} You can change it per device on the Send page.</>}
           >
             <Segmented
-              label="Default permission for shared folders"
+              label="Default permission for invitations"
               value={settings.defaultSharePermission ?? "download"}
               onChange={(v) => save({ defaultSharePermission: v })}
               options={PERMISSION_OPTIONS}

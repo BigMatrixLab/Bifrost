@@ -74,9 +74,9 @@ async fn auto_sync_downloads_new_files_and_never_deletes() {
     let guest = Core::start(opts(&tmp.path().join("g"), "Guest")).await.unwrap();
     auto_approve(&owner);
     let mut owner_events = owner.subscribe();
-    let share = owner.create_share_with(shared.to_str().unwrap(), None, Some("both".into())).unwrap();
+    let share = owner.create_share(shared.to_str().unwrap(), None).unwrap();
     guest.add_peer_addr(owner.endpoint_addr());
-    let inv = owner.create_invitation(&share.id, 3600, Some(1), true, false).await.unwrap();
+    let inv = owner.create_invitation_with(&share.id, 3600, Some(1), true, false, Some("both".into())).await.unwrap();
     let peer = guest.join(&inv.invite).await.unwrap().peer_id;
 
     // New files only: what is there when sync is turned on stays there.
@@ -150,12 +150,12 @@ async fn upload_continues_after_restart_and_owner_is_notified() {
     let owner = Core::start(opts(&tmp.path().join("o"), "Owner")).await.unwrap();
     auto_approve(&owner);
     let mut owner_events = owner.subscribe();
-    let share = owner.create_share_with(shared.to_str().unwrap(), None, Some("upload".into())).unwrap();
+    let share = owner.create_share(shared.to_str().unwrap(), None).unwrap();
     let peer;
     {
         let guest = Core::start(opts(&tmp.path().join("g"), "Guest")).await.unwrap();
         guest.add_peer_addr(owner.endpoint_addr());
-        let inv = owner.create_invitation(&share.id, 3600, Some(1), true, false).await.unwrap();
+        let inv = owner.create_invitation_with(&share.id, 3600, Some(1), true, false, Some("upload".into())).await.unwrap();
         peer = guest.join(&inv.invite).await.unwrap().peer_id;
         let mut s = guest.settings();
         s.upload_limit_kbps = 3 * 1024;

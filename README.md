@@ -6,7 +6,7 @@
 
 **Your files never sit on a server.**
 
-Direct, end-to-end encrypted transfers between Windows and Android, with a privacy receipt for every file.<br />
+Direct, end-to-end encrypted transfers and shared folders between Windows and Android, with a privacy receipt for every file.<br />
 No account, no cloud copy, no size limit, and every transfer picks up from the last verified megabyte.<br />
 <sub>Formerly Quanta, and before that Relayless.</sub>
 
@@ -48,7 +48,7 @@ Sending a 64 GB file across continents usually means uploading it to someone els
 
 - **No middleman storage.** Files travel device to device over an end-to-end encrypted connection. Nothing is uploaded anywhere.
 - **Built for unreliable links.** Progress is verified and saved every megabyte, so an interruption costs seconds, not hours.
-- **Fast over long distances.** QUIC with BBR congestion control and parallel streams keep a high-latency link full.
+- **Fast over long distances.** QUIC with parallel streams and an adaptive flow window keeps a high-latency link full.
 - **Light on the machine.** Files stream from disk in small blocks; the app runs at low CPU priority and never loads a file into memory.
 - **Free and open source.** MIT licensed, no account, no telemetry.
 
@@ -58,15 +58,21 @@ Sending a 64 GB file across continents usually means uploading it to someone els
 |---|---|
 | **Resumable to the megabyte** | Every 1 MiB block is hash-checked on arrival and saved to disk. Pauses, crashes, reboots and dropped connections resume from the last verified block. |
 | **Whole-file verification** | After the last block, the file is read back and verified once more before it gets its final name. Corrupt data is fetched again automatically. |
-| **Share exactly one folder** | The sender chooses a folder; nothing outside it can be listed or read. Receivers can't change or delete anything. |
-| **Invitations and short codes** | Share an invitation in any chat app, or read out a 12-character code. New devices need your approval. |
+| **Share exactly one folder** | The sender chooses a folder; nothing outside it can be listed, read or written. |
+| **Access per device** | Each invitation says what its device can do: **download**, **upload** or **both**. Change any device's access later on the Send page; the others keep theirs. A default for new invitations is in Settings. |
+| **Upload into a shared folder** | Devices allowed to upload can add files and whole folders. Uploads are resumable and verified like downloads and never overwrite anything (a taken name gets " (1)"). An upload-only device sees only what it added, like a drop box. |
+| **Delete only your own** | A device can delete files and folders it uploaded, and nothing else: not the owner's files, not other devices' uploads, and not a file the owner changed since. |
+| **Invitations and short codes** | Share an invitation in any chat app, or read out a 16-character code (`K7QM-9XRT-4HWD-P2NA`). New devices need your approval, and you see what access they'll get before allowing them. |
 | **Browse before downloading** | Search the shared folder, pick single files or whole folders, and choose where they go. |
+| **Auto-sync** | Turn it on for any folder you can download from: new files are downloaded into a local folder every minute, and as soon as the network is back. Nothing is ever deleted on your side, even when the owner deletes or renames something. |
+| **Picks up by itself** | Unfinished downloads and uploads start again when the app opens, and retry at once when the network comes back. |
+| **Know when others use your folders** | A toast, a sidebar notice and a system notification when another device downloads from or uploads to your folders, one per batch rather than one per file. Incoming uploads show live on the Transfers page and land in History. |
 | **Direct first** | A direct path is always tried first; if routers block it, an end-to-end encrypted relay carries the data until a direct path opens. The route is always visible, and Direct only is one setting away. |
 | **Source change detection** | If the sender edits the file mid-transfer, Bifrost stops instead of mixing two versions, and offers to start over. |
-| **Live speed graph** | Receive and send speed over the last two minutes, with markers for pauses, reconnects and route changes. |
+| **Live speed graph** | Receive and send speed over the last two minutes, with markers for pauses, reconnects and route changes. The sidebar keeps a live speed readout and a mini calendar of your history. |
 | **Privacy receipts and history** | A receipt per finished file and a local calendar of what moved, with whom and what kind of files. Never uploaded. |
 | **Safety words** | Five words, identical on both devices, to confirm a new pairing out loud. |
-| **Windows and Android** | Windows 10/11 and Android 7.0+, in any combination. On Android, transfers continue with the screen off. |
+| **Windows and Android** | Windows 10/11 and Android 7.0+, in any combination. On Windows, Bifrost starts when you sign in and keeps running in the tray when you close the window (quit from the tray). On Android, transfers continue with the screen off. |
 
 ## Screenshots
 
@@ -95,9 +101,12 @@ Get both from the **[latest release](https://github.com/MisbahKhan0009/Relayless
 
 ### Quick start
 
-1. **On the device with the files:** open **Send → Share a folder**, then **Invite**. Send the invitation or read out the short code.
-2. **On the receiving device:** tap **Receive**, paste the invitation or type the code, then wait for the sender to approve.
-3. Browse the folder, select what you need and tap **Download**. Follow progress under **Transfers**.
+1. **On the device with the files:** open **Send → Share a folder**, then **Invite**. Choose what the invited device can do (Download, Upload or Both), then send the 16-character code.
+2. **On the other device:** open **Receive → Connect with a code**, type or paste the code, then wait for the owner to approve.
+3. Browse the folder and **Download** what you need, or use **Upload files** / **Upload folder** if you're allowed to. Follow progress under **Transfers**.
+4. Optional: on the Receive page, turn on **Auto-sync** for a folder to get new files as they appear.
+
+To change what a device can do later, use the access dropdown on its row under **Send**.
 
 Both devices need to be online while files move. On Android, allow **All files access** and, for long transfers, **Settings → Android → Run in the background**.
 
@@ -122,13 +131,14 @@ sequenceDiagram
         S-->>R: 1 MiB block + BLAKE3 hash, repeated
         R->>R: Verify, write, save progress every 2 s
     end
+    Note over S,R: Uploads (if allowed) run the other way on the same connection:<br/>R sends 1 MiB blocks + hashes, S verifies, saves, never overwrites
     R->>R: Re-verify the whole file, rename it
     R->>R: Save a privacy receipt in local history
     R->>S: Receipt (fingerprint, route, timing)
     S->>S: Save the matching receipt
 ```
 
-The lookup and relay servers (run by the [iroh](https://iroh.computer) project) only help the two devices find each other and punch through routers. They never see file names, contents or your history; receipts travel only between the two devices, inside the encrypted connection. By default Bifrost tries a direct path for about 15 seconds and then, if routers block it (common on mobile data), continues through a relay that forwards end-to-end encrypted packets it can't read. It moves to a direct path as soon as one opens, and the receipt records how many bytes were relayed. **Direct only** in Settings keeps all file data off relays.
+The lookup and relay servers (run by the [iroh](https://iroh.computer) project) only help the two devices find each other and punch through routers. They never see file names, contents or your history; receipts travel only between the two devices, inside the encrypted connection. By default Bifrost tries a direct path for about 5 seconds and then, if routers block it (common on mobile data), continues through a relay that forwards end-to-end encrypted packets it can't read. It moves to a direct path as soon as one opens, and the receipt records how many bytes were relayed. **Direct only** in Settings keeps all file data off relays.
 
 The public relays are rate-limited (often around 1 Mbit/s). If your transfers show **Relayed** and are slow, see [docs/RELAY.md](docs/RELAY.md): enable UPnP or IPv6 for a direct path, or run your own relay for full speed.
 
@@ -136,7 +146,7 @@ Read more in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Performance
 
-- **Throughput:** QUIC with BBRv3 congestion control and 12 parallel streams per file (configurable up to 32). Twelve streams sustain roughly 480 Mbit/s at a 200 ms round trip. Real speed is capped by the slower connection, usually the sender's upload.
+- **Throughput:** QUIC with Cubic congestion control (BBR is an experimental option) and 12 parallel streams per file (configurable up to 32), with an adaptive flow window that keeps queues short on relays. Twelve streams sustain roughly 480 Mbit/s at a 200 ms round trip. Real speed is capped by the slower connection, usually the sender's upload.
 - **Memory:** files are streamed in 1 MiB blocks and never loaded whole. A 1 GiB loopback transfer peaked at about 110 MB for sender and receiver combined. The Windows app process uses around 45 MB at rest.
 - **CPU:** BLAKE3 hashing and UDP segmentation offload keep the cost per byte low, and the process runs at below-normal priority so other apps stay responsive.
 - **Your bandwidth, your call:** optional upload and download limits.
@@ -146,7 +156,8 @@ Read more in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 - **Encryption and identity:** every connection uses QUIC with TLS 1.3, authenticated by each device's Ed25519 key. The receiver verifies it reached exactly the sender named in the invitation.
 - **Invitations:** random 128-bit keys, stored only as hashes. They expire, can be limited to a number of devices, and can be revoked. New devices need approval by default.
 - **Short codes:** stretched with Argon2id; they unlock an encrypted record, so the lookup service never sees the invitation.
-- **Access control:** the sender checks every request. Path traversal, symlinks and junctions that leave the shared folder are refused. Incoming file names are sanitized before anything is written.
+- **Access control:** the owner checks every request against that device's own permission (download, upload or both), so a change takes effect on its next request. Path traversal, symlinks and junctions that leave the shared folder are refused. Incoming file names are sanitized before anything is written.
+- **Uploads and deletes:** an upload is written to a hidden temporary file, verified block by block and then as a whole (both sides compare the fingerprint), and moved to a free name, so nothing existing is replaced. The owner records which device uploaded what; a delete is accepted only for that device's own items, unchanged since upload, and a folder only if everything inside is its own.
 - **Integrity:** each 1 MiB block is verified with BLAKE3 on arrival, and the whole file again before it is finalized.
 - **Safety words:** five words from a 256-word list (40 bits), derived with BLAKE3 from both devices' public keys, sorted, so both sides compute the same words.
 - **Local-only history:** receipts and statistics live in the app's SQLite database on each device, pruned by the retention setting. The receiver sends the sender a receipt over the existing encrypted connection; nothing goes anywhere else.
@@ -170,7 +181,7 @@ npx tauri build --bundles nsis            # Windows installer
 npx tauri android build --apk             # Android APK
 ```
 
-The engine tests run real transfers between two in-process peers and cover pause and resume (including mid-chunk), crash recovery, corrupted data, the sender going offline, source changes, path traversal and access revocation.
+The engine tests run real transfers between in-process peers and cover pause and resume (including mid-chunk), crash recovery, corrupted data, the sender going offline, source changes, path traversal and access revocation, plus per-device permissions, uploads and resumed uploads, owner-only deletes, auto-sync and owner notices.
 
 ### Continuous integration
 
@@ -180,13 +191,15 @@ Every push to `main` runs the engine tests on Linux and Windows, builds the Wind
 
 ```
 crates/core/                 Transfer engine (Rust): protocol, sharing, invitations,
-                             resumable downloads, SQLite state, end-to-end tests
+                             resumable downloads and uploads, per-device access,
+                             auto-sync, SQLite state, end-to-end tests
 src-tauri/                   App shell (Tauri 2): commands, events, Windows tray,
                              Android project in gen/android
 plugins/relayless-android/   Android integration (Kotlin): storage access,
                              foreground transfer service, battery settings
 src/                         Interface (React + TypeScript): pages, live speed
-                             graph (flow.tsx), History calendar and receipts
+                             graph (flow.tsx), History calendar and receipts,
+                             sidebar speed readout and mini calendar
 mock/                        Demo backend for `npm run dev:ui`
 website/                     Project website, published to GitHub Pages
 docs/                        Architecture and protocol notes
@@ -202,9 +215,11 @@ DESIGN.md                    Visual system: colours, type, chart and calendar ru
 - [x] Privacy receipts, safety words, local history and live speed graph
 - [ ] Code-signed Windows installer
 - [ ] macOS and Linux builds
-- [ ] Self-hostable relay and lookup server
+- [x] Uploads into shared folders, with download / upload / both access per device
+- [x] Auto-sync of a shared folder (new files only, never deletes)
+- [x] Transfers resume on launch and when the network comes back
+- [ ] Self-hostable lookup server (your own relays already work: [docs/RELAY.md](docs/RELAY.md))
 - [ ] Send from the phone's share sheet
-- [ ] Optional folder sync
 
 Ideas and votes are welcome in [Issues](https://github.com/MisbahKhan0009/Relayless/issues).
 

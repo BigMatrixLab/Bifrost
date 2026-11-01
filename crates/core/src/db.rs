@@ -22,8 +22,6 @@ pub struct ShareRow {
     pub name: String,
     pub active: bool,
     pub created_at: i64,
-    /// "download", "upload" or "both"
-    pub permission: String,
 }
 
 /// A file or folder a remote device created in one of this device's shares.
@@ -47,6 +45,8 @@ pub struct InvitationRow {
     pub require_approval: bool,
     pub revoked_at: Option<i64>,
     pub created_at: i64,
+    /// What a device that joins with it may do: "download", "upload" or "both".
+    pub permission: String,
 }
 
 impl InvitationRow {
@@ -70,6 +70,8 @@ pub struct GrantRow {
     pub device_name: String,
     pub created_at: i64,
     pub last_seen_at: i64,
+    /// What this device may do in this share: "download", "upload" or "both".
+    pub permission: String,
 }
 
 #[derive(Clone, Debug)]
@@ -207,6 +209,17 @@ CREATE TABLE IF NOT EXISTS uploads(
 CREATE INDEX IF NOT EXISTS uploads_peer ON uploads(share_id, peer_id);
 "#;
 
+/// Permission moves from the share to each device's access: every invitation
+/// carries one, and a device gets it when it joins. Existing invitations and
+/// devices keep what their share allowed, so nothing changes on upgrade.
+/// (`shares.permission` stays in the table but is no longer used.)
+const SCHEMA_V7: &str = r#"
+ALTER TABLE grants ADD COLUMN permission TEXT NOT NULL DEFAULT 'download';
+ALTER TABLE invitations ADD COLUMN permission TEXT NOT NULL DEFAULT 'download';
+UPDATE grants SET permission=COALESCE((SELECT s.permission FROM shares s WHERE s.id=grants.share_id), 'download');
+UPDATE invitations SET permission=COALESCE((SELECT s.permission FROM shares s WHERE s.id=invitations.share_id), 'download');
+"#;
+
 /// Uploads from this device (so they continue after a restart), and
 /// auto-synced remote shares with the files each sync has already seen.
 const SCHEMA_V6: &str = r#"
@@ -307,6 +320,10 @@ impl Db {
             conn.execute_batch(SCHEMA_V6)?;
             conn.pragma_update(None, "user_version", 6)?;
         }
+        if version < 7 {
+            conn.execute_batch(SCHEMA_V7)?;
+            conn.pragma_update(None, "user_version", 7)?;
+        }
         Ok(Db { conn: Mutex::new(conn) })
     }
 
@@ -336,8 +353,8 @@ impl Db {
 
     pub fn insert_share(&self, s: &ShareRow) -> Result<()> {
         self.conn.lock().execute(
-            "INSERT INTO shares(id,root_path,display_name,active,created_at,permission) VALUES(?1,?2,?3,?4,?5,?6)",
-            params![s.id, s.root_path, s.name, s.active, s.created_at, s.permission],
+            "INSERT INTO shares(id,root_path,display_name,active,created_at) VALUES(?1,?2,?3,?4,?5)",
+            params![s.id, s.root_path, s.name, s.active, s.created_at],
         )?;
         Ok(())
     }
@@ -345,18 +362,16 @@ impl Db {
     pub fn list_shares(&self) -> Result<Vec<ShareRow>> {
         let c = self.conn.lock();
         let mut st = c.prepare(
-            "SELECT id,root_path,display_name,active,created_at,permission FROM shares ORDER BY created_at",
+            "SELECT id,root_path,display_name,active,created_at FROM shares ORDER BY created_at",
         )?;
         let rows = st
             .query_map([], |r| {
-                let perm: String = r.get(5)?;
                 Ok(ShareRow {
                     id: r.get(0)?,
                     root_path: r.get(1)?,
                     name: r.get(2)?,
                     active: r.get(3)?,
                     created_at: r.get(4)?,
-                    permission: crate::types::normalize_permission(&perm).to_string(),
                 })
             })?
             .collect::<rusqlite::Result<Vec<_>>>()?;
@@ -371,13 +386,6 @@ impl Db {
         self.conn
             .lock()
             .execute("UPDATE shares SET active=?2 WHERE id=?1", params![id, active])?;
-        Ok(())
-    }
-
-    pub fn set_share_permission(&self, id: &str, permission: &str) -> Result<()> {
-        self.conn
-            .lock()
-            .execute("UPDATE shares SET permission=?2 WHERE id=?1", params![id, permission])?;
         Ok(())
     }
 
@@ -593,8 +601,8 @@ impl Db {
 
     pub fn insert_invitation(&self, i: &InvitationRow) -> Result<()> {
         self.conn.lock().execute(
-            "INSERT INTO invitations(id,share_id,token_hash,expires_at,max_uses,use_count,require_approval,revoked_at,created_at)
-             VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9)",
+            "INSERT INTO invitations(id,share_id,token_hash,expires_at,max_uses,use_count,require_approval,revoked_at,created_at,permission)
+             VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)",
             params![
                 i.id,
                 i.share_id,
@@ -604,7 +612,8 @@ impl Db {
                 i.use_count,
                 i.require_approval,
                 i.revoked_at,
-                i.created_at
+                i.created_at,
+                i.permission
             ],
         )?;
         Ok(())
@@ -621,13 +630,14 @@ impl Db {
             require_approval: r.get(6)?,
             revoked_at: r.get(7)?,
             created_at: r.get(8)?,
+            permission: crate::types::normalize_permission(&r.get::<_, String>(9)?).to_string(),
         })
     }
 
     pub fn list_invitations(&self) -> Result<Vec<InvitationRow>> {
         let c = self.conn.lock();
         let mut st = c.prepare(
-            "SELECT id,share_id,token_hash,expires_at,max_uses,use_count,require_approval,revoked_at,created_at
+            "SELECT id,share_id,token_hash,expires_at,max_uses,use_count,require_approval,revoked_at,created_at,permission
              FROM invitations ORDER BY created_at DESC",
         )?;
         let rows = st
@@ -639,7 +649,7 @@ impl Db {
     pub fn find_invitation_by_hash(&self, token_hash: &str) -> Result<Option<InvitationRow>> {
         let c = self.conn.lock();
         Ok(c.query_row(
-            "SELECT id,share_id,token_hash,expires_at,max_uses,use_count,require_approval,revoked_at,created_at
+            "SELECT id,share_id,token_hash,expires_at,max_uses,use_count,require_approval,revoked_at,created_at,permission
              FROM invitations WHERE token_hash=?1",
             params![token_hash],
             Self::map_invitation,
@@ -666,7 +676,7 @@ impl Db {
     pub fn get_invitation(&self, id: &str) -> Result<Option<InvitationRow>> {
         let c = self.conn.lock();
         Ok(c.query_row(
-            "SELECT id,share_id,token_hash,expires_at,max_uses,use_count,require_approval,revoked_at,created_at
+            "SELECT id,share_id,token_hash,expires_at,max_uses,use_count,require_approval,revoked_at,created_at,permission
              FROM invitations WHERE id=?1",
             params![id],
             Self::map_invitation,
@@ -699,20 +709,31 @@ impl Db {
 
     // ---------------------------------------------------------------- grants
 
-    pub fn upsert_grant(&self, peer_id: &str, share_id: &str, device_name: &str) -> Result<()> {
+    /// Gives a device access to a share with the invitation's permission.
+    pub fn upsert_grant(&self, peer_id: &str, share_id: &str, device_name: &str, permission: &str) -> Result<()> {
         let now = now_ms();
         self.conn.lock().execute(
-            "INSERT INTO grants(peer_id,share_id,device_name,created_at,last_seen_at) VALUES(?1,?2,?3,?4,?4)
-             ON CONFLICT(peer_id,share_id) DO UPDATE SET device_name=excluded.device_name, last_seen_at=excluded.last_seen_at",
-            params![peer_id, share_id, device_name, now],
+            "INSERT INTO grants(peer_id,share_id,device_name,created_at,last_seen_at,permission) VALUES(?1,?2,?3,?4,?4,?5)
+             ON CONFLICT(peer_id,share_id) DO UPDATE SET device_name=excluded.device_name, last_seen_at=excluded.last_seen_at,
+               permission=excluded.permission",
+            params![peer_id, share_id, device_name, now, permission],
         )?;
         Ok(())
+    }
+
+    /// Changes what one device may do in one share. Returns whether it had access.
+    pub fn set_grant_permission(&self, peer_id: &str, share_id: &str, permission: &str) -> Result<bool> {
+        let n = self.conn.lock().execute(
+            "UPDATE grants SET permission=?3 WHERE peer_id=?1 AND share_id=?2",
+            params![peer_id, share_id, permission],
+        )?;
+        Ok(n > 0)
     }
 
     pub fn list_grants(&self) -> Result<Vec<GrantRow>> {
         let c = self.conn.lock();
         let mut st = c.prepare(
-            "SELECT peer_id,share_id,device_name,created_at,last_seen_at FROM grants ORDER BY last_seen_at DESC",
+            "SELECT peer_id,share_id,device_name,created_at,last_seen_at,permission FROM grants ORDER BY last_seen_at DESC",
         )?;
         let rows = st
             .query_map([], |r| {
@@ -722,6 +743,7 @@ impl Db {
                     device_name: r.get(2)?,
                     created_at: r.get(3)?,
                     last_seen_at: r.get(4)?,
+                    permission: crate::types::normalize_permission(&r.get::<_, String>(5)?).to_string(),
                 })
             })?
             .collect::<rusqlite::Result<Vec<_>>>()?;
@@ -1208,5 +1230,57 @@ impl Db {
             })?
             .collect::<rusqlite::Result<Vec<_>>>()?;
         Ok(rows)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Upgrading to per-device permission keeps what each folder allowed:
+    /// existing devices and invitations take their folder's old permission.
+    #[test]
+    fn v7_moves_folder_permission_to_devices_and_invitations() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("t.db");
+        {
+            let db = Db::open(&path).unwrap();
+            db.insert_share(&ShareRow { id: "s1".into(), root_path: "/x".into(), name: "X".into(), active: true, created_at: 1 }).unwrap();
+            db.insert_share(&ShareRow { id: "s2".into(), root_path: "/y".into(), name: "Y".into(), active: true, created_at: 2 }).unwrap();
+            db.upsert_grant("p1", "s1", "A", "download").unwrap();
+            db.upsert_grant("p1", "s2", "A", "download").unwrap();
+            db.insert_invitation(&InvitationRow {
+                id: "i1".into(),
+                share_id: "s1".into(),
+                token_hash: "h".into(),
+                expires_at: i64::MAX,
+                max_uses: None,
+                use_count: 0,
+                require_approval: true,
+                revoked_at: None,
+                created_at: 1,
+                permission: "download".into(),
+            })
+            .unwrap();
+            // Back to the v6 layout: permission on the folder only.
+            let c = db.conn.lock();
+            c.execute_batch(
+                "UPDATE shares SET permission='both' WHERE id='s1';
+                 UPDATE shares SET permission='upload' WHERE id='s2';
+                 ALTER TABLE grants DROP COLUMN permission;
+                 ALTER TABLE invitations DROP COLUMN permission;
+                 PRAGMA user_version=6;",
+            )
+            .unwrap();
+        }
+        let db = Db::open(&path).unwrap();
+        let grants = db.list_grants().unwrap();
+        let perm = |s: &str| grants.iter().find(|g| g.share_id == s).unwrap().permission.clone();
+        assert_eq!(perm("s1"), "both");
+        assert_eq!(perm("s2"), "upload");
+        assert_eq!(db.get_invitation("i1").unwrap().unwrap().permission, "both");
+        // And one device can now be changed on its own.
+        assert!(db.set_grant_permission("p1", "s1", "download").unwrap());
+        assert!(!db.set_grant_permission("nobody", "s1", "download").unwrap());
     }
 }

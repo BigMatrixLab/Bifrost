@@ -377,7 +377,7 @@ For uploads (`push.rs`), `in_use` and `paused` are retried with backoff. Every o
 | `chunks(job_id, idx, hash, scheme)` | Finished chunks and their chunk hash |
 | `partials(job_id, idx, done, hashes)` | Verified prefix of an unfinished chunk: bytes done (block-aligned) and the packed 32-byte block hashes |
 | `<dest>.rlpart` | Pre-allocated data file; written at final offsets |
-| `shares.permission` (owner) | `download`, `upload` or `both` per share |
+| `grants.permission`, `invitations.permission` (owner) | `download`, `upload` or `both` per device and share; a device gets its invitation's value when it joins (`shares.permission` is no longer used) |
 | `remote_shares.permission` (receiver) | Last permission the owner reported for each share |
 | `uploads(share_id, path, peer_id, is_dir, size, mtime_ms)` (owner) | What each device uploaded, for the delete check |
 | `.bfup-<device>-<file>.rlpart` (owner, in the destination folder) | Verified prefix of an unfinished upload |
@@ -441,14 +441,8 @@ The following were confirmed with the diagnostics added later; see [DIAGNOSTICS.
 
 ## 14. Uploads into a shared folder
 
-Each share has a permission chosen by its owner: `download` (the default, and the only behaviour before uploads existed), `upload` or `both`. New shares get `Settings.default_share_permission`. The owner can change a share's permission at any time (`Core::set_share_permission`). Because every request is authorized again, a change applies to the next request. A running upload also checks again every 16 blocks and stops if uploading was turned off.
 
-| Request | `download` | `upload` | `both` |
-|---|---|---|---|
-| `List` | Everything | Only items the asker uploaded (a drop box) | Everything |
-| `Walk`, `Stat`, `Chunk` | Yes | Denied | Yes |
-| `Put`, `PutAbort`, `Mkdir`, `Delete` | Denied | Yes | Yes |
-| `Receipt`, `Hello` | Yes | Yes | Yes |
+Each device's access to a share has its own permission: `download`, `upload` or `both`. It comes from the invitation the device joined with (`Core::create_invitation_with`; new invitations default to `Settings.default_share_permission`), so two devices in the same folder can have different rights. The owner can change one device's permission at any time (`Core::set_device_permission`) without affecting the others. A device that already has access keeps its permission if it uses another invitation for the same folder; change it on the device instead. Because every request is authorized again, a change applies to the next request. A running upload also checks again every 16 blocks and stops if uploading was turned off.
 
 The receiver learns its permission from `WireShare.perm` in `Hello`, and again from `List.perm` on every listing. It caches the value in `remote_shares.permission`, and the UI shows upload controls only when uploading is allowed.
 
