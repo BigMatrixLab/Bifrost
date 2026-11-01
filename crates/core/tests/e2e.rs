@@ -220,6 +220,66 @@ fn peer_id_of(c: &Core) -> String {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn sender_pause_resume_and_cancel() {
+    let _ = tracing_subscriber::fmt().with_env_filter(std::env::var("TLOG").unwrap_or("relayless_core=info".into())).try_init();
+    let tmp = tempfile::tempdir().unwrap();
+    let shared = tmp.path().join("shared");
+    let size = 80 * 1024 * 1024 + 321;
+    make_file(&shared.join("a.bin"), size, 11);
+    make_file(&shared.join("b.bin"), size, 12);
+
+    let sender = Core::start(opts(&tmp.path().join("s"), "Sender")).await.unwrap();
+    let receiver = Core::start(opts(&tmp.path().join("r"), "Receiver")).await.unwrap();
+    auto_approve(&sender);
+    let share = sender.create_share(shared.to_str().unwrap(), None).unwrap();
+    let peer = pair(&sender, &receiver, &share).await;
+    set_limit(&receiver, 20 * 1024);
+    let outgoing = |name: &str| sender.list_outgoing().into_iter().find(|o| o.name == name).expect("outgoing entry");
+
+    // Paused by the sender: the receiver waits with its progress, then finishes after resume.
+    let a = receiver
+        .start_download(&peer, &share.id, vec![DownloadItem { path: vec!["a.bin".into()], is_dir: false }], None)
+        .await
+        .unwrap()[0]
+        .clone();
+    wait_progress(&receiver, &a, 16 * 1024 * 1024).await;
+    let oa = outgoing("a.bin");
+    sender.pause_outgoing(&oa.id).unwrap();
+    assert_eq!(outgoing("a.bin").status, "paused");
+    let waiting = wait_status(&receiver, &a, JobStatus::WaitingPeer, 20).await;
+    assert!(waiting.error.as_deref().unwrap_or("").contains("Paused by the sender"), "{:?}", waiting.error);
+    tokio::time::sleep(Duration::from_millis(1500)).await;
+    let still = receiver.list_jobs().unwrap().into_iter().find(|j| j.id == a).unwrap();
+    assert_eq!(still.verified_bytes, waiting.verified_bytes, "no progress while the sender paused");
+    assert_eq!(still.status, JobStatus::WaitingPeer, "no flicker between polls");
+    sender.resume_outgoing(&oa.id).unwrap();
+    let done = wait_status(&receiver, &a, JobStatus::Completed, 60).await;
+    assert_eq!(hash(Path::new(&done.dest_path)), hash(&shared.join("a.bin")));
+
+    // Canceled by the sender: the receiver stops and keeps what it has;
+    // removing the entry on the sender lets a retry finish.
+    let b = receiver
+        .start_download(&peer, &share.id, vec![DownloadItem { path: vec!["b.bin".into()], is_dir: false }], None)
+        .await
+        .unwrap()[0]
+        .clone();
+    wait_progress(&receiver, &b, 16 * 1024 * 1024).await;
+    let ob = outgoing("b.bin");
+    sender.cancel_outgoing(&ob.id).unwrap();
+    assert_eq!(outgoing("b.bin").status, "canceled");
+    let stopped = wait_status(&receiver, &b, JobStatus::NeedsAttention, 20).await;
+    assert!(stopped.error.as_deref().unwrap_or("").contains("stopped sending"), "{:?}", stopped.error);
+    assert!(stopped.verified_bytes >= 16 * 1024 * 1024, "partial data kept");
+    sender.remove_outgoing(&ob.id);
+    receiver.resume_job(&b).await.unwrap();
+    let done = wait_status(&receiver, &b, JobStatus::Completed, 60).await;
+    assert_eq!(hash(Path::new(&done.dest_path)), hash(&shared.join("b.bin")));
+
+    receiver.shutdown().await;
+    sender.shutdown().await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn pause_resume_and_crash_recovery() {
     let _ = tracing_subscriber::fmt().with_env_filter(std::env::var("TLOG").unwrap_or("relayless_core=info".into())).try_init();
     let tmp = tempfile::tempdir().unwrap();

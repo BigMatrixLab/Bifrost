@@ -1,22 +1,22 @@
-; Quanta installer look: dark, like the app (src/styles.css, dark theme),
+; Bifrost installer look: dark, like the app (src/styles.css, dark theme),
 ; set in Space Grotesk.
 ;
 ; Tauri includes this file (bundle.windows.nsis.installerHooks) near the top
 ; of installer.nsi, after MUI2.nsh and before any page is declared, so the
 ; MUI_* defines below apply to every page. The custom template
-; (installer.nsi next to this file) calls Quanta.DarkPage from each page's
+; (installer.nsi next to this file) calls Bifrost.DarkPage from each page's
 ; SHOW callback.
 ;
 ; Colours and fonts are set here. The controls themselves (buttons, check
 ; boxes, radio buttons, text fields, the progress bar) are drawn by the
-; quanta_ui plugin (quanta-ui/, built into plugins/x86-unicode/).
+; bifrost_ui plugin (bifrost-ui/, built into plugins/x86-unicode/).
 
 !include "LogicLib.nsh"
 !include "WinMessages.nsh"
 
 ; This file's folder; the fonts and the plugin live next to it.
-!define QUANTA_DIR "${__FILEDIR__}"
-!addplugindir /x86-unicode "${QUANTA_DIR}\plugins\x86-unicode"
+!define BIFROST_DIR "${__FILEDIR__}"
+!addplugindir /x86-unicode "${BIFROST_DIR}\plugins\x86-unicode"
 
 ; ------------------------------------------------------------------ palette
 
@@ -35,9 +35,9 @@
 ; Space Grotesk 9, which the installer carries and loads privately (nothing
 ; is installed on the system).
 SetFont "Segoe UI" 10
-Var Quanta.Font
-Var Quanta.TitleFont
-Var Quanta.HeaderFont
+Var Bifrost.Font
+Var Bifrost.TitleFont
+Var Bifrost.HeaderFont
 
 ; --------------------------------------------------------------- MUI setup
 
@@ -48,8 +48,8 @@ Var Quanta.HeaderFont
 !define MUI_INSTFILESPAGE_PROGRESSBAR "smooth"
 !define MUI_DIRECTORYPAGE_BGCOLOR "${Q_FIELD}"
 !define MUI_DIRECTORYPAGE_TEXTCOLOR "${Q_TEXT}"
-!define MUI_CUSTOMFUNCTION_GUIINIT Quanta.GuiInit
-!define MUI_CUSTOMFUNCTION_UNGUIINIT un.Quanta.GuiInit
+!define MUI_CUSTOMFUNCTION_GUIINIT Bifrost.GuiInit
+!define MUI_CUSTOMFUNCTION_UNGUIINIT un.Bifrost.GuiInit
 
 !define MUI_WELCOMEPAGE_TITLE "Install $(^NameDA)"
 !define MUI_WELCOMEPAGE_TEXT "$(^NameDA) sends very large files straight from one device to another. Transfers pick up where they left off after a dropped connection or a restart, and every byte is checked when it arrives.$\r$\n$\r$\nNo account, and no copy on anyone's server.$\r$\n$\r$\nClick Next to continue."
@@ -58,23 +58,23 @@ Var Quanta.HeaderFont
 
 ; ------------------------------------------------------------- dark theming
 
-!macro QUANTA_DARK_FUNCTIONS UN
+!macro BIFROST_DARK_FUNCTIONS UN
 
 ; Once, when the window opens: fonts, the plugin, the dark title bar and
 ; frame, and the controls that stay for the whole run (header, buttons,
 ; branding line).
-Function ${UN}Quanta.GuiInit
+Function ${UN}Bifrost.GuiInit
   Push $0
   ; Space Grotesk, unpacked to the temporary plugins folder and loaded for
   ; this process only.
   InitPluginsDir
-  File "/oname=$PLUGINSDIR\SpaceGrotesk-Regular.ttf" "${QUANTA_DIR}\fonts\SpaceGrotesk-Regular.ttf"
-  File "/oname=$PLUGINSDIR\SpaceGrotesk-Medium.ttf" "${QUANTA_DIR}\fonts\SpaceGrotesk-Medium.ttf"
-  File "/oname=$PLUGINSDIR\SpaceGrotesk-Bold.ttf" "${QUANTA_DIR}\fonts\SpaceGrotesk-Bold.ttf"
-  quanta_ui::Init "$PLUGINSDIR"
-  CreateFont $Quanta.Font "Space Grotesk" 9 400
-  CreateFont $Quanta.HeaderFont "Space Grotesk" 11 700
-  CreateFont $Quanta.TitleFont "Space Grotesk" 18 700
+  File "/oname=$PLUGINSDIR\SpaceGrotesk-Regular.ttf" "${BIFROST_DIR}\fonts\SpaceGrotesk-Regular.ttf"
+  File "/oname=$PLUGINSDIR\SpaceGrotesk-Medium.ttf" "${BIFROST_DIR}\fonts\SpaceGrotesk-Medium.ttf"
+  File "/oname=$PLUGINSDIR\SpaceGrotesk-Bold.ttf" "${BIFROST_DIR}\fonts\SpaceGrotesk-Bold.ttf"
+  bifrost_ui::Init "$PLUGINSDIR"
+  CreateFont $Bifrost.Font "Space Grotesk" 9 400
+  CreateFont $Bifrost.HeaderFont "Space Grotesk" 11 700
+  CreateFont $Bifrost.TitleFont "Space Grotesk" 18 700
 
   ; DWMWA_USE_IMMERSIVE_DARK_MODE (Windows 10 20H1+), then the caption and
   ; border colours (Windows 11; ignored elsewhere).
@@ -83,18 +83,18 @@ Function ${UN}Quanta.GuiInit
   System::Call 'dwmapi::DwmSetWindowAttribute(p $HWNDPARENT, i 34, *i ${Q_EDGE_REF}, i 4)'
   SetCtlColors $HWNDPARENT ${Q_TEXT} ${Q_BG}
   Push $HWNDPARENT
-  Call ${UN}Quanta.DarkChildren
-  quanta_ui::Skin $HWNDPARENT
+  Call ${UN}Bifrost.DarkChildren
+  bifrost_ui::Skin $HWNDPARENT
   ; No button strip under the welcome page's side panel: the window ends
   ; where the panel does and the buttons sit beside it.
-  quanta_ui::Compact $HWNDPARENT
+  bifrost_ui::Compact $HWNDPARENT
 
   ; The page title in the header, larger and bold.
   GetDlgItem $0 $HWNDPARENT 1037
-  SendMessage $0 ${WM_SETFONT} $Quanta.HeaderFont 1
+  SendMessage $0 ${WM_SETFONT} $Bifrost.HeaderFont 1
   ; The copyright line: NSIS draws it disabled (embossed grey); show it as
   ; plain secondary text instead.
-  ; (1256 is a second copy drawn a pixel off for that effect; Quanta.DarkDialog
+  ; (1256 is a second copy drawn a pixel off for that effect; Bifrost.DarkDialog
   ; hides it on every page, since MUI shows it again.)
   GetDlgItem $0 $HWNDPARENT 1028
   EnableWindow $0 1
@@ -103,23 +103,23 @@ Function ${UN}Quanta.GuiInit
 FunctionEnd
 
 ; Each page's SHOW callback: the page dialog and everything on it.
-Function ${UN}Quanta.DarkPage
+Function ${UN}Bifrost.DarkPage
   Push $0
   FindWindow $0 "#32770" "" $HWNDPARENT
   Push $0
-  Call ${UN}Quanta.DarkDialog
+  Call ${UN}Bifrost.DarkDialog
   Pop $0
 FunctionEnd
 
 ; The page dialog on the stack, and the separator lines MUI shows again
 ; when it switches between full-window and normal pages.
-Function ${UN}Quanta.DarkDialog
+Function ${UN}Bifrost.DarkDialog
   Exch $0
   Push $1
   SetCtlColors $0 ${Q_TEXT} ${Q_BG}
   Push $0
-  Call ${UN}Quanta.DarkChildren
-  quanta_ui::Skin $0
+  Call ${UN}Bifrost.DarkChildren
+  bifrost_ui::Skin $0
   GetDlgItem $1 $HWNDPARENT 1035
   ShowWindow $1 ${SW_HIDE}
   GetDlgItem $1 $HWNDPARENT 1045
@@ -131,7 +131,7 @@ Function ${UN}Quanta.DarkDialog
 FunctionEnd
 
 ; Colours and the font for every child of the window on the stack.
-Function ${UN}Quanta.DarkChildren
+Function ${UN}Bifrost.DarkChildren
   Exch $0 ; parent window
   Push $1 ; child
   Push $2 ; class name
@@ -140,7 +140,7 @@ Function ${UN}Quanta.DarkChildren
   loop:
     FindWindow $1 "" "" $0 $1
     StrCmp $1 0 done
-    SendMessage $1 ${WM_SETFONT} $Quanta.Font 1
+    SendMessage $1 ${WM_SETFONT} $Bifrost.Font 1
     System::Call 'user32::GetClassName(p r1, t .r2, i 256)'
     ${If} $2 == "Button"
       System::Call 'user32::GetWindowLong(p r1, i -16) i .r3'
@@ -185,7 +185,7 @@ FunctionEnd
 ; Moves the control on the stack to just below the page's text field. The
 ; uninstaller's "Delete the application data" box is created at a fixed
 ; pixel position, which the larger layout font would put on the field.
-Function ${UN}Quanta.BelowField
+Function ${UN}Bifrost.BelowField
   Exch $0 ; control to move
   Push $1 ; page dialog
   Push $2 ; text field
@@ -226,24 +226,24 @@ FunctionEnd
 
 !macroend
 
-!insertmacro QUANTA_DARK_FUNCTIONS ""
-!insertmacro QUANTA_DARK_FUNCTIONS "un."
+!insertmacro BIFROST_DARK_FUNCTIONS ""
+!insertmacro BIFROST_DARK_FUNCTIONS "un."
 
 ; Welcome and finish pages: the page colours, then a large title and
 ; softer body text. Their controls live in variables MUI declares with the
 ; pages, so the template inserts this macro after the finish page.
-!macro QUANTA_WELCOME_FINISH_FUNCTIONS
-Function Quanta.WelcomeShow
+!macro BIFROST_WELCOME_FINISH_FUNCTIONS
+Function Bifrost.WelcomeShow
   Push $mui.WelcomePage
-  Call Quanta.DarkDialog
-  SendMessage $mui.WelcomePage.Title ${WM_SETFONT} $Quanta.TitleFont 1
+  Call Bifrost.DarkDialog
+  SendMessage $mui.WelcomePage.Title ${WM_SETFONT} $Bifrost.TitleFont 1
   SetCtlColors $mui.WelcomePage.Text ${Q_TEXT2} ${Q_BG}
 FunctionEnd
 
-Function Quanta.FinishShow
+Function Bifrost.FinishShow
   Push $mui.FinishPage
-  Call Quanta.DarkDialog
-  SendMessage $mui.FinishPage.Title ${WM_SETFONT} $Quanta.TitleFont 1
+  Call Bifrost.DarkDialog
+  SendMessage $mui.FinishPage.Title ${WM_SETFONT} $Bifrost.TitleFont 1
   SetCtlColors $mui.FinishPage.Text ${Q_TEXT2} ${Q_BG}
 FunctionEnd
 !macroend

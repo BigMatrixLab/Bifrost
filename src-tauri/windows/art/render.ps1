@@ -23,13 +23,13 @@ $parts = @(
   @{ Name = "header"; W = 150; H = 57 }
 )
 foreach ($p in $parts) {
-  $png = Join-Path $env:TEMP "quanta-installer-$($p.Name).png"
+  $png = Join-Path $env:TEMP "bifrost-installer-$($p.Name).png"
   $bmp = Join-Path $PSScriptRoot "$($p.Name).bmp"
   Remove-Item $png -ErrorAction SilentlyContinue
   $edgeArgs = @(
     "--headless=new", "--hide-scrollbars", "--force-device-scale-factor=$Scale",
     "--window-size=$($p.W),$($p.H)", "--virtual-time-budget=3000",
-    "--user-data-dir=$env:TEMP\quanta-art-profile",
+    "--user-data-dir=$env:TEMP\bifrost-art-profile",
     "--screenshot=$png", "$Server/src-tauri/windows/art/installer-art.html?part=$($p.Name)"
   )
   Start-Process -Wait -FilePath $edge -ArgumentList $edgeArgs

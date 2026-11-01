@@ -108,14 +108,8 @@
   <body>
     <div id="root"></div>
     <script>
-      // The app logo (src-tauri/icons/app-icon.svg) without its tile: a "Q"
-      // of twelve ring segments and a tail.
-      const Q = (size) => `
-        <svg width="${size}" height="${size}" viewBox="220 220 600 600" xmlns="http://www.w3.org/2000/svg">
-          <path fill="none" stroke="#4ade80" stroke-width="76"
-            d="M735.4 442.3A250 250 0 0 1 735.4 537.7M726.4 571.4A250 250 0 0 1 704.3 618.8M618.8 704.3A250 250 0 0 1 571.4 726.4M537.7 735.4A250 250 0 0 1 442.3 735.4M408.6 726.4A250 250 0 0 1 326 678.7M301.3 654A250 250 0 0 1 253.6 571.4M244.6 537.7A250 250 0 0 1 244.6 442.3M253.6 408.6A250 250 0 0 1 301.3 326M326 301.3A250 250 0 0 1 408.6 253.6M442.3 244.6A250 250 0 0 1 537.7 244.6M571.4 253.6A250 250 0 0 1 654 301.3M678.7 326A250 250 0 0 1 726.4 408.6" />
-          <path d="M605 605 L795 795" stroke="#4ade80" stroke-width="68" stroke-linecap="square" />
-        </svg>`;
+      // The app logo (src-tauri/icons/app-icon.png): the bridge.
+      const B = (size) => `<img src="/src-tauri/icons/app-icon.png" width="${size}" height="${size}" alt="" style="display:block">`;
 
       const part = new URLSearchParams(location.search).get("part") || "sidebar";
       const root = document.getElementById("root");
@@ -127,8 +121,8 @@
             <div class="dots" style="inset:8px;background-position:0 0;mask-image:radial-gradient(130px 190px at 50% 40%, #000 45%, rgba(0,0,0,0.35) 100%)"></div>
             <div class="glow" style="background:radial-gradient(120px 120px at 50% 36%, rgba(74,222,128,0.16), transparent 70%)"></div>
             <div class="brackets"></div>
-            <div class="logo" style="left:${(W - 64) / 2}px;top:92px">${Q(64)}</div>
-            <div class="word" style="left:0;right:0;top:184px;text-align:center;font-size:15px;padding-left:0.32em">QUANTA</div>
+            <div class="logo" style="left:${(W - 64) / 2}px;top:92px">${B(64)}</div>
+            <div class="word" style="left:0;right:0;top:184px;text-align:center;font-size:15px;padding-left:0.32em">BIFROST</div>
             <div class="meter" style="left:34px;width:96px;top:220px"><i style="width:60px"></i><b style="left:58px"></b></div>
           </div>`;
       } else {
@@ -137,7 +131,7 @@
           <div class="art" style="width:${W}px;height:${H}px">
             <div class="dots" style="mask-image:linear-gradient(90deg, transparent 0%, #000 70%)"></div>
             <div class="glow" style="background:radial-gradient(60px 40px at 118px 50%, rgba(74,222,128,0.18), transparent 70%)"></div>
-            <div class="logo" style="left:${W - 34 - 16}px;top:${(H - 34) / 2}px">${Q(34)}</div>
+            <div class="logo" style="left:${W - 34 - 16}px;top:${(H - 34) / 2}px">${B(34)}</div>
           </div>`;
       }
     </script>

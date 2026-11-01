@@ -52,7 +52,7 @@ impl Invite {
         let upper = cleaned.to_ascii_uppercase();
         let body = upper
             .strip_prefix(INVITE_PREFIX)
-            .ok_or_else(|| anyhow!("This doesn't look like a Quanta invitation."))?;
+            .ok_or_else(|| anyhow!("This doesn't look like a Bifrost invitation."))?;
         let bytes = BASE32_NOPAD
             .decode(body.as_bytes())
             .map_err(|_| anyhow!("The invitation is damaged. Copy it again from the sender."))?;

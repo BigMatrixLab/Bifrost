@@ -93,7 +93,7 @@ export default function Settings() {
           { label: "Download limit", value: limitText(settings.downloadLimitKbps) },
           { label: "Upload limit", value: limitText(settings.uploadLimitKbps) },
         ]}
-        note={`Quanta ${version}. Settings are stored only on this device.`}
+        note={`Bifrost ${version}. Settings are stored only on this device.`}
       />
       <section>
         <SectionHeader title="General" />
@@ -118,7 +118,7 @@ export default function Settings() {
           <Toggle
             checked={!!autostart}
             disabled={autostart === null}
-            label="Start Quanta when I sign in"
+            label="Start Bifrost when I sign in"
             hint="Starts quietly in the tray so shared folders stay available and downloads resume after a reboot."
             onChange={async (v) => {
               try {
@@ -145,14 +145,14 @@ export default function Settings() {
         <section>
           <SectionHeader title="Android" />
           <div className="panel settings-group">
-            <Row label="All files access" hint="Needed to share folders and save downloads to real folders such as Download/Quanta.">
+            <Row label="All files access" hint="Needed to share folders and save downloads to real folders such as Download/Bifrost.">
               {storage.granted ? (
                 <span className="pill pill-ok"><FolderLock size={12} /> Allowed</span>
               ) : (
                 <Button variant="primary" onClick={storage.request}>Allow</Button>
               )}
             </Row>
-            <Row label="Run in the background" hint="Lets transfers continue with the screen off. Tap Allow, pick Quanta in the list and choose “Don't optimize” or “Unrestricted”.">
+            <Row label="Run in the background" hint="Lets transfers continue with the screen off. Tap Allow, pick Bifrost in the list and choose “Don't optimize” or “Unrestricted”.">
               {battery ? (
                 <span className="pill pill-ok"><BatteryCharging size={12} /> Unrestricted</span>
               ) : (
@@ -189,7 +189,7 @@ export default function Settings() {
           </Row>
           <Row
             label="Connections per sender"
-            hint="On long or lossy direct links, several connections carry more than one. Quanta adds them only while each one raises the speed, and never over a relay."
+            hint="On long or lossy direct links, several connections carry more than one. Bifrost adds them only while each one raises the speed, and never over a relay."
           >
             <Segmented
               label="Connections per sender"
@@ -215,10 +215,10 @@ export default function Settings() {
             checked={settings.lowPriority}
             disabled={isAndroid()}
             label="Yield CPU to other apps"
-            hint="Runs Quanta at below-normal priority. Network speed is unaffected; your other programs stay responsive."
+            hint="Runs Bifrost at below-normal priority. Network speed is unaffected; your other programs stay responsive."
             onChange={(v) => save({ lowPriority: v })}
           />
-          <Row label="Congestion control" hint="CUBIC gives the steadiest speed and is recommended. BBR (experimental) can help on very lossy links but sometimes stalls at a few KB/s. Matters most on the sending computer. Applies after restarting Quanta.">
+          <Row label="Congestion control" hint="CUBIC gives the steadiest speed and is recommended. BBR (experimental) can help on very lossy links but sometimes stalls at a few KB/s. Matters most on the sending computer. Applies after restarting Bifrost.">
             <Segmented
               label="Congestion control"
               value={settings.congestion}
@@ -239,7 +239,7 @@ export default function Settings() {
         {restartNote && (
           <div className="notice" style={{ marginTop: 10 }}>
             <Info size={16} />
-            <span>Quit Quanta from the tray and open it again to use the new congestion control.</span>
+            <span>Quit Bifrost from the tray and open it again to use the new congestion control.</span>
           </div>
         )}
       </section>
@@ -270,7 +270,7 @@ export default function Settings() {
             hint={
               <>
                 Leave empty to use the free public relays, which are rate-limited (often around 1 Mbit/s). For fast transfers when routers block a
-                direct path, run your own relay and enter its address on both devices. Setup guide: docs/RELAY.md on the Quanta GitHub page.
+                direct path, run your own relay and enter its address on both devices. Setup guide: docs/RELAY.md on the Bifrost GitHub page.
               </>
             }
           >
@@ -292,7 +292,7 @@ export default function Settings() {
         {relayNote && (
           <div className="notice" style={{ marginTop: 10 }}>
             <Info size={16} />
-            <span>Quit Quanta and open it again to use the new relay server. Set the same relay on the other device too.</span>
+            <span>Quit Bifrost and open it again to use the new relay server. Set the same relay on the other device too.</span>
           </div>
         )}
       </section>
@@ -303,7 +303,7 @@ export default function Settings() {
           <div className="privacy-facts">
             <Lock size={16} aria-hidden="true" />
             <span>
-              Quanta has no account and sends no analytics. Transfer history, receipts and these settings are stored only in this device's
+              Bifrost has no account and sends no analytics. Transfer history, receipts and these settings are stored only in this device's
               database. The coordination service sees that two devices want to connect, never file names or contents.
             </span>
           </div>
@@ -383,7 +383,7 @@ export default function Settings() {
             </span>
           </Row>
           <Row label="Version">
-            <span className="muted small">Quanta {version}</span>
+            <span className="muted small">Bifrost {version}</span>
           </Row>
           <Row label="App data">
             <span className="mono small faint selectable" style={{ overflowWrap: "anywhere" }}>{dataDir}</span>

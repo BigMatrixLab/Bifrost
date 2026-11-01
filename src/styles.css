@@ -1,4 +1,4 @@
-/* Quanta design tokens: "Signal HUD". Black ground, white at three
+/* Bifrost design tokens: "Signal HUD". Black ground, white at three
    strengths, one signal red, thin lines, corner marks. See DESIGN.md. */
 :root {
   --bg: #050506;
@@ -637,11 +637,11 @@ a {
   border: 1px solid var(--border);
   cursor: pointer;
   text-align: left;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color 0.15s, background-color 0.15s;
 }
 .hero-tile:hover {
   border-color: var(--border-strong);
-  background: var(--surface-2);
+  background-color: var(--surface-2);
 }
 .hero-tile .ico {
   width: 46px;
@@ -1167,6 +1167,13 @@ input[type="range"] {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+/* The unwrapped button row is the widest thing in the dialog, so min-content
+   is exactly the row plus the footer's padding; text wraps to that. */
+@media (min-width: 761px) {
+  .modal.fit {
+    width: min-content;
+  }
 }
 @keyframes fade {
   from {
@@ -6457,13 +6464,16 @@ html {
 .job-list > .job {
   border: 0;
   background: none;
-  transition: background 0.2s;
+  transition: background-color 0.2s;
+}
+.job-list > .job.attn {
+  background: var(--hazard) left top / 4px 100% no-repeat;
 }
 .job-list > .job + .job {
   border-top: 1px solid var(--border);
 }
 .job-list > .job:hover {
-  background: rgba(var(--ink-rgb), 0.02);
+  background-color: rgba(var(--ink-rgb), 0.02);
 }
 /* Overview: no nested cards. The device list is plain rows divided by a
    line, like the transfer rows; the nested tile look stays on the Send page. */

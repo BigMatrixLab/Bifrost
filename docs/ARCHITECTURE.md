@@ -1,6 +1,6 @@
 # Architecture
 
-Quanta has three layers:
+Bifrost has three layers:
 
 | Layer | Location | Responsibility |
 |---|---|---|
@@ -23,7 +23,7 @@ Each installation has a persistent Ed25519 key (`identity.key` in the app data f
 
 An invitation (`RL1-…`) encodes the sender's public key, a random 128-bit token and the sender's home relay URL. The sender stores only a BLAKE3 hash of the token, with expiry, a use limit and a revocation flag.
 
-People share a 16-character code (`K7QM-9XRT-4HWD-P2NA`, about 78 bits), not the invitation itself. Argon2id derives two keys from it: an Ed25519 lookup key and a ChaCha20-Poly1305 key. The sender publishes the encrypted invitation under the lookup key through iroh's address lookup for as long as the invitation is active (expiry, use limit and revocation are checked every minute) and while Quanta is running; the code and the sealed record are kept in the `invitation_codes` table so the code is published again after a restart. The receiver derives the same keys, fetches and decrypts the invitation. The lookup service sees only ciphertext. The QR code carries the same code. Full `RL1-…` invitations and 12-character codes from older versions are still accepted when joining.
+People share a 16-character code (`K7QM-9XRT-4HWD-P2NA`, about 78 bits), not the invitation itself. Argon2id derives two keys from it: an Ed25519 lookup key and a ChaCha20-Poly1305 key. The sender publishes the encrypted invitation under the lookup key through iroh's address lookup for as long as the invitation is active (expiry, use limit and revocation are checked every minute) and while Bifrost is running; the code and the sealed record are kept in the `invitation_codes` table so the code is published again after a restart. The receiver derives the same keys, fetches and decrypts the invitation. The lookup service sees only ciphertext. The QR code carries the same code. Full `RL1-…` invitations and 12-character codes from older versions are still accepted when joining.
 
 Both devices show **safety words** during pairing: BLAKE3 over a domain tag and the two Ed25519 public keys, sorted so both sides agree, mapped to five words from a fixed 256-word list (40 bits). A device in the middle would hold a different key and so produce different words; comparing them out loud closes the gap if an invitation was intercepted and swapped.
 
@@ -87,7 +87,7 @@ App data lives in `%APPDATA%\app.relayless.desktop` on Windows and in the app's 
 
 **Windows.** Single instance; closing the window keeps transfers running in the tray and destroys the WebView to free its memory; optional start at sign-in (minimized); below-normal process priority; source files are opened deny-write while read.
 
-**Android.** A foreground service with a live notification, a partial wake lock and a high-performance Wi-Fi lock keeps transfers running with the screen off; it stops two minutes after activity ends. *All files access* lets users share and save to real folders (downloads default to `Download/Quanta`).
+**Android.** A foreground service with a live notification, a partial wake lock and a high-performance Wi-Fi lock keeps transfers running with the screen off; it stops two minutes after activity ends. *All files access* lets users share and save to real folders (downloads default to `Download/Bifrost`).
 
 ## Android signing
 
@@ -100,7 +100,7 @@ For long-term releases, create a keystore, back it up, and add it as secrets:
 
 ```sh
 keytool -genkeypair -keystore relayless.jks -storetype PKCS12 -alias relayless \
-  -keyalg RSA -keysize 4096 -validity 10000 -dname "CN=Quanta"
+  -keyalg RSA -keysize 4096 -validity 10000 -dname "CN=Bifrost"
 base64 -w0 relayless.jks   # value for ANDROID_KEYSTORE_BASE64
 ```
 

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "generatedAt": "2026-10-27T00:00:00Z",
-  "title": "Design System: Quanta",
+  "title": "Design System: Bifrost",
   "extensions": {
     "colorMeta": {
       "bg": {
@@ -498,7 +498,7 @@
   ],
   "narrative": {
     "northStar": "The Quiet Ledger",
-    "overview": "Quanta is a near-black, glass-paneled instrument that records what moved between your own devices and proves it stayed private. Translucent panels sit over a static near-black ground lit by two soft, fixed glows (a green one top left, a faint blue one bottom right), so the blur has something to refract without anything moving behind it. One vivid green carries action, focus and \"this is fine\"; everything else is white at three strengths. The world is calm at rest and specific when asked: figures are tabular, receipts are plain key and value lists, and charts speak in two validated series colours that never leak into text.\n\nDensity is moderate desktop-app density (14px body, 34px controls, 28px page rhythm) that relaxes on the phone into a bottom tab bar, 52px topbar and stacked single column. Every press target is a capsule; every container is a softly rounded glass panel. The project website (`website/`) is a sibling surface of the same world: the same #121212 ground with green and blue glows, the same green, Figtree, and capsule buttons with the same press and hover scale, set at marketing scale (17px body, display headlines up to 84px).",
+    "overview": "Bifrost is a near-black, glass-paneled instrument that records what moved between your own devices and proves it stayed private. Translucent panels sit over a static near-black ground lit by two soft, fixed glows (a green one top left, a faint blue one bottom right), so the blur has something to refract without anything moving behind it. One vivid green carries action, focus and \"this is fine\"; everything else is white at three strengths. The world is calm at rest and specific when asked: figures are tabular, receipts are plain key and value lists, and charts speak in two validated series colours that never leak into text.\n\nDensity is moderate desktop-app density (14px body, 34px controls, 28px page rhythm) that relaxes on the phone into a bottom tab bar, 52px topbar and stacked single column. Every press target is a capsule; every container is a softly rounded glass panel. The project website (`website/`) is a sibling surface of the same world: the same #121212 ground with green and blue glows, the same green, Figtree, and capsule buttons with the same press and hover scale, set at marketing scale (17px body, display headlines up to 84px).",
     "keyCharacteristics": [
       "Near-black ground (bg) with fixed radial glows; translucent glass panels with a 1px top highlight.",
       "One action green (accent); data series use their own deeper green and a violet.",

@@ -321,7 +321,7 @@ pub struct Settings {
     #[serde(default)]
     pub congestion_v2: bool,
     /// The user's own relay servers (empty = n0's public relays, which are
-    /// rate-limited). Applies after restarting Quanta.
+    /// rate-limited). Applies after restarting Bifrost.
     pub relay_urls: String,
 }
 
@@ -411,8 +411,9 @@ pub struct OutgoingDto {
     /// Bytes the receiver has (its own count plus what was sent since).
     pub sent_bytes: u64,
     pub bps: f64,
-    /// "sending", "waiting" (receiver paused or offline), "delivered"
-    /// (all bytes sent, receiver still checking) or "verified".
+    /// "sending", "waiting" (receiver paused or offline), "paused" or
+    /// "canceled" (by the user on this side), "delivered" (all bytes sent,
+    /// receiver still checking) or "verified".
     pub status: String,
     pub started_at: i64,
     pub updated_at: i64,

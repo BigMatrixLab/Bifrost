@@ -1,6 +1,6 @@
 # Transfer protocol
 
-This document describes how Quanta moves file data between two devices: the transport, the wire format, how files are split into chunks and blocks, how data is verified, buffered, persisted and resumed, and which constants control each part. It is meant as a reference for changing the protocol or tuning performance.
+This document describes how Bifrost moves file data between two devices: the transport, the wire format, how files are split into chunks and blocks, how data is verified, buffered, persisted and resumed, and which constants control each part. It is meant as a reference for changing the protocol or tuning performance.
 
 The higher-level overview (pairing, invitations, history, platform integration) is in [ARCHITECTURE.md](ARCHITECTURE.md).
 
@@ -24,7 +24,7 @@ Roles: the **sender** is the device that shares a folder and runs the server sid
 
 ## 1. Transport
 
-Quanta runs on [iroh](https://github.com/n0-computer/iroh), which gives QUIC (TLS 1.3) between Ed25519 public keys, hole punching, and relay fallback. Encryption and packet integrity come from QUIC. Quanta adds its own BLAKE3 checks on top for end-to-end file integrity (disk read on the sender to memory on the receiver, and again from the receiver's disk at the end).
+Bifrost runs on [iroh](https://github.com/n0-computer/iroh), which gives QUIC (TLS 1.3) between Ed25519 public keys, hole punching, and relay fallback. Encryption and packet integrity come from QUIC. Bifrost adds its own BLAKE3 checks on top for end-to-end file integrity (disk read on the sender to memory on the receiver, and again from the receiver's disk at the end).
 
 - **ALPN:** `relayless/1` (`proto::ALPN`). This is the connection-level identifier and has not changed with protocol version 2.
 - **Protocol version:** `PROTOCOL_VERSION = 2`, checked only in `Hello`.

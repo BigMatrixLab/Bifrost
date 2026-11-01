@@ -1,4 +1,4 @@
-import { ArrowDownLeft, ArrowUpRight, FolderUp, KeyRound, Monitor } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Download, Monitor, Upload } from "lucide-react";
 import { useMemo } from "react";
 import { isActive, ago } from "../format";
 import { useStore } from "../store";
@@ -29,7 +29,7 @@ function relayHost(url: string | null): string {
  * which one is home; no device locations are looked up or shown.
  */
 function NetworkPanel() {
-  const { network, remotes, grants } = useStore();
+  const { network, remotes, grants, settings } = useStore();
   const online = !!network?.online;
   const home = relayRegion(network?.relayUrl);
   const linked = new Set([
@@ -47,7 +47,7 @@ function NetworkPanel() {
         </span>
       </div>
       <div className="netp-globe">
-        <DotGlobe size={176} online={online} home={home} />
+        <DotGlobe size={176} online={online} home={home} label={settings?.deviceName} />
       </div>
       <dl className="netp-kv">
         <div>
@@ -201,7 +201,7 @@ function ActivityPanel() {
 
 function DesktopOverview() {
   const { jobs, uploads, outgoing, setPage, setConnectOpen } = useStore();
-  const sendingNow = outgoing.filter((o) => o.status === "sending" || o.status === "waiting");
+  const sendingNow = outgoing.filter((o) => o.status === "sending" || o.status === "waiting" || o.status === "paused");
   const shareFolder = useShareFolder();
   const list = useMemo(() => Object.values(jobs).sort((a, b) => b.updatedAt - a.updatedAt), [jobs]);
   const active = list.filter((j) => isActive(j.status) || j.status === "needs_attention");
@@ -219,17 +219,17 @@ function DesktopOverview() {
         ) : (
           <div className="hero-actions stacked">
             <button className="hero-tile" onClick={shareFolder}>
-              <span className="ico"><FolderUp size={22} /></span>
+              <span className="ico"><Upload size={22} /></span>
               <span className="stack">
-                <span className="t">Share a folder</span>
-                <span className="d">Pick a folder and invite someone to download from it.</span>
+                <span className="t">Send</span>
+                <span className="d">Share a folder and invite someone to download from it.</span>
               </span>
             </button>
             <button className="hero-tile" onClick={() => setConnectOpen(true)}>
-              <span className="ico"><KeyRound size={22} /></span>
+              <span className="ico"><Download size={22} /></span>
               <span className="stack">
-                <span className="t">Connect with code</span>
-                <span className="d">Use an invitation or short code someone sent you.</span>
+                <span className="t">Receive</span>
+                <span className="d">Open an invitation or short code someone sent you.</span>
               </span>
             </button>
           </div>

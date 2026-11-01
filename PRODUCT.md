@@ -14,7 +14,7 @@ Primary: small teams and labs (research groups, studios) moving large files such
 
 ## Product Purpose
 
-Quanta sends large files directly from one device to another, end-to-end encrypted, resumable after pauses, crashes or reboots, and verified block by block. It aims to use the full speed of the connection without making the computer or phone feel busy. Success: a large transfer finishes intact, the user can prove it stayed private, and they come back to use it again.
+Bifrost sends large files directly from one device to another, end-to-end encrypted, resumable after pauses, crashes or reboots, and verified block by block. It aims to use the full speed of the connection without making the computer or phone feel busy. Success: a large transfer finishes intact, the user can prove it stayed private, and they come back to use it again.
 
 ## Positioning
 
@@ -38,7 +38,7 @@ No account, no cloud copy, no upload step. Files go device to device over QUIC w
 
 ## Brand Commitments
 
-- Name: Quanta. Independent open-source project (MIT), package `app.relayless`; not tied to any company brand.
+- Name: Bifrost. Independent open-source project (MIT), package `app.relayless`; not tied to any company brand.
 - Privacy is the main promise, said by showing proof: calm, specific statements backed by receipts, safety words and what never leaves the device. No hype.
 - Copy never uses em dashes.
 

@@ -39,7 +39,7 @@ export function StorageAccessNotice({ compact = false }: { compact?: boolean }) 
         <b>Allow file access.</b>{" "}
         {compact
           ? "Needed to share folders and save downloads."
-          : "Needed to share folders and save downloads. Tap Allow, switch Quanta on, then come back."}
+          : "Needed to share folders and save downloads. Tap Allow, switch Bifrost on, then come back."}
       </span>
       <Button size="sm" variant="primary" onClick={request}>Allow</Button>
     </div>

@@ -29,7 +29,7 @@ import { useSlide } from "../slide";
 const ROW_DESK = 38;
 const ROW_PHONE = 66;
 
-/** "/storage/emulated/0/Download/Quanta" -> "Phone storage › Download › Quanta" */
+/** "/storage/emulated/0/Download/Bifrost" -> "Phone storage › Download › Bifrost" */
 function friendlyPath(p: string): string {
   const m = p.match(/^\/storage\/emulated\/0\/?(.*)$/);
   if (!m) return p;

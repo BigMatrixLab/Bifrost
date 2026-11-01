@@ -38,7 +38,7 @@ function start() {
     const relayUp = (0.8 + 0.1 * Math.sin(i / 4)) * 1024 * 1024;
     const step = (id: string, bps: number) => {
       const o = data.list_outgoing.find((x: any) => x.id === id);
-      if (!o) return;
+      if (!o || o.status !== "sending") return;
       o.sentBytes = Math.min(o.size, o.sentBytes + bps);
       o.bps = bps;
       o.updatedAt = Date.now();

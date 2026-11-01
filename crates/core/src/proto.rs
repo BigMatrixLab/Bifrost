@@ -130,6 +130,10 @@ pub enum ErrCode {
     BadRequest,
     Io,
     InUse,
+    /// The sender paused this file for this receiver; ask again later.
+    /// Older receivers can't parse it and treat it as a network error, which
+    /// also makes them retry.
+    Paused,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

@@ -288,7 +288,7 @@ export default function Shares() {
         {shares.length === 0 ? (
           <div className="panel">
             <Empty icon={<FolderUp size={20} />} title="You're not sharing anything">
-              Choose a specific folder to share. Quanta never shares a whole drive.
+              Choose a specific folder to share. Bifrost never shares a whole drive.
             </Empty>
           </div>
         ) : (

@@ -150,7 +150,7 @@ async fn handle_stream(
             write_frame(&mut send, &resp).await?;
         }
         Request::Chunk { share, path, size, mtime_ms, chunk_size, index, from, have } => {
-            match authorize(inner, peer, &share) {
+            match authorize(inner, peer, &share).and_then(|s| held_reply(inner, peer, &share, &path).map_or(Ok(s), Err)) {
                 Ok(s) => {
                     let d = send_diag_for(inner, peer, &share, &path, size);
                     d.stages.request_read.record(request_read);
@@ -190,6 +190,18 @@ async fn handle_stream(
         d.touch();
     }
     Ok(())
+}
+
+/// The refusal for a file the user paused or canceled for this receiver.
+fn held_reply(inner: &Inner, peer: EndpointId, share_id: &str, path: &[String]) -> Option<Response> {
+    let of = inner.outgoing.lock().get(&outgoing_key(peer, share_id, path)).cloned()?;
+    if of.canceled.load(Ordering::Relaxed) {
+        Some(Response::err(ErrCode::Denied, "The sender stopped sending this file."))
+    } else if of.paused.load(Ordering::Relaxed) {
+        Some(Response::err(ErrCode::Paused, "Paused by the sender. It continues when they resume."))
+    } else {
+        None
+    }
 }
 
 // ------------------------------------------------------------------ diagnostics
@@ -415,7 +427,7 @@ async fn handle_hello(
     };
 
     if v != PROTOCOL_VERSION {
-        write_frame(send, &reply(HelloStatus::Unsupported, vec![], Some("Version mismatch. Update Quanta on both computers."))).await?;
+        write_frame(send, &reply(HelloStatus::Unsupported, vec![], Some("Version mismatch. Update Bifrost on both computers."))).await?;
         return Ok(());
     }
     let peer_s = peer.to_string();
@@ -494,7 +506,7 @@ async fn handle_hello(
         inner.emit(CoreEvent::AccessRequested(req.clone()));
         inner.notify(
             "New device wants access",
-            &format!("{} is asking to open \"{}\". Open Quanta to approve.", device_name, share.name),
+            &format!("{} is asking to open \"{}\". Open Bifrost to approve.", device_name, share.name),
         );
         let decision = tokio::select! {
             r = rx => r.unwrap_or(false),
@@ -827,6 +839,11 @@ async fn serve_chunk(
         let mut remaining = len - from;
         let mut blocks = 0u32;
         while remaining > 0 {
+            if of.held() {
+                cat = Some(diag::ErrCat::Cancelled);
+                send.reset(VarInt::from_u32(4)).ok();
+                anyhow::bail!("paused or canceled on this side");
+            }
             let n = (remaining as usize).min(BLOCK as usize);
             let w = inner.upload_limiter.acquire(n).await;
             if !w.is_zero() {
@@ -925,6 +942,8 @@ async fn serve_chunk(
             // The receiver stopped the stream (pause, cancel, a sibling
             // stream's failure, corrupt block): not a sender-side failure.
             diag::ErrCat::PeerStopped => ("stopped", Some(diag::ErrCat::PeerStopped)),
+            // Paused or canceled by the user on this side.
+            diag::ErrCat::Cancelled => ("stopped", Some(diag::ErrCat::Cancelled)),
             c => ("failed", Some(c)),
         },
     };

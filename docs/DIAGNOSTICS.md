@@ -1,6 +1,6 @@
 # Transfer diagnostics
 
-Quanta writes one JSON summary per transfer and readable log lines, so a slow transfer can be explained with measurements instead of guesses. This page covers what is recorded, where it goes, how to switch it off, and a repeatable test procedure.
+Bifrost writes one JSON summary per transfer and readable log lines, so a slow transfer can be explained with measurements instead of guesses. This page covers what is recorded, where it goes, how to switch it off, and a repeatable test procedure.
 
 Diagnostics never change the wire protocol (`relayless/1`, protocol version 2) or any default setting.
 

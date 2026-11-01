@@ -166,7 +166,8 @@ export interface Outgoing {
   size: number;
   sentBytes: number;
   bps: number;
-  status: "sending" | "waiting" | "delivered" | "verified";
+  /** paused and canceled: by the user on this device. */
+  status: "sending" | "waiting" | "paused" | "canceled" | "delivered" | "verified";
   startedAt: number;
   updatedAt: number;
   route: string;
@@ -275,6 +276,10 @@ export const api = {
   clearHistory: () => invoke<void>("clear_history"),
   listOutgoing: () => invoke<Outgoing[]>("list_outgoing"),
   clearOutgoing: () => invoke<void>("clear_outgoing"),
+  pauseOutgoing: (id: string) => invoke<void>("pause_outgoing", { id }),
+  resumeOutgoing: (id: string) => invoke<void>("resume_outgoing", { id }),
+  cancelOutgoing: (id: string) => invoke<void>("cancel_outgoing", { id }),
+  removeOutgoing: (id: string) => invoke<void>("remove_outgoing", { id }),
   revealPath: (path: string) => invoke<void>("reveal_path", { path }),
   listLocalDir: (path: string | null) => invoke<LocalDir>("list_local_dir", { path }),
   makeDir: (parent: string, name: string) => invoke<string>("make_dir", { parent, name }),

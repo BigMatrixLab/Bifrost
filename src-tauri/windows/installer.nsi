@@ -1,8 +1,8 @@
-; Quanta's NSIS template: Tauri's own installer.nsi from tauri-cli v2.12.4
+; Bifrost's NSIS template: Tauri's own installer.nsi from tauri-cli v2.12.4
 ; (crates/tauri-bundler/src/bundle/windows/nsis/installer.nsi at tag
 ; tauri-cli-v2.12.4), with one change: every page's SHOW callback runs the
-; dark theme from installer-hooks.nsh. The added lines end in "; Quanta" or
-; follow a "; Quanta:" comment, so they're easy to carry over when updating
+; dark theme from installer-hooks.nsh. The added lines end in "; Bifrost" or
+; follow a "; Bifrost:" comment, so they're easy to carry over when updating
 ; @tauri-apps/cli: fetch the new upstream file and re-apply them.
 
 Unicode true
@@ -175,13 +175,13 @@ VIAddVersionKey "ProductVersion" "${VERSION}"
 ; Installer pages, must be ordered as they appear
 ; 1. Welcome Page
 !define MUI_PAGE_CUSTOMFUNCTION_PRE SkipIfPassive
-!define MUI_PAGE_CUSTOMFUNCTION_SHOW Quanta.WelcomeShow ; Quanta
+!define MUI_PAGE_CUSTOMFUNCTION_SHOW Bifrost.WelcomeShow ; Bifrost
 !insertmacro MUI_PAGE_WELCOME
 
 ; 2. License Page (if defined)
 !if "${LICENSE}" != ""
   !define MUI_PAGE_CUSTOMFUNCTION_PRE SkipIfPassive
-  !define MUI_PAGE_CUSTOMFUNCTION_SHOW Quanta.DarkPage ; Quanta
+  !define MUI_PAGE_CUSTOMFUNCTION_SHOW Bifrost.DarkPage ; Bifrost
   !insertmacro MUI_PAGE_LICENSE "${LICENSE}"
 !endif
 
@@ -322,9 +322,9 @@ Function PageReinstall
     ${EndIf}
 
     ${NSD_SetFocus} $R2
-    ; Quanta: dark page colours
+    ; Bifrost: dark page colours
     Push $R4
-    Call Quanta.DarkDialog
+    Call Bifrost.DarkDialog
     nsDialogs::Show
   ${EndIf}
 FunctionEnd
@@ -424,7 +424,7 @@ FunctionEnd
 
 ; 5. Choose install directory page
 !define MUI_PAGE_CUSTOMFUNCTION_PRE SkipIfPassive
-!define MUI_PAGE_CUSTOMFUNCTION_SHOW Quanta.DarkPage ; Quanta
+!define MUI_PAGE_CUSTOMFUNCTION_SHOW Bifrost.DarkPage ; Bifrost
 !insertmacro MUI_PAGE_DIRECTORY
 
 ; 6. Start menu shortcut page
@@ -435,11 +435,11 @@ Var AppStartMenuFolder
 !else
   !define MUI_PAGE_CUSTOMFUNCTION_PRE Skip
 !endif
-!define MUI_PAGE_CUSTOMFUNCTION_SHOW Quanta.DarkPage ; Quanta
+!define MUI_PAGE_CUSTOMFUNCTION_SHOW Bifrost.DarkPage ; Bifrost
 !insertmacro MUI_PAGE_STARTMENU Application $AppStartMenuFolder
 
 ; 7. Installation page
-!define MUI_PAGE_CUSTOMFUNCTION_SHOW Quanta.DarkPage ; Quanta
+!define MUI_PAGE_CUSTOMFUNCTION_SHOW Bifrost.DarkPage ; Bifrost
 !insertmacro MUI_PAGE_INSTFILES
 
 ; 8. Finish page
@@ -455,11 +455,11 @@ Var AppStartMenuFolder
 !define MUI_FINISHPAGE_RUN
 !define MUI_FINISHPAGE_RUN_FUNCTION RunMainBinary
 !define MUI_PAGE_CUSTOMFUNCTION_PRE SkipIfPassive
-!define MUI_PAGE_CUSTOMFUNCTION_SHOW Quanta.FinishShow ; Quanta
+!define MUI_PAGE_CUSTOMFUNCTION_SHOW Bifrost.FinishShow ; Bifrost
 !insertmacro MUI_PAGE_FINISH
 
-; Quanta: the welcome and finish pages' SHOW callbacks (installer-hooks.nsh)
-!insertmacro QUANTA_WELCOME_FINISH_FUNCTIONS
+; Bifrost: the welcome and finish pages' SHOW callbacks (installer-hooks.nsh)
+!insertmacro BIFROST_WELCOME_FINISH_FUNCTIONS
 
 Function RunMainBinary
   nsis_tauri_utils::RunAsUser "$INSTDIR\${MAINBINARYNAME}.exe" ""
@@ -499,11 +499,11 @@ Function un.ConfirmShow ; Add add a `Delete app data` check box
   Pop $DeleteAppDataCheckbox
   SendMessage $HWNDPARENT ${WM_GETFONT} 0 0 $1
   SendMessage $DeleteAppDataCheckbox ${WM_SETFONT} $1 1
-  ; Quanta: below the folder field (the layout font is larger), then dark
+  ; Bifrost: below the folder field (the layout font is larger), then dark
   ; page colours, including the new check box
   Push $DeleteAppDataCheckbox
-  Call un.Quanta.BelowField
-  Call un.Quanta.DarkPage
+  Call un.Bifrost.BelowField
+  Call un.Bifrost.DarkPage
 FunctionEnd
 !define MUI_PAGE_CUSTOMFUNCTION_LEAVE un.ConfirmLeave
 Function un.ConfirmLeave
@@ -513,7 +513,7 @@ FunctionEnd
 !insertmacro MUI_UNPAGE_CONFIRM
 
 ; 2. Uninstalling Page
-!define MUI_PAGE_CUSTOMFUNCTION_SHOW un.Quanta.DarkPage ; Quanta
+!define MUI_PAGE_CUSTOMFUNCTION_SHOW un.Bifrost.DarkPage ; Bifrost
 !insertmacro MUI_UNPAGE_INSTFILES
 
 ;Languages

@@ -16,7 +16,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 
 /**
- * Foreground service that keeps the Quanta process (and its Rust transfer
+ * Foreground service that keeps the Bifrost process (and its Rust transfer
  * engine) alive with the screen off. Holds a partial wake lock and a Wi-Fi
  * lock so the radio stays at full speed while transferring.
  */
@@ -31,7 +31,7 @@ class TransferService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
-        val title = intent?.getStringExtra(EXTRA_TITLE) ?: "Quanta"
+        val title = intent?.getStringExtra(EXTRA_TITLE) ?: "Bifrost"
         val text = intent?.getStringExtra(EXTRA_TEXT) ?: "Keeping transfers running"
         val notification = build(this, title, text)
         val type = if (Build.VERSION.SDK_INT >= 29) ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC else 0
@@ -44,7 +44,7 @@ class TransferService : Service() {
     private fun acquireLocks() {
         if (wakeLock == null) {
             val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
-            wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Quanta::transfer").apply {
+            wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Bifrost::transfer").apply {
                 setReferenceCounted(false)
                 acquire()
             }
@@ -53,7 +53,7 @@ class TransferService : Service() {
             val wm = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
             @Suppress("DEPRECATION")
             val mode = if (Build.VERSION.SDK_INT >= 29) WifiManager.WIFI_MODE_FULL_HIGH_PERF else WifiManager.WIFI_MODE_FULL_HIGH_PERF
-            wifiLock = wm.createWifiLock(mode, "Quanta::transfer").apply {
+            wifiLock = wm.createWifiLock(mode, "Bifrost::transfer").apply {
                 setReferenceCounted(false)
                 acquire()
             }
@@ -85,7 +85,7 @@ class TransferService : Service() {
                 val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                 if (nm.getNotificationChannel(CHANNEL_ID) == null) {
                     val ch = NotificationChannel(CHANNEL_ID, "Transfers", NotificationManager.IMPORTANCE_LOW)
-                    ch.description = "Shows while Quanta is sending or receiving files"
+                    ch.description = "Shows while Bifrost is sending or receiving files"
                     ch.setShowBadge(false)
                     nm.createNotificationChannel(ch)
                 }

@@ -65,10 +65,20 @@ pub struct OutgoingFile {
     pub last_ms: AtomicI64,
     pub started_ms: i64,
     pub verified: AtomicBool,
+    /// Set by the user on this side: chunk requests for this file from this
+    /// receiver are refused until resumed (paused) or the entry is removed
+    /// (canceled).
+    pub paused: AtomicBool,
+    pub canceled: AtomicBool,
     pub rate: Mutex<(u64, f64)>,
 }
 
 impl OutgoingFile {
+    /// Paused or canceled by the user on this side.
+    pub fn held(&self) -> bool {
+        self.paused.load(Ordering::Relaxed) || self.canceled.load(Ordering::Relaxed)
+    }
+
     pub fn progress(&self) -> u64 {
         let size = self.size.load(Ordering::Relaxed);
         (self.base.load(Ordering::Relaxed) + self.since.load(Ordering::Relaxed)).min(size)
@@ -195,6 +205,8 @@ impl Inner {
                     last_ms: AtomicI64::new(crate::util::now_ms()),
                     started_ms: crate::util::now_ms(),
                     verified: AtomicBool::new(false),
+                    paused: AtomicBool::new(false),
+                    canceled: AtomicBool::new(false),
                     rate: Mutex::new((0, 0.0)),
                 })
             })
@@ -210,7 +222,7 @@ impl Inner {
         if map.len() > 200 {
             let mut idle: Vec<(i64, String)> = map
                 .values()
-                .filter(|o| o.active.load(Ordering::Relaxed) == 0)
+                .filter(|o| o.active.load(Ordering::Relaxed) == 0 && !o.held())
                 .map(|o| (o.last_ms.load(Ordering::Relaxed), o.id.clone()))
                 .collect();
             idle.sort();

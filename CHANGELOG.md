@@ -1,12 +1,12 @@
 # Changelog
 
-Notable changes to Quanta. Releases are published automatically from `main` as `v<version>-build<run>`.
+Notable changes to Bifrost. Releases are published automatically from `main` as `v<version>-build<run>`.
 
 ## Unreleased
 
 ### Changed
-- **The Windows installer matches the app:** dark pages and title bar, the Q logo in the sidebar and header, Space Grotesk text, a solid green main button with outlined HUD-style secondary buttons, green check boxes and radio buttons, bordered text fields and the app's segmented progress meter. The uninstaller uses the same look. Sources: `src-tauri/windows/` (NSIS hooks and template, the `quanta_ui` drawing plugin with `quanta-ui/build.ps1`, the fonts under the SIL OFL, and the art with its render script).
-- **Relayless is now Quanta**, with a new icon: a "Q" made of discrete ring segments. The installer is `Quanta-Setup-<version>-x64.exe` and installs as Quanta; your devices, shares, history and settings carry over (they are stored under the same app ID). Uninstall the old "Relayless" entry afterwards. New installs save downloads to `Downloads\Quanta` (phones: `Download/Quanta`); existing installs keep their folder. The wire protocol is unchanged, so Quanta and Relayless devices still work together.
+- **The Windows installer matches the app:** dark pages and title bar, the logo in the sidebar and header, Space Grotesk text, a solid green main button with outlined HUD-style secondary buttons, green check boxes and radio buttons, bordered text fields and the app's segmented progress meter. The uninstaller uses the same look. Sources: `src-tauri/windows/` (NSIS hooks and template, the `bifrost_ui` drawing plugin with `bifrost-ui/build.ps1`, the fonts under the SIL OFL, and the art with its render script).
+- **Renamed to Bifrost** (it was briefly Quanta, and before that Relayless), with a new icon: a green bridge inside a ring, with a few pixel blocks breaking away from it. The installer is `Bifrost-Setup-<version>-x64.exe` and installs as Bifrost; your devices, shares, history and settings carry over (they are stored under the same app ID). Uninstall the old "Quanta" or "Relayless" entry afterwards. New installs save downloads to `Downloads\Bifrost` (phones: `Download/Bifrost`); existing installs keep their folder. The wire protocol is unchanged, so Bifrost, Quanta and Relayless devices still work together.
 
 ### Added
 - **Privacy receipts.** Every finished transfer keeps a receipt on the device: route (direct or relayed bytes), encryption, blocks verified, a file fingerprint shared by both devices, and what servers stored (nothing). Copy it as text.
@@ -31,7 +31,7 @@ Notable changes to Quanta. Releases are published automatically from `main` as `
 - Download progress is saved per verified megabyte, so pausing or losing the connection keeps everything already received. Downloads started on earlier versions keep their progress.
 
 ### Fixed
-- **Transfers between different networks no longer sit at 0.** Quanta now tries a direct path first and, if routers block it (common on mobile data), continues through an end-to-end encrypted relay after about 15 seconds, switching back to direct when possible. Existing installs move to this mode once; Direct only is still in Settings.
+- **Transfers between different networks no longer sit at 0.** Bifrost now tries a direct path first and, if routers block it (common on mobile data), continues through an end-to-end encrypted relay after about 15 seconds, switching back to direct when possible. Existing installs move to this mode once; Direct only is still in Settings.
 - Slow links no longer time out mid-block: a stream is only treated as stalled after 90 seconds with no data, and progress and speed now count bytes as they arrive.
 - Busy slow connections no longer drop about once a minute with "The sender stopped responding": a stream waiting behind its siblings now only times out if nothing at all arrives from the sender. This also fixes reconnects with low sender upload limits.
 - On phones, no page can be scrolled sideways any more (Overview, Transfers and Settings were wider than the screen on small phones).

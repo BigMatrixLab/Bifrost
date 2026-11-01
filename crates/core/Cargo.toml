@@ -3,7 +3,7 @@ name = "relayless-core"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Quanta transfer engine: direct encrypted peer-to-peer, resumable, verified"
+description = "Bifrost transfer engine: direct encrypted peer-to-peer, resumable, verified"
 
 [dependencies]
 iroh = "1.4"

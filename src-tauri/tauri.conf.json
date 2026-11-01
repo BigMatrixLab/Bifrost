@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Quanta",
-  "mainBinaryName": "Quanta",
+  "productName": "Bifrost",
+  "mainBinaryName": "Bifrost",
   "version": "0.1.0",
   "identifier": "app.relayless.desktop",
   "build": {
@@ -20,11 +20,11 @@
   "bundle": {
     "active": true,
     "targets": ["nsis"],
-    "publisher": "Quanta",
+    "publisher": "Bifrost",
     "shortDescription": "Direct, resumable, verified large-file transfer",
-    "longDescription": "Quanta sends very large files directly between two computers, survives disconnections and restarts, and verifies every byte.",
+    "longDescription": "Bifrost sends very large files directly between two computers, survives disconnections and restarts, and verifies every byte.",
     "category": "Utility",
-    "copyright": "© 2026 Quanta",
+    "copyright": "© 2026 Bifrost",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

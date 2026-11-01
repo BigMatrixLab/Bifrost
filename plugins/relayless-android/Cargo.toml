@@ -1,8 +1,8 @@
 [package]
 name = "tauri-plugin-relayless-android"
 version = "0.1.0"
-authors = ["Quanta"]
-description = "Android integration for Quanta: storage access, background transfer service, device info"
+authors = ["Bifrost"]
+description = "Android integration for Bifrost: storage access, background transfer service, device info"
 edition = "2021"
 links = "tauri-plugin-relayless-android"
 

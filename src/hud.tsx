@@ -213,7 +213,7 @@ function hasWebGL(): boolean {
 }
 
 /**
- * The public relay regions Quanta can use: iroh's default relay map
+ * The public relay regions Bifrost can use: iroh's default relay map
  * (`iroh::defaults::prod`, hostnames `<region>-1.relay.n0.iroh.link`).
  * Positions are approximate, at the metro area each region code names, and
  * are only used to place the markers. Update this list together with iroh.
@@ -267,14 +267,14 @@ const facing = (lon: number) => (3 * Math.PI) / 2 - (lon * Math.PI) / 180;
  * other and, when routers block a direct path, forward encrypted packets.
  *
  * Unlike the showcase it draws no arcs: relays don't send data to each
- * other, and Quanta never knows where a peer is, so any line between
+ * other, and Bifrost never knows where a peer is, so any line between
  * places would be made up. No device is ever placed on the globe.
  *
  * It only animates while it's on screen, the device is online and the user
  * hasn't asked for reduced motion, at about 30 frames a second, so it costs
  * almost nothing when nobody is looking at it.
  */
-export function DotGlobe({ size = 170, online, home }: { size?: number; online: boolean; home: string | null }) {
+export function DotGlobe({ size = 170, online, home, label }: { size?: number; online: boolean; home: string | null; label?: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const [ok] = useState(hasWebGL);
@@ -334,20 +334,20 @@ export function DotGlobe({ size = 170, online, home }: { size?: number; online: 
         .map((l) => {
           const x = parseFloat(l.anchor!.style.left) / 100;
           const y = parseFloat(l.anchor!.style.top) / 100;
-          return { l, x, y, d: Math.hypot(x - 0.5, y - 0.5) };
+          return { l, x, y, w: l.label!.offsetWidth || 40, d: Math.hypot(x - 0.5, y - 0.5) };
         })
         .sort((a, b) => a.d - b.d);
-      const kept: { x: number; y: number }[] = [];
-      for (const { l, x, y, d } of placed) {
+      const kept: { x: number; y: number; w: number }[] = [];
+      for (const { l, x, y, w, d } of placed) {
         if (!l.anchor || !l.label) continue;
         const facingUs = vars.getPropertyValue(`--cobe-visible-${l.id}`).trim() !== "";
         // The disc's rim is at about 0.4 of the canvas from the centre; fade
         // over the last stretch before it.
         const fromRim = Math.min(1, Math.max(0, (0.41 - d) / 0.05));
-        // A tag is about 40 x 17 px; keep them apart.
-        const clash = kept.some((k) => Math.abs(k.x - x) * size < 42 && Math.abs(k.y - y) * size < 19);
+        // Tags are about 17 px tall and centred on their marker; keep them apart.
+        const clash = kept.some((k) => Math.abs(k.x - x) * size < (k.w + w) / 2 + 2 && Math.abs(k.y - y) * size < 19);
         const o = facingUs && !clash ? fromRim : 0;
-        if (o > 0.3) kept.push({ x, y });
+        if (o > 0.3) kept.push({ x, y, w });
         // Placed from the anchor's own coordinates rather than CSS anchor
         // positioning, so labels show in every WebView, not only new ones.
         l.label.style.left = l.anchor.style.left;
@@ -435,13 +435,13 @@ export function DotGlobe({ size = 170, online, home }: { size?: number; online: 
               style={{ opacity: 0 }}
               aria-hidden="true"
             >
-              <span className="dg-tag">{r.code}</span>
+              <span className="dg-tag">{r.code === home && label ? label : r.code}</span>
             </span>
           );
         })}
       </div>
       <span className="sr-only">
-        Public relay regions: {RELAY_REGIONS.map((r) => `${r.name} (${r.code})${r.code === home ? ", your home relay" : ""}`).join("; ")}.
+        Public relay regions: {RELAY_REGIONS.map((r) => `${r.name} (${r.code})${r.code === home ? `, your home relay${label ? ` (${label})` : ""}` : ""}`).join("; ")}.
       </span>
     </div>
   );

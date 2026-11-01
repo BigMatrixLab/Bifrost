@@ -64,7 +64,7 @@ function receiptText(e: HistoryEntry) {
       ? "Direct, device to device (100%)"
       : `${bytes(e.directBytes)} direct, ${bytes(e.relayBytes)} through a relay (end-to-end encrypted)`;
   return [
-    `Quanta privacy receipt`,
+    `Bifrost privacy receipt`,
     `File: ${fileLabel(e)} (${bytes(e.size)})`,
     `${e.direction === "received" ? "From" : "To"}: ${e.peerName}`,
     `Safety words: ${e.safetyWords.join(" ")}`,

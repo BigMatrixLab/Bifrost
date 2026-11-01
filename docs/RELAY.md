@@ -1,10 +1,10 @@
 # Fast transfers when a direct path is blocked
 
-Quanta always tries to connect the two devices directly. Between two home
+Bifrost always tries to connect the two devices directly. Between two home
 connections in the same country that usually works. Across countries, on
 mobile data, or behind an ISP that shares one public address among many
 customers (carrier-grade NAT, common in Bangladesh), routers often refuse the
-direct path. Quanta then sends the data through a **relay**.
+direct path. Bifrost then sends the data through a **relay**.
 
 The relay only forwards end-to-end encrypted packets. It can't read them and
 doesn't store them. But the free public relays run by the iroh project are
@@ -25,7 +25,7 @@ connection itself (usually the sender's upload speed). A relay won't help.
 
 - **Turn on UPnP or NAT-PMP** in both routers' settings. On a FRITZ!Box: *Internet
   → Permit Access → Port Sharing → allow independent port sharing for this
-  device*. Quanta then asks the router to open a port by itself.
+  device*. Bifrost then asks the router to open a port by itself.
 - **Use IPv6** if your ISP offers it. Two devices with IPv6 usually connect
   directly, with no NAT in the way.
 - Prefer home broadband over mobile data on at least one side.
@@ -69,7 +69,7 @@ cert_dir = "/var/lib/iroh-relay/certs"
 contact = "you@example.org"           # for the certificate
 
 # Optional: only your devices may use this relay.
-# Device IDs are in Quanta under Settings → About.
+# Device IDs are in Bifrost under Settings → About.
 # [access]
 # allowlist = ["<device id of PC>", "<device id of phone>"]
 ```
@@ -84,7 +84,7 @@ it helps the two devices find a direct path.
 sudo mkdir -p /var/lib/iroh-relay/certs
 sudo tee /etc/systemd/system/iroh-relay.service >/dev/null <<'EOF'
 [Unit]
-Description=iroh relay for Quanta
+Description=iroh relay for Bifrost
 After=network-online.target
 
 [Service]
@@ -102,7 +102,7 @@ curl --fail https://relay.example.org/healthz    # should answer OK
 
 On **both** devices, open **Settings → Connection → Relay server** and enter
 the host name (for example `relay.example.org`). Then quit and reopen
-Quanta. Settings → About → Network should now show your relay.
+Bifrost. Settings → About → Network should now show your relay.
 
 From then on, relayed transfers run as fast as the slower of the two internet
 connections and your server's bandwidth allow. Everything stays end-to-end

@@ -3,6 +3,6 @@ contact_links:
   - name: Report a security vulnerability
     url: https://github.com/MisbahKhan0009/Relayless/security/advisories/new
     about: Please report security issues privately.
-  - name: Download Quanta
+  - name: Download Bifrost
     url: https://github.com/MisbahKhan0009/Relayless/releases/latest
     about: Latest Windows installer and Android APK.

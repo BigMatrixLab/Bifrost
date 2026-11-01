@@ -1,4 +1,4 @@
-//! Quanta core: direct, encrypted, resumable, verified file transfer.
+//! Bifrost core: direct, encrypted, resumable, verified file transfer.
 
 mod db;
 pub mod diag;
@@ -565,7 +565,7 @@ impl Core {
                 tokio::time::sleep(Duration::from_secs(3)).await;
             }
         }
-        bail!("No invitation found for that code. Check it with the sender: codes only work while Quanta is open and online on their computer, and until the invitation expires or is revoked.")
+        bail!("No invitation found for that code. Check it with the sender: codes only work while Bifrost is open and online on their computer, and until the invitation expires or is revoked.")
     }
 
     pub async fn join(&self, input: &str) -> Result<JoinResult> {
@@ -594,7 +594,7 @@ impl Core {
         self.inner.emit(CoreEvent::JoinStatus { message: "Connecting to the sender…".into(), safety_words: Some(words.clone()) });
         let conn = tokio::time::timeout(Duration::from_secs(40), self.inner.endpoint.connect(addr, proto::ALPN))
             .await
-            .map_err(|_| anyhow!("Couldn't reach the sender. Make sure Quanta is open on their computer and both of you are online."))?
+            .map_err(|_| anyhow!("Couldn't reach the sender. Make sure Bifrost is open on their computer and both of you are online."))?
             .map_err(|e| anyhow!("Couldn't reach the sender: {e}"))?;
         let device = self.inner.settings.read().device_name.clone();
         let inner = self.inner.clone();
@@ -970,9 +970,73 @@ impl Core {
         outgoing_list(&self.inner)
     }
 
-    /// Forgets finished and stalled outgoing files (the list only).
+    /// Forgets finished and stalled outgoing files (the list only). Paused
+    /// files stay, so clearing the list doesn't resume them.
     pub fn clear_outgoing(&self) {
-        self.inner.outgoing.lock().retain(|_, o| o.active.load(Ordering::Relaxed) > 0);
+        self.inner.outgoing.lock().retain(|_, o| {
+            o.active.load(Ordering::Relaxed) > 0 || (o.paused.load(Ordering::Relaxed) && !o.canceled.load(Ordering::Relaxed))
+        });
+        self.inner.emit(CoreEvent::Outgoing(outgoing_list(&self.inner)));
+    }
+
+    fn outgoing_file(&self, id: &str) -> Result<Arc<inner::OutgoingFile>> {
+        self.inner.outgoing.lock().get(id).cloned().ok_or_else(|| anyhow!("Unknown transfer."))
+    }
+
+    fn outgoing_label(&self, of: &inner::OutgoingFile) -> String {
+        let peer_s = of.peer.to_string();
+        let device = self
+            .inner
+            .db
+            .list_grants()
+            .unwrap_or_default()
+            .into_iter()
+            .find(|g| g.peer_id == peer_s)
+            .map(|g| g.device_name)
+            .unwrap_or_else(|| short_peer(&peer_s));
+        format!("{} to {device}", of.path.last().cloned().unwrap_or_default())
+    }
+
+    /// Stops sending a file to its receiver until resumed. The receiver keeps
+    /// its progress and waits.
+    pub fn pause_outgoing(&self, id: &str) -> Result<()> {
+        let of = self.outgoing_file(id)?;
+        if of.canceled.load(Ordering::Relaxed) || of.verified.load(Ordering::Relaxed) || of.paused.swap(true, Ordering::Relaxed) {
+            return Ok(());
+        }
+        self.inner.log("info", &format!("Paused sending {}", self.outgoing_label(&of)), None);
+        self.inner.emit(CoreEvent::Outgoing(outgoing_list(&self.inner)));
+        Ok(())
+    }
+
+    /// Lets the receiver continue a paused file (it asks again within seconds).
+    pub fn resume_outgoing(&self, id: &str) -> Result<()> {
+        let of = self.outgoing_file(id)?;
+        if of.canceled.load(Ordering::Relaxed) || !of.paused.swap(false, Ordering::Relaxed) {
+            return Ok(());
+        }
+        of.last_ms.store(now_ms(), Ordering::Relaxed);
+        self.inner.log("info", &format!("Resumed sending {}", self.outgoing_label(&of)), None);
+        self.inner.emit(CoreEvent::Outgoing(outgoing_list(&self.inner)));
+        Ok(())
+    }
+
+    /// Stops sending a file to its receiver for good: its download stops and
+    /// keeps what it has. Removing the entry from the list allows it again.
+    pub fn cancel_outgoing(&self, id: &str) -> Result<()> {
+        let of = self.outgoing_file(id)?;
+        if of.verified.load(Ordering::Relaxed) || of.canceled.swap(true, Ordering::Relaxed) {
+            return Ok(());
+        }
+        of.paused.store(false, Ordering::Relaxed);
+        self.inner.log("info", &format!("Stopped sending {}", self.outgoing_label(&of)), None);
+        self.inner.emit(CoreEvent::Outgoing(outgoing_list(&self.inner)));
+        Ok(())
+    }
+
+    /// Removes one outgoing file from the list (and lifts a cancel).
+    pub fn remove_outgoing(&self, id: &str) {
+        self.inner.outgoing.lock().remove(id);
         self.inner.emit(CoreEvent::Outgoing(outgoing_list(&self.inner)));
     }
 
@@ -1117,6 +1181,10 @@ pub(crate) fn outgoing_list(inner: &Inner) -> Vec<OutgoingDto> {
             let last = o.last_ms.load(Ordering::Relaxed);
             let status = if o.verified.load(Ordering::Relaxed) {
                 "verified"
+            } else if o.canceled.load(Ordering::Relaxed) {
+                "canceled"
+            } else if o.paused.load(Ordering::Relaxed) {
+                "paused"
             } else if sent >= size && !active {
                 "delivered"
             } else if active || now - last < 15_000 {

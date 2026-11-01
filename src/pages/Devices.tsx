@@ -166,7 +166,7 @@ export default function Devices() {
         {remotes.length === 0 ? (
           <div className="panel">
             <Empty icon={<Monitor size={20} />} title="No devices yet">
-              Ask the sender to share a folder in Quanta and send you a 16-character code.
+              Ask the sender to share a folder in Bifrost and send you a 16-character code.
             </Empty>
           </div>
         ) : (
@@ -185,7 +185,7 @@ export default function Devices() {
           <Waypoints size={16} style={{ color: "var(--warn)" }} />
           <span>
             <b>Relayed</b> means a public relay forwards encrypted packets because routers blocked a direct path.{" "}
-            {settings?.connectionMode === "direct_only" ? "Direct-only mode is on, so file data waits for a direct path." : "Quanta uses it only when no direct path opens within a few seconds, and switches to direct as soon as one does."}
+            {settings?.connectionMode === "direct_only" ? "Direct-only mode is on, so file data waits for a direct path." : "Bifrost uses it only when no direct path opens within a few seconds, and switches to direct as soon as one does."}
           </span>
         </div>
       </div>

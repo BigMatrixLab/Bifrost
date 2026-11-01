@@ -1,9 +1,9 @@
 [package]
-name = "quanta_ui"
+name = "bifrost_ui"
 version = "0.1.0"
 edition = "2021"
 publish = false
-description = "NSIS plugin that draws the Quanta installer's controls in the app's style"
+description = "NSIS plugin that draws the Bifrost installer's controls in the app's style"
 
 [lib]
 crate-type = ["cdylib"]

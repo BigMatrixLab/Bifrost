@@ -2,7 +2,7 @@
 
 ## Our pledge
 
-We want Quanta to be a welcoming project for everyone, regardless of age, body size, visible or invisible disability, ethnicity, sex characteristics, gender identity and expression, level of experience, education, socio-economic status, nationality, personal appearance, race, caste, color, religion, or sexual identity and orientation.
+We want Bifrost to be a welcoming project for everyone, regardless of age, body size, visible or invisible disability, ethnicity, sex characteristics, gender identity and expression, level of experience, education, socio-economic status, nationality, personal appearance, race, caste, color, religion, or sexual identity and orientation.
 
 ## Our standards
 
@@ -11,7 +11,7 @@ Examples of behavior that helps:
 - being kind, patient and respectful, including when disagreeing
 - giving and gracefully accepting constructive feedback
 - taking responsibility for mistakes and learning from them
-- focusing on what is best for the people who use Quanta
+- focusing on what is best for the people who use Bifrost
 
 Examples of unacceptable behavior:
 

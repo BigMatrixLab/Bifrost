@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { ArrowUpRight, ChevronRight, FolderUp, KeyRound, Lock, Monitor } from "lucide-react";
+import { ArrowUpRight, ChevronRight, Download, FolderUp, Lock, Monitor, Upload } from "lucide-react";
 import { bytes, isActive } from "../format";
 import { useStore } from "../store";
 import { LiveFlow, useFlowActive } from "../flow";
@@ -74,7 +74,7 @@ function WeekStrip() {
 
 export default function PhoneHome() {
   const { jobs, uploads, outgoing, remotes, grants, shares, history, setPage, setConnectOpen, openBrowser } = useStore();
-  const sendingNow = outgoing.filter((o) => o.status === "sending" || o.status === "waiting");
+  const sendingNow = outgoing.filter((o) => o.status === "sending" || o.status === "waiting" || o.status === "paused");
   const shareFolder = useShareFolder();
   const flowActive = useFlowActive();
   const list = useMemo(() => Object.values(jobs).sort((a, b) => b.updatedAt - a.updatedAt), [jobs]);
@@ -91,12 +91,12 @@ export default function PhoneHome() {
 
       <div className="phome-actions">
         <button className="pact pact-send" onClick={shareFolder}>
-          <FolderUp size={24} aria-hidden="true" />
+          <Upload size={24} aria-hidden="true" />
           <span className="pact-t">Send</span>
           <span className="pact-d">Share a folder</span>
         </button>
         <button className="pact" onClick={() => setConnectOpen(true)}>
-          <KeyRound size={24} aria-hidden="true" />
+          <Download size={24} aria-hidden="true" />
           <span className="pact-t">Receive</span>
           <span className="pact-d">Enter a code</span>
         </button>

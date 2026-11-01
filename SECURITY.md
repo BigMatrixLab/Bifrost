@@ -1,6 +1,6 @@
 # Security Policy
 
-Quanta moves people's files between their devices, so security reports are taken seriously and handled first.
+Bifrost moves people's files between their devices, so security reports are taken seriously and handled first.
 
 ## Reporting a vulnerability
 

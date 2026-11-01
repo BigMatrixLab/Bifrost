@@ -3,7 +3,7 @@ name = "relayless"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Quanta: direct, resumable, verified large-file transfer"
+description = "Bifrost: direct, resumable, verified large-file transfer"
 
 [lib]
 name = "relayless_lib"

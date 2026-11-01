@@ -1,5 +1,5 @@
 ---
-name: Quanta
+name: Bifrost
 description: Direct, private, resumable large-file transfer between your own devices.
 colors:
   bg: "#050506"
@@ -68,13 +68,13 @@ spacing:
   page: "28px"
 ---
 
-# Design System: Quanta
+# Design System: Bifrost
 
 ## Overview
 
 **Creative North Star: "Signal HUD"**
 
-Quanta looks like a quiet instrument panel: a black ground with a faint dot grid, white at three strengths, one signal red, 1px lines and bright corner marks. It borrows the vocabulary of sci-fi HUD screens (segmented rings, tick scales, equalizer bars, node-and-wire diagrams, corner brackets, hazard stripes) and keeps the one rule those screens usually break: **every mark shows real data.** Quanta exists to prove privacy, not claim it, so a gauge that moves for decoration would undercut the product. The Network globe's turning is the one decorative motion; its markers are the real public relay regions, and it never shows where any device is.
+Bifrost looks like a quiet instrument panel: a black ground with a faint dot grid, white at three strengths, one signal red, 1px lines and bright corner marks. It borrows the vocabulary of sci-fi HUD screens (segmented rings, tick scales, equalizer bars, node-and-wire diagrams, corner brackets, hazard stripes) and keeps the one rule those screens usually break: **every mark shows real data.** Bifrost exists to prove privacy, not claim it, so a gauge that moves for decoration would undercut the product. The Network globe's turning is the one decorative motion; its markers are the real public relay regions, and it never shows where any device is.
 
 The screen stays calm at rest. Red appears only where something is happening right now or where the user can act. Hazard stripes appear only where the user is needed.
 
@@ -182,7 +182,7 @@ This device and the peer as two square nodes joined by a wire: solid white for a
 One bar per second over the last two minutes. Received bars rise above a baseline in white; sent bars hang below it in red; both use one scale, and each side gets height in proportion to its own peak. Events (paused, dropped, relay, direct) are dashed vertical lines with uppercase labels; dropped and relay are amber. Hover shows a crosshair and a tooltip with both speeds and any events at that second.
 
 ### Network panel
-Online state, home relay, devices linked, "Stored on servers: 0 bytes" in red, and a slowly turning dotted Earth after cobe's "CDN" showcase ([cobe](https://github.com/shuding/cobe), WebGL, ~13 KB, MIT). Pewter-to-white land dots on a black sphere with a faint signal-red halo, inside an SVG tick ring. Each of iroh's four public relay regions (use1, usw1, euc1, aps1, from `iroh::defaults::prod`, placed at the metro its code names) carries a marker dot with a mono region tag just above it, on a dark fill with no outline; the home relay's dot and tag are red. Tags are positioned from cobe's marker anchors in script (no CSS anchor positioning needed), fade near the rim and behind the globe, and give way when they would overlap a tag nearer the centre. There are no arcs: relays don't send data to each other and Quanta never knows where a peer is, so any line between places would be invented. No device is ever placed on the globe. Offline, the halo and home marker turn grey and the land dims. It spins only while on screen, online and without reduced motion, at about 30 fps (one turn in about 40 s); without WebGL it falls back to an SVG wireframe globe.
+Online state, home relay, devices linked, "Stored on servers: 0 bytes" in red, and a slowly turning dotted Earth after cobe's "CDN" showcase ([cobe](https://github.com/shuding/cobe), WebGL, ~13 KB, MIT). Pewter-to-white land dots on a black sphere with a faint signal-red halo, inside an SVG tick ring. Each of iroh's four public relay regions (use1, usw1, euc1, aps1, from `iroh::defaults::prod`, placed at the metro its code names) carries a marker dot with a mono region tag just above it, on a dark fill with no outline; the home relay's dot and tag are red. Tags are positioned from cobe's marker anchors in script (no CSS anchor positioning needed), fade near the rim and behind the globe, and give way when they would overlap a tag nearer the centre. There are no arcs: relays don't send data to each other and Bifrost never knows where a peer is, so any line between places would be invented. No device is ever placed on the globe. Offline, the halo and home marker turn grey and the land dims. It spins only while on screen, online and without reduced motion, at about 30 fps (one turn in about 40 s); without WebGL it falls back to an SVG wireframe globe.
 
 ### History calendar
 Seven-column grid of square day cells with a faint hairline. Dot area is proportional to bytes moved that day; days too small to draw at scale are hollow rings, and the legend names the threshold. Under Both, a two-way day splits into a white received wedge from 12 o'clock and a red sent wedge, divided by a dark seam. Today's numeral is red with a short red underline. The selected day gets a white 1px ring and red corner brackets. Dots scale in on month or filter change (the one choreographed motion; off under reduced motion).

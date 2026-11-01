@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
+  CirclePause,
   Download,
   ExternalLink,
   FolderOpen,
@@ -14,6 +15,7 @@ import {
   ShieldCheck,
   Clock,
   X,
+  XCircle,
 } from "lucide-react";
 import { android, api, errorText, type Job, type Outgoing } from "../api";
 import { isAndroid } from "../platform";
@@ -26,11 +28,11 @@ import { useSlide } from "../slide";
 function explain(job: Job): string | null {
   switch (job.status) {
     case "waiting_peer":
-      return "The sender's computer isn't reachable right now. Quanta keeps trying automatically and continues from the verified progress when it's back.";
+      return "The sender's computer isn't reachable right now. Bifrost keeps trying automatically and continues from the verified progress when it's back.";
     case "reconnecting":
       return "The connection dropped. Every verified piece is saved on disk, so only the missing pieces will be fetched again.";
     case "waiting_direct":
-      return "The routers between you block a direct path and direct-only mode is on, so no file data is sent. Quanta keeps trying. To continue now, choose Direct first in Settings on both devices; data then goes through an end-to-end encrypted relay.";
+      return "The routers between you block a direct path and direct-only mode is on, so no file data is sent. Bifrost keeps trying. To continue now, choose Direct first in Settings on both devices; data then goes through an end-to-end encrypted relay.";
     case "downloading":
       return job.route === "relay"
         ? "The routers between the two devices didn't allow a direct path, so this goes through an encrypted relay. The free public relays are rate-limited; for full speed, set your own relay server in Settings on both devices, or enable UPnP on your router."
@@ -138,7 +140,7 @@ export function JobRow({ job, compact = false }: { job: Job; compact?: boolean }
       {sourceChanged && (
         <div className="job-details">
           <span className="small">
-            The file was modified on the sender's computer after this download started. To avoid mixing two versions, Quanta stopped. You can start over with the new version.
+            The file was modified on the sender's computer after this download started. To avoid mixing two versions, Bifrost stopped. You can start over with the new version.
           </span>
           <div className="hstack">
             <Button size="sm" variant="primary" loading={busy} icon={<Download size={14} />} onClick={() => run(() => api.restartJob(job.id))}>
@@ -193,6 +195,8 @@ export function JobRow({ job, compact = false }: { job: Job; compact?: boolean }
       {confirm && (
         <Modal
           title="Cancel this transfer?"
+          width={760}
+          fit
           onClose={() => setConfirm(false)}
           footer={
             <>
@@ -236,20 +240,54 @@ function pct(done: number, size: number) {
 const SEND_TEXT: Record<Outgoing["status"], string> = {
   sending: "Sending",
   waiting: "Waiting for receiver",
+  paused: "Paused",
+  canceled: "Stopped",
   delivered: "Sent, receiver is checking",
   verified: "Delivered and verified",
 };
 
+function SendIcon({ status, size }: { status: Outgoing["status"]; size: number }) {
+  switch (status) {
+    case "verified":
+      return <ShieldCheck size={size} />;
+    case "waiting":
+      return <Clock size={size} />;
+    case "paused":
+      return <CirclePause size={size} />;
+    case "canceled":
+      return <XCircle size={size} />;
+    default:
+      return <UploadIcon size={size} />;
+  }
+}
+
 /** A file this device is sending, shown like a download. */
 export function SendRow({ o, compact = false }: { o: Outgoing; compact?: boolean }) {
+  const { toast } = useStore();
+  const [confirm, setConfirm] = useState(false);
+  const [busy, setBusy] = useState(false);
   const done = o.status === "verified" || o.status === "delivered";
-  // Traffic light, as for downloads: waiting yellow, sending and delivered green.
-  const tone = o.status === "waiting" ? "warn" : "ok";
+  const canceled = o.status === "canceled";
+  // Traffic light, as for downloads: waiting and paused yellow, sending and
+  // delivered green, stopped grey.
+  const tone = canceled ? "muted" : o.status === "waiting" || o.status === "paused" ? "warn" : "ok";
   const left = o.bps > 1 && !done ? (o.size - o.sentBytes) / o.bps : null;
+
+  const run = async (f: () => Promise<void>) => {
+    setBusy(true);
+    try {
+      await f();
+    } catch (e) {
+      toast(errorText(e), "err");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className={`job tone-${tone}`}>
       <div className={`job-ico tone-${tone}`}>
-        {o.status === "verified" ? <ShieldCheck size={17} /> : o.status === "waiting" ? <Clock size={17} /> : <UploadIcon size={17} />}
+        <SendIcon status={o.status} size={17} />
       </div>
       <div className="stack">
         <div className="hstack">
@@ -257,7 +295,7 @@ export function SendRow({ o, compact = false }: { o: Outgoing; compact?: boolean
         </div>
         <div className="job-meta">
           <span className={`pill pill-${tone}`}>
-            {o.status === "verified" ? <ShieldCheck size={13} /> : o.status === "waiting" ? <Clock size={13} /> : <UploadIcon size={13} />}
+            <SendIcon status={o.status} size={13} />
             {o.status === "waiting" ? `Waiting for ${o.deviceName}` : SEND_TEXT[o.status]}
           </span>
           <span className="num">{done ? bytes(o.size) : `${bytes(o.sentBytes)} of ${bytes(o.size)}`}</span>
@@ -268,11 +306,53 @@ export function SendRow({ o, compact = false }: { o: Outgoing; compact?: boolean
           <span className="faint truncate">to {o.deviceName}</span>
         </div>
       </div>
-      <div className="job-actions" />
-      {!done && (
+      <div className="job-actions">
+        {(o.status === "sending" || o.status === "waiting") && (
+          <IconButton label="Pause" disabled={busy} onClick={() => run(() => api.pauseOutgoing(o.id))}>
+            <Pause size={16} />
+          </IconButton>
+        )}
+        {o.status === "paused" && (
+          <IconButton label="Resume" disabled={busy} onClick={() => run(() => api.resumeOutgoing(o.id))}>
+            <Play size={16} />
+          </IconButton>
+        )}
+        {!done && !canceled && (
+          <IconButton label="Cancel" disabled={busy} onClick={() => setConfirm(true)}>
+            <X size={16} />
+          </IconButton>
+        )}
+        {(done || canceled) && (
+          <IconButton label="Remove from list" disabled={busy} onClick={() => run(() => api.removeOutgoing(o.id))}>
+            <Trash2 size={15} />
+          </IconButton>
+        )}
+      </div>
+      {!done && !canceled && (
         <div className="job-progress">
           <Progress value={o.size ? o.sentBytes / o.size : 0} tone={tone} />
         </div>
+      )}
+      {confirm && (
+        <Modal
+          title="Stop sending this file?"
+          width={760}
+          fit
+          onClose={() => setConfirm(false)}
+          footer={
+            <>
+              <Button variant="ghost" onClick={() => setConfirm(false)}>Keep sending</Button>
+              <Button variant="danger" onClick={() => { setConfirm(false); run(() => api.cancelOutgoing(o.id)); }}>
+                Stop sending
+              </Button>
+            </>
+          }
+        >
+          <span>
+            <b>{o.deviceName}</b> has {bytes(o.sentBytes)} of {bytes(o.size)} of <b>{o.name}</b>. Their download stops and keeps what
+            it has. To let them finish it later, remove it from this list first.
+          </span>
+        </Modal>
       )}
     </div>
   );
@@ -286,7 +366,7 @@ export default function Transfers() {
   const [filter, setFilter] = useState<Filter>("all");
   const tabSlide = useSlide<HTMLDivElement>(".tab", ".tab.on");
   const list = useMemo(() => Object.values(jobs).sort((a, b) => b.createdAt - a.createdAt), [jobs]);
-  const sendingNow = outgoing.filter((o) => o.status === "sending" || o.status === "waiting");
+  const sendingNow = outgoing.filter((o) => o.status === "sending" || o.status === "waiting" || o.status === "paused");
   const sentDone = outgoing.filter((o) => o.status === "verified" || o.status === "delivered");
   const counts = {
     all: list.length + outgoing.length,

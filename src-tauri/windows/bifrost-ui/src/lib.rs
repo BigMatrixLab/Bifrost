@@ -1,5 +1,5 @@
-//! quanta_ui: an NSIS plugin that draws the installer's controls in the
-//! Quanta app's style (src/styles.css, dark theme).
+//! bifrost_ui: an NSIS plugin that draws the installer's controls in the
+//! Bifrost app's style (src/styles.css, dark theme).
 //!
 //! NSIS dialogs are plain Win32 controls, and the script can only set their
 //! colours. This plugin subclasses them and paints them itself:
@@ -13,10 +13,10 @@
 //! - progress bars become the app's segmented meter.
 //!
 //! Script API (see ../installer-hooks.nsh):
-//!   quanta_ui::Init "<dir>"   load the Space Grotesk files in <dir>
+//!   bifrost_ui::Init "<dir>"   load the Space Grotesk files in <dir>
 //!                              (privately) and keep the plugin loaded
-//!   quanta_ui::Skin <hwnd>     style the direct children of <hwnd>
-//!   quanta_ui::Compact <hwnd>  shrink the main window to the side panel's
+//!   bifrost_ui::Skin <hwnd>     style the direct children of <hwnd>
+//!   bifrost_ui::Compact <hwnd>  shrink the main window to the side panel's
 //!                              height and put the buttons beside it
 //!
 //! NSIS is 32-bit, so this builds for i686 only (see build.ps1).
@@ -362,9 +362,9 @@ fn wide(s: &str) -> Vec<u16> {
 }
 
 thread_local! {
-    static PROP_HOT: Vec<u16> = wide("QuantaHot");
-    static PROP_BTN: Vec<u16> = wide("QuantaBtn");
-    static PROP_PAD: Vec<u16> = wide("QuantaPad");
+    static PROP_HOT: Vec<u16> = wide("BifrostHot");
+    static PROP_BTN: Vec<u16> = wide("BifrostBtn");
+    static PROP_PAD: Vec<u16> = wide("BifrostPad");
     static FONTS: RefCell<Vec<(i32, HGDIOBJ)>> = const { RefCell::new(Vec::new()) };
 }
 
@@ -419,7 +419,7 @@ unsafe fn pop_string(stacktop: *mut *mut StackT) -> Option<String> {
     Some(s)
 }
 
-/// `quanta_ui::Init "<font dir>"`: GDI+, the fonts, and staying loaded
+/// `bifrost_ui::Init "<font dir>"`: GDI+, the fonts, and staying loaded
 /// (the subclass procedures live in this DLL for the rest of the run).
 #[no_mangle]
 pub unsafe extern "C" fn Init(_hwnd: HWND, _size: i32, _vars: *mut u16, stacktop: *mut *mut StackT, extra: *mut ExtraParameters) {
@@ -443,7 +443,7 @@ unsafe fn pop_hwnd(stacktop: *mut *mut StackT) -> Option<HWND> {
     (IsWindow(h) != 0).then_some(h)
 }
 
-/// `quanta_ui::Skin <hwnd>`: styles every direct child of the window.
+/// `bifrost_ui::Skin <hwnd>`: styles every direct child of the window.
 #[no_mangle]
 pub unsafe extern "C" fn Skin(_hwnd: HWND, _size: i32, _vars: *mut u16, stacktop: *mut *mut StackT, _extra: *mut ExtraParameters) {
     let Some(parent) = pop_hwnd(stacktop) else { return };
@@ -456,7 +456,7 @@ pub unsafe extern "C" fn Skin(_hwnd: HWND, _size: i32, _vars: *mut u16, stacktop
     fit_page(parent);
 }
 
-/// `quanta_ui::Compact <hwnd>`: the main window ends where the welcome
+/// `bifrost_ui::Compact <hwnd>`: the main window ends where the welcome
 /// page's side panel does, and the buttons sit at the bottom right with the
 /// panel's own padding below and between them (once, before it is shown).
 #[no_mangle]

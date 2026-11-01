@@ -145,12 +145,15 @@ export function Modal({
   children,
   footer,
   width = 520,
+  fit = false,
 }: {
   title: ReactNode;
   onClose: () => void;
   children: ReactNode;
   footer?: ReactNode;
   width?: number;
+  /** Size the dialog to its button row (up to `width`). */
+  fit?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
@@ -172,7 +175,7 @@ export function Modal({
   }, []);
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && closeRef.current()}>
-      <div className="modal" role="dialog" aria-modal="true" tabIndex={-1} style={{ maxWidth: width }} ref={ref}>
+      <div className={`modal ${fit ? "fit" : ""}`} role="dialog" aria-modal="true" tabIndex={-1} style={{ maxWidth: width }} ref={ref}>
         <div className="sheet-handle" aria-hidden="true" />
         <div className="modal-head">
           <h2>{title}</h2>

@@ -92,6 +92,8 @@ pub enum JobError {
     Network(String),
     /// Sender busy/locked file; retry later.
     Busy(String),
+    /// The sender paused this file; ask again every few seconds.
+    SenderPaused(String),
     SourceChanged,
     Missing(String),
     Denied(String),
@@ -104,8 +106,8 @@ pub enum JobError {
 impl std::fmt::Display for JobError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            JobError::Network(m) | JobError::Busy(m) | JobError::Missing(m) | JobError::Denied(m)
-            | JobError::Disk(m) | JobError::Fatal(m) => write!(f, "{m}"),
+            JobError::Network(m) | JobError::Busy(m) | JobError::SenderPaused(m) | JobError::Missing(m)
+            | JobError::Denied(m) | JobError::Disk(m) | JobError::Fatal(m) => write!(f, "{m}"),
             JobError::SourceChanged => write!(f, "The file changed on the sender's computer."),
             JobError::RelayBlocked => write!(f, "Waiting for a direct connection."),
             JobError::Stopped => write!(f, "Stopped"),
@@ -120,6 +122,7 @@ impl JobError {
             JobError::Network(_) => 1,
             JobError::Busy(_) => 2,
             JobError::RelayBlocked => 3,
+            JobError::SenderPaused(_) => 4,
             _ => 9,
         }
     }
@@ -137,6 +140,7 @@ fn remote_err(code: ErrCode, message: String) -> JobError {
         ErrCode::RelayBlocked => JobError::RelayBlocked,
         ErrCode::InUse => JobError::Busy(message),
         ErrCode::Io => JobError::Busy(message),
+        ErrCode::Paused => JobError::SenderPaused(message),
         ErrCode::BadRequest => JobError::Fatal(message),
     }
 }
@@ -388,7 +392,7 @@ async fn dial(inner: &Arc<Inner>, peer: EndpointId) -> Result<Connection, JobErr
     match tokio::time::timeout(CONNECT_TIMEOUT, inner.endpoint.connect(addr, ALPN)).await {
         Ok(Ok(c)) => Ok(c),
         Ok(Err(e)) => Err(JobError::Network(format!(
-            "Can't reach the sender right now. Quanta must be open on their computer. ({e})"
+            "Can't reach the sender right now. Bifrost must be open on their computer. ({e})"
         ))),
         Err(_) => Err(JobError::Network(
             "Timed out reaching the sender. They may be offline, or a firewall is blocking the connection.".into(),
@@ -951,11 +955,14 @@ async fn run_job(inner: &Arc<Inner>, h: &Arc<JobHandle>) {
         }
     };
     let mut announced_wait = false;
+    // While the sender has this file paused, keep showing that between polls
+    // instead of flickering through queued and connecting.
+    let mut sender_paused = false;
     loop {
         if h.cancel.is_cancelled() {
             return;
         }
-        if !matches!(h.status(), JobStatus::Downloading | JobStatus::Verifying) {
+        if !sender_paused && !matches!(h.status(), JobStatus::Downloading | JobStatus::Verifying) {
             set_status(inner, h, JobStatus::Queued, None);
         }
         let t = Instant::now();
@@ -964,7 +971,9 @@ async fn run_job(inner: &Arc<Inner>, h: &Arc<JobHandle>) {
             _ = h.cancel.cancelled() => return,
         };
         h.diag.stages.slot_wait.record(t.elapsed());
-        set_status(inner, h, if attempt == 0 { JobStatus::Connecting } else { JobStatus::Reconnecting }, None);
+        if !sender_paused {
+            set_status(inner, h, if attempt == 0 { JobStatus::Connecting } else { JobStatus::Reconnecting }, None);
+        }
         let conn = tokio::select! {
             c = get_conn_traced(inner, peer, Some(&h.diag)) => c,
             _ = h.cancel.cancelled() => return,
@@ -1058,6 +1067,9 @@ async fn run_job(inner: &Arc<Inner>, h: &Arc<JobHandle>) {
 
         let before = h.verified.load(Ordering::Relaxed);
         let res = transfer_pass(inner, h, &conn, peer).await;
+        if !matches!(res, Err(JobError::SenderPaused(_))) {
+            sender_paused = false;
+        }
         h.end_active();
         let _ = inner.db.save_job_stats(&h.id, &h.stats());
         if h.verified.load(Ordering::Relaxed) > before {
@@ -1098,6 +1110,20 @@ async fn run_job(inner: &Arc<Inner>, h: &Arc<JobHandle>) {
                 }
                 attempt = attempt.saturating_add(1);
             }
+            Err(JobError::SenderPaused(m)) => {
+                if h.cancel.is_cancelled() {
+                    return;
+                }
+                if !sender_paused {
+                    sender_paused = true;
+                    inner.log("info", &format!("The sender paused {}", h.row.lock().display_name), Some(&h.id));
+                }
+                set_status(inner, h, JobStatus::WaitingPeer, Some(m));
+                drop(_slot);
+                if sleep_or_stop(h, Duration::from_secs(5)).await {
+                    return;
+                }
+            }
             Err(JobError::RelayBlocked) => {
                 // Already counted per stream in fetch_chunk.
                 set_status(inner, h, JobStatus::WaitingDirect, Some(
@@ -1122,7 +1148,7 @@ async fn run_job(inner: &Arc<Inner>, h: &Arc<JobHandle>) {
 
 fn notify_attention(inner: &Inner, h: &JobHandle) {
     let name = h.row.lock().display_name.clone();
-    inner.notify("Transfer needs attention", &format!("{name} stopped. Open Quanta for details."));
+    inner.notify("Transfer needs attention", &format!("{name} stopped. Open Bifrost for details."));
 }
 
 /// Opens (or creates) the partial file and reconciles it with stored progress.
@@ -1427,7 +1453,7 @@ fn job_err_cat(e: &JobError) -> diag::ErrCat {
     use diag::ErrCat as C;
     match e {
         JobError::Network(_) => C::ConnectionLost,
-        JobError::Busy(_) => C::RemoteError,
+        JobError::Busy(_) | JobError::SenderPaused(_) => C::RemoteError,
         JobError::SourceChanged => C::SourceChanged,
         JobError::Missing(_) => C::RemoteError,
         JobError::Denied(_) => C::Denied,

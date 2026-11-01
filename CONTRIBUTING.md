@@ -1,4 +1,4 @@
-# Contributing to Quanta
+# Contributing to Bifrost
 
 Thanks for helping. Bug reports, ideas, translations, documentation and code are all welcome.
 
@@ -6,7 +6,7 @@ Thanks for helping. Bug reports, ideas, translations, documentation and code are
 
 Open a [bug report](https://github.com/MisbahKhan0009/Relayless/issues/new?template=bug_report.yml) and include:
 
-- the Quanta version on both devices (Settings → About)
+- the Bifrost version on both devices (Settings → About)
 - Windows or Android version, and device model for Android
 - what you expected and what happened, with exact error messages
 - whether the route was direct or relayed

@@ -5,7 +5,7 @@ const now = Date.now();
 const GB = 1024 ** 3;
 const st = (route: string, rtt: number | null) => ({ kind: route, rttMs: rtt, remote: null });
 const job = (o: any) => ({
-  peerId: "a1b2c3d4e5", peerName: "Dhaka-Edit-Bay", shareId: "s1", remotePath: [o.displayName], destPath: "C:\\Users\\Lena\\Downloads\\Quanta\\" + o.displayName,
+  peerId: "a1b2c3d4e5", peerName: "Dhaka-Edit-Bay", shareId: "s1", remotePath: [o.displayName], destPath: "C:\\Users\\Lena\\Downloads\\Bifrost\\" + o.displayName,
   verifiedBytes: o.doneBytes, error: null, speedBps: 0, etaSecs: null, totalChunks: Math.ceil(o.size / (16 * 1024 * 1024)), verifiedChunks: Math.floor(o.doneBytes / (16 * 1024 * 1024)),
   createdAt: now - 3600e3, updatedAt: now, completedAt: null, route: "direct", ...o,
 });
@@ -13,7 +13,7 @@ const NEVER = 253_402_300_799_000;
 const inv = (o: any) => ({ state: "active", hasShortCode: !!o.shortCode, ...o });
 export const data: Record<string, any> = {
   bootstrap: {
-    settings: { deviceName: "Berlin-Studio", downloadDir: "C:\\Users\\Lena\\Downloads\\Quanta", parallelStreams: 12, maxConcurrentJobs: 2, maxConnections: 8, downloadLimitKbps: 0, uploadLimitKbps: 0, connectionMode: "allow_relay", congestion: "cubic", chunkSizeMib: 16, lowPriority: true, notifications: true, closeToTray: true, onboarded: (window as any).__onboarded ?? true, historyRetention: "365", historyNames: true, relayUrls: "" },
+    settings: { deviceName: "Berlin-Studio", downloadDir: "C:\\Users\\Lena\\Downloads\\Bifrost", parallelStreams: 12, maxConcurrentJobs: 2, maxConnections: 8, downloadLimitKbps: 0, uploadLimitKbps: 0, connectionMode: "allow_relay", congestion: "cubic", chunkSizeMib: 16, lowPriority: true, notifications: true, closeToTray: true, onboarded: (window as any).__onboarded ?? true, historyRetention: "365", historyNames: true, relayUrls: "" },
     network: { endpointId: "9f3c1e7a2b4d6f8091a3c5e7f9b1d3f5a7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7", endpointShort: "9f3c1e7a", online: true, relayUrl: "https://euc1-1.relay.n0.iroh-canary.iroh.link./", directAddrs: 3 },
     platform: (window as any).__platform ?? "windows",
     version: "0.1.0", dataDir: "C:\\Users\\Lena\\AppData\\Roaming\\app.relayless.desktop",
@@ -147,6 +147,16 @@ export async function invoke<T>(cmd: string, _args?: any): Promise<T> {
     const share = { id: `s${Date.now()}`, name, rootPath: path, active: true, createdAt: Date.now(), deviceCount: 0, invitations: [] };
     data.list_shares = [share, ...data.list_shares];
     return JSON.parse(JSON.stringify(share));
+  }
+  const sendStatus: Record<string, string> = { pause_outgoing: "paused", resume_outgoing: "sending", cancel_outgoing: "canceled" };
+  if (cmd in sendStatus) {
+    const o = data.list_outgoing.find((x: any) => x.id === _args?.id);
+    if (o) Object.assign(o, { status: sendStatus[cmd], bps: 0 });
+    return undefined as T;
+  }
+  if (cmd === "remove_outgoing") {
+    data.list_outgoing = data.list_outgoing.filter((x: any) => x.id !== _args?.id);
+    return undefined as T;
   }
   if (cmd in data) return JSON.parse(JSON.stringify(data[cmd]));
   return undefined as T;

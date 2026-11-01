@@ -118,7 +118,7 @@ export function InviteDialog({ share, onClose }: { share: Share; onClose: () => 
               <Progress value={left} tone={never ? "ok" : tone} />
             </div>
             <span className="hint">
-              Send it in any chat app, read it out, or let them scan it. They enter it in Quanta under Receive. It works while Quanta is open and online here.
+              Send it in any chat app, read it out, or let them scan it. They enter it in Bifrost under Receive. It works while Bifrost is open and online here.
             </span>
           </div>
         </div>
@@ -126,7 +126,7 @@ export function InviteDialog({ share, onClose }: { share: Share; onClose: () => 
         <div className="inv-status">
           <span className="inv-pulse" aria-hidden="true" />
           <span>
-            <b>Waiting for them to connect.</b> Keep this computer on and Quanta open while they download.
+            <b>Waiting for them to connect.</b> Keep this computer on and Bifrost open while they download.
             {inv.requireApproval && " You'll approve their device first."}
           </span>
         </div>
@@ -388,7 +388,7 @@ export function Onboarding() {
     return saveSettings({ ...settings, deviceName: name.trim() || settings.deviceName, onboarded: true });
   };
   return (
-    <Modal title="Welcome to Quanta" onClose={done} width={560} footer={<Button variant="primary" onClick={done}>Get started</Button>}>
+    <Modal title="Welcome to Bifrost" onClose={done} width={560} footer={<Button variant="primary" onClick={done}>Get started</Button>}>
       <div className="onboard-points">
         <div className="onboard-point">
           <span className="i"><Zap size={16} /></span>

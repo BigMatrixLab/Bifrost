@@ -10,7 +10,7 @@
 //! share, so N of them carry about N times as much, and a loss slows down
 //! only 1/N of the transfer.
 //!
-//! What Quanta does (receiver side only; senders need no change and
+//! What Bifrost does (receiver side only; senders need no change and
 //! older senders work):
 //! - A per-sender pool of 1..=`max_connections` QUIC connections ("lanes").
 //!   Lane 0 is the normal connection (Hello, Stat, receipts); extra lanes
