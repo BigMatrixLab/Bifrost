@@ -238,10 +238,12 @@ export function relayRegion(url: string | null | undefined): string | null {
 
 /** Home relay marker: --accent (#4ade80). */
 const HOME: [number, number, number] = [0.29, 0.87, 0.5];
-const DOT: [number, number, number] = [0.92, 0.92, 0.93];
-/** Light theme: --accent (#15803d) and dark relay dots on a pale sphere. */
+/** Other relays: amber (--warn, #fbbf24), the app's relay colour, so they
+ *  stand out from the white land dots instead of blending in. */
+const DOT: [number, number, number] = [0.98, 0.75, 0.14];
+/** Light theme: --accent (#15803d), and --warn (#c27a06) for the other relays. */
 const HOME_LIGHT: [number, number, number] = [0.08, 0.5, 0.24];
-const DOT_LIGHT: [number, number, number] = [0.25, 0.25, 0.28];
+const DOT_LIGHT: [number, number, number] = [0.76, 0.48, 0.02];
 
 /** True while the light theme is on; follows the toggle live. */
 function useLightTheme(): boolean {
@@ -302,7 +304,7 @@ export function DotGlobe({ size = 170, online, home }: { size?: number; online: 
       markerElevation: 0.02,
       markers: RELAY_REGIONS.map((r) => ({
         location: [...r.location] as [number, number],
-        size: r.code === home ? 0.045 : 0.032,
+        size: r.code === home ? 0.06 : 0.05,
         id: `rl-relay-${r.code}`,
         ...(r.code === home && online ? { color: light ? HOME_LIGHT : HOME } : {}),
       })),

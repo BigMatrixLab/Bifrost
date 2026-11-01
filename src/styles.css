@@ -7061,3 +7061,25 @@ html {
   color: var(--accent);
   box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb), 0.45);
 }
+
+/* Globe relay tags: filled amber to match their amber marker dots, the way
+   the home relay's tag is filled green. */
+.dg-relay:not(.home) .dg-tag,
+:root[data-theme="light"] .dg-relay:not(.home) .dg-tag {
+  color: var(--accent-ink);
+  background: var(--warn);
+  box-shadow: none;
+}
+
+/* Active transfer card: when it is stretched to the Network panel's height,
+   the ring and facts sit centred in the space under the header line. */
+.focus {
+  display: flex;
+  flex-direction: column;
+}
+.focus > .focus-body {
+  flex: 1 1 auto;
+}
+.focus-wrap.compact .focus > .focus-body {
+  justify-content: center;
+}
