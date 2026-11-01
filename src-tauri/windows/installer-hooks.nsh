@@ -85,6 +85,9 @@ Function ${UN}Quanta.GuiInit
   Push $HWNDPARENT
   Call ${UN}Quanta.DarkChildren
   quanta_ui::Skin $HWNDPARENT
+  ; No button strip under the welcome page's side panel: the window ends
+  ; where the panel does and the buttons sit beside it.
+  quanta_ui::Compact $HWNDPARENT
 
   ; The page title in the header, larger and bold.
   GetDlgItem $0 $HWNDPARENT 1037

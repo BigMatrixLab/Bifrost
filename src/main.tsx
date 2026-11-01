@@ -3,9 +3,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import { StoreProvider } from "./store";
 import { FlowProvider } from "./flow";
-import "@fontsource-variable/figtree";
-import "@fontsource-variable/oxanium";
-import "@fontsource-variable/jetbrains-mono";
+import "@fontsource-variable/space-grotesk";
 import "./styles.css";
 import { applyTheme, storedTheme } from "./theme";
 

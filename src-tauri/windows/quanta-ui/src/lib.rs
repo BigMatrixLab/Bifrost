@@ -16,6 +16,8 @@
 //!   quanta_ui::Init "<dir>"   load the Space Grotesk files in <dir>
 //!                              (privately) and keep the plugin loaded
 //!   quanta_ui::Skin <hwnd>     style the direct children of <hwnd>
+//!   quanta_ui::Compact <hwnd>  shrink the main window to the side panel's
+//!                              height and put the buttons beside it
 //!
 //! NSIS is 32-bit, so this builds for i686 only (see build.ps1).
 
@@ -45,6 +47,13 @@ struct RECT {
 }
 
 #[repr(C)]
+#[derive(Default)]
+struct SIZE {
+    cx: i32,
+    cy: i32,
+}
+
+#[repr(C)]
 struct PAINTSTRUCT {
     hdc: HDC,
     fErase: BOOL,
@@ -52,19 +61,6 @@ struct PAINTSTRUCT {
     fRestore: BOOL,
     fIncUpdate: BOOL,
     rgbReserved: [u8; 32],
-}
-
-#[repr(C)]
-struct DRAWITEMSTRUCT {
-    CtlType: u32,
-    CtlID: u32,
-    itemID: u32,
-    itemAction: u32,
-    itemState: u32,
-    hwndItem: HWND,
-    hDC: HDC,
-    rcItem: RECT,
-    itemData: usize,
 }
 
 #[repr(C)]
@@ -84,6 +80,30 @@ struct LOGFONTW {
     lfQuality: u8,
     lfPitchAndFamily: u8,
     lfFaceName: [u16; 32],
+}
+
+#[repr(C)]
+struct TEXTMETRICW {
+    tmHeight: i32,
+    tmAscent: i32,
+    tmDescent: i32,
+    tmInternalLeading: i32,
+    tmExternalLeading: i32,
+    tmAveCharWidth: i32,
+    tmMaxCharWidth: i32,
+    tmWeight: i32,
+    tmOverhang: i32,
+    tmDigitizedAspectX: i32,
+    tmDigitizedAspectY: i32,
+    tmFirstChar: u16,
+    tmLastChar: u16,
+    tmDefaultChar: u16,
+    tmBreakChar: u16,
+    tmItalic: u8,
+    tmUnderlined: u8,
+    tmStruckOut: u8,
+    tmPitchAndFamily: u8,
+    tmCharSet: u8,
 }
 
 #[repr(C)]
@@ -124,6 +144,8 @@ extern "system" {
     fn BeginPaint(h: HWND, ps: *mut PAINTSTRUCT) -> HDC;
     fn EndPaint(h: HWND, ps: *const PAINTSTRUCT) -> BOOL;
     fn GetWindowDC(h: HWND) -> HDC;
+    fn GetDC(h: HWND) -> HDC;
+    fn MapDialogRect(h: HWND, r: *mut RECT) -> BOOL;
     fn ReleaseDC(h: HWND, dc: HDC) -> i32;
     fn FillRect(dc: HDC, r: *const RECT, br: isize) -> i32;
     fn DrawTextW(dc: HDC, s: *const u16, n: i32, r: *mut RECT, f: u32) -> i32;
@@ -140,6 +162,10 @@ extern "system" {
     fn IsWindowVisible(h: HWND) -> BOOL;
     fn IsWindow(h: HWND) -> BOOL;
     fn GetFocus() -> HWND;
+    fn GetCapture() -> HWND;
+    fn ShowWindow(h: HWND, cmd: i32) -> BOOL;
+    fn SetTimer(h: HWND, id: usize, ms: u32, f: Option<unsafe extern "system" fn(HWND, u32, usize, u32)>) -> usize;
+    fn KillTimer(h: HWND, id: usize) -> BOOL;
     fn RedrawWindow(h: HWND, r: *const RECT, rgn: isize, f: u32) -> BOOL;
     fn SetWindowPos(h: HWND, after: HWND, x: i32, y: i32, cx: i32, cy: i32, f: u32) -> BOOL;
     fn TrackMouseEvent(t: *mut TRACKMOUSEEVENT) -> BOOL;
@@ -161,6 +187,10 @@ extern "system" {
     fn SetTextCharacterExtra(dc: HDC, extra: i32) -> i32;
     fn AddFontResourceExW(name: *const u16, fl: u32, res: *mut c_void) -> i32;
     fn GetDeviceCaps(dc: HDC, i: i32) -> i32;
+    fn GetTextMetricsW(dc: HDC, tm: *mut TEXTMETRICW) -> BOOL;
+    fn GetTextExtentPoint32W(dc: HDC, s: *const u16, n: i32, size: *mut SIZE) -> BOOL;
+    fn TextOutW(dc: HDC, x: i32, y: i32, s: *const u16, n: i32) -> BOOL;
+    fn ExcludeClipRect(dc: HDC, l: i32, t: i32, r: i32, b: i32) -> i32;
 }
 
 #[link(name = "comctl32")]
@@ -212,8 +242,8 @@ const WM_KILLFOCUS: u32 = 0x0008;
 const WM_ENABLE: u32 = 0x000A;
 const WM_CANCELMODE: u32 = 0x001F;
 const WM_GETFONT: u32 = 0x0031;
-const WM_DRAWITEM: u32 = 0x002B;
 const WM_NCDESTROY: u32 = 0x0082;
+const WM_NCCALCSIZE: u32 = 0x0083;
 const WM_NCPAINT: u32 = 0x0085;
 const WM_KEYDOWN: u32 = 0x0100;
 const WM_KEYUP: u32 = 0x0101;
@@ -247,6 +277,9 @@ const BS_AUTORADIOBUTTON: i32 = 9;
 const BS_OWNERDRAW: i32 = 0xB;
 
 const WS_BORDER: i32 = 0x0080_0000;
+const WS_CLIPSIBLINGS: i32 = 0x0400_0000;
+const WS_VISIBLE: i32 = 0x1000_0000;
+const ES_MULTILINE: i32 = 0x0004;
 const WS_EX_CLIENTEDGE: i32 = 0x0200;
 const WS_EX_STATICEDGE: i32 = 0x0002_0000;
 
@@ -262,21 +295,25 @@ const PBM_SETRANGE32: u32 = 0x0406;
 const PBM_GETRANGE: u32 = 0x0407;
 const PBM_GETPOS: u32 = 0x0408;
 
-const ODT_BUTTON: u32 = 4;
-const ODS_SELECTED: u32 = 0x0001;
-const ODS_DISABLED: u32 = 0x0004;
-const ODS_FOCUS: u32 = 0x0010;
-const ODS_NOFOCUSRECT: u32 = 0x0200;
+const WM_QUERYUISTATE: u32 = 0x0129;
+const UISF_HIDEFOCUS: isize = 0x1;
 
-const DT_CENTER: u32 = 0x0001;
 const DT_VCENTER: u32 = 0x0004;
 const DT_SINGLELINE: u32 = 0x0020;
 const DT_END_ELLIPSIS: u32 = 0x8000;
 const DT_HIDEPREFIX: u32 = 0x0010_0000;
 
 const RDW_INVALIDATE: u32 = 0x0001;
+const RDW_ERASE: u32 = 0x0004;
+const RDW_ALLCHILDREN: u32 = 0x0080;
 const RDW_FRAME: u32 = 0x0400;
-const SWP_FRAMECHANGED_ONLY: u32 = 0x0001 | 0x0002 | 0x0004 | 0x0010 | 0x0020;
+const SWP_NOSIZE: u32 = 0x0001;
+const SWP_NOMOVE: u32 = 0x0002;
+const SWP_NOZORDER: u32 = 0x0004;
+const SWP_NOACTIVATE: u32 = 0x0010;
+const SWP_FRAMECHANGED_ONLY: u32 = SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | 0x0020;
+const SW_HIDE: i32 = 0;
+const SW_SHOWNA: i32 = 8;
 const TME_LEAVE: u32 = 0x0002;
 const TRANSPARENT: i32 = 1;
 const SRCCOPY: u32 = 0x00CC_0020;
@@ -293,6 +330,7 @@ const TEXT: COLORREF = rgb(0xF2, 0xF2, 0xF2); // --text
 const TEXT2: COLORREF = rgb(0xA3, 0xA3, 0xA3); // --text-2
 const TEXT3: COLORREF = rgb(0x6A, 0x6A, 0x6A); // --text-3
 const DIM: COLORREF = rgb(0x4A, 0x4A, 0x4D);
+const FIELD: COLORREF = rgb(0x14, 0x14, 0x17); // --raised
 const LINE: COLORREF = rgb(0x2A, 0x2A, 0x2E); // --border on the surface
 const LINE_STRONG: COLORREF = rgb(0x45, 0x45, 0x48); // --border-strong
 const LINE_HOT: COLORREF = rgb(0x6A, 0x6A, 0x6E);
@@ -314,10 +352,10 @@ const FONT_FILES: [&str; 3] = ["SpaceGrotesk-Regular.ttf", "SpaceGrotesk-Medium.
 
 // Subclass ids.
 const ID_BUTTON: usize = 0x5155_0001;
-const ID_PARENT: usize = 0x5155_0002;
 const ID_CHECK: usize = 0x5155_0003;
 const ID_EDIT: usize = 0x5155_0004;
 const ID_PROGRESS: usize = 0x5155_0005;
+const ID_REPAINT: usize = 0x5155_0006;
 
 fn wide(s: &str) -> Vec<u16> {
     s.encode_utf16().chain(std::iter::once(0)).collect()
@@ -326,7 +364,7 @@ fn wide(s: &str) -> Vec<u16> {
 thread_local! {
     static PROP_HOT: Vec<u16> = wide("QuantaHot");
     static PROP_BTN: Vec<u16> = wide("QuantaBtn");
-    static PROP_MOVED: Vec<u16> = wide("QuantaMoved");
+    static PROP_PAD: Vec<u16> = wide("QuantaPad");
     static FONTS: RefCell<Vec<(i32, HGDIOBJ)>> = const { RefCell::new(Vec::new()) };
 }
 
@@ -336,8 +374,9 @@ fn prop_hot() -> *const u16 {
 fn prop_btn() -> *const u16 {
     PROP_BTN.with(|p| p.as_ptr())
 }
-fn prop_moved() -> *const u16 {
-    PROP_MOVED.with(|p| p.as_ptr())
+/// On the compacted main window: the side panel's padding, x << 16 | y.
+fn prop_pad() -> *const u16 {
+    PROP_PAD.with(|p| p.as_ptr())
 }
 
 // ------------------------------------------------------------ NSIS ABI
@@ -398,42 +437,221 @@ pub unsafe extern "C" fn Init(_hwnd: HWND, _size: i32, _vars: *mut u16, stacktop
     }
 }
 
+unsafe fn pop_hwnd(stacktop: *mut *mut StackT) -> Option<HWND> {
+    let s = pop_string(stacktop)?;
+    let h = s.trim().parse::<i64>().ok()? as HWND;
+    (IsWindow(h) != 0).then_some(h)
+}
+
 /// `quanta_ui::Skin <hwnd>`: styles every direct child of the window.
 #[no_mangle]
 pub unsafe extern "C" fn Skin(_hwnd: HWND, _size: i32, _vars: *mut u16, stacktop: *mut *mut StackT, _extra: *mut ExtraParameters) {
-    let Some(s) = pop_string(stacktop) else { return };
-    let Ok(parent) = s.trim().parse::<i64>() else { return };
-    let parent = parent as HWND;
-    if IsWindow(parent) == 0 {
-        return;
-    }
+    let Some(parent) = pop_hwnd(stacktop) else { return };
     let mut child = GetWindow(parent, GW_CHILD);
     while child != 0 {
         skin(child);
         child = GetWindow(child, GW_HWNDNEXT);
     }
-    space_back_button(parent);
+    match_fields(parent);
+    fit_page(parent);
 }
 
-/// NSIS places Back right against Next; with a filled Next button that
-/// reads as one control, so Back moves left to leave a gap (once).
-unsafe fn space_back_button(parent: HWND) {
-    let back = GetDlgItem(parent, 3);
-    let next = GetDlgItem(parent, 1);
-    if back == 0 || next == 0 || GetPropW(back, prop_moved()) != 0 {
+/// `quanta_ui::Compact <hwnd>`: the main window ends where the welcome
+/// page's side panel does, and the buttons sit at the bottom right with the
+/// panel's own padding below and between them (once, before it is shown).
+#[no_mangle]
+pub unsafe extern "C" fn Compact(_hwnd: HWND, _size: i32, _vars: *mut u16, stacktop: *mut *mut StackT, _extra: *mut ExtraParameters) {
+    let Some(main) = pop_hwnd(stacktop) else { return };
+    let full = GetDlgItem(main, 1044);
+    if full == 0 || GetDlgItem(main, 1) == 0 || GetPropW(main, prop_pad()) != 0 {
         return;
     }
-    let mut b = RECT::default();
-    let mut n = RECT::default();
-    GetWindowRect(back, &mut b);
-    GetWindowRect(next, &mut n);
-    if b.right < n.left - 2 || b.top >= n.bottom || b.bottom <= n.top {
+    // MUI2 creates the side panel as 0u 0u 109u 193u in control 1044; its
+    // art (164 x 314) has the dots and brackets inset 8 px all round.
+    let mut panel = RECT { left: 0, top: 0, right: 109, bottom: 193 };
+    MapDialogRect(main, &mut panel);
+    let pad_x = ((panel.right as f32) * 8.0 / 164.0).round().max(1.0) as i32;
+    let pad_y = ((panel.bottom as f32) * 8.0 / 314.0).round().max(1.0) as i32;
+    let height = child_rect(main, full).top + panel.bottom;
+    let mut client = RECT::default();
+    GetClientRect(main, &mut client);
+    let shrink = client.bottom - height;
+    if shrink > 0 {
+        let mut wr = RECT::default();
+        GetWindowRect(main, &mut wr);
+        SetWindowPos(main, 0, wr.left, wr.top + shrink / 2, wr.right - wr.left, wr.bottom - wr.top - shrink, SWP_NOZORDER | SWP_NOACTIVATE);
+    }
+    SetPropW(main, prop_pad(), ((pad_x << 16) | pad_y) as isize);
+    layout_row(main);
+}
+
+unsafe fn pads(main: HWND) -> Option<(i32, i32)> {
+    let p = GetPropW(main, prop_pad()) as i32;
+    (p != 0).then_some((p >> 16, p & 0xFFFF))
+}
+
+/// WS_VISIBLE on the control itself: pages are styled before they're shown,
+/// when IsWindowVisible is false for everything on them.
+unsafe fn shown(h: HWND) -> bool {
+    GetWindowLongW(h, GWL_STYLE) & WS_VISIBLE != 0
+}
+
+unsafe fn child_rect(parent: HWND, h: HWND) -> RECT {
+    let mut r = RECT::default();
+    GetWindowRect(h, &mut r);
+    MapWindowPoints(0, parent, &mut r, 2);
+    r
+}
+
+/// Cancel, Next and Back from the bottom right corner, one padding apart;
+/// the branding line centred on the same row.
+unsafe fn layout_row(main: HWND) {
+    let Some((pad_x, pad_y)) = pads(main) else { return };
+    let mut client = RECT::default();
+    GetClientRect(main, &mut client);
+    let bottom = client.bottom - pad_y;
+    let mut right = client.right - pad_x;
+    let mut row = (bottom, bottom);
+    for id in [2, 1, 3] {
+        let b = GetDlgItem(main, id);
+        if b == 0 {
+            continue;
+        }
+        let r = child_rect(main, b);
+        let (w, h) = (r.right - r.left, r.bottom - r.top);
+        SetWindowPos(b, 0, right - w, bottom - h, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+        right -= w + pad_x;
+        row.0 = row.0.min(bottom - h);
+    }
+    // NSIS makes the branding line nearly window-wide; end it before Back.
+    let brand = GetDlgItem(main, 1028);
+    if brand != 0 {
+        let r = child_rect(main, brand);
+        let h = r.bottom - r.top;
+        let w = (r.right - r.left).min(right - r.left).max(0);
+        SetWindowPos(brand, 0, r.left, (row.0 + row.1 - h) / 2, w, h, SWP_NOZORDER | SWP_NOACTIVATE);
+    }
+}
+
+/// Once the window is compacted, a page overlaps the button row: keep the
+/// buttons (and, beside the header pages, the branding line) above it, and
+/// end tall controls such as the install log above the row.
+unsafe fn fit_page(page: HWND) {
+    let main = GetParent(page);
+    let Some((_, pad_y)) = (if main != 0 { pads(main) } else { None }) else { return };
+    SetWindowLongW(page, GWL_STYLE, GetWindowLongW(page, GWL_STYLE) | WS_CLIPSIBLINGS);
+    let full = GetDlgItem(main, 1044);
+    let full_page = full != 0 && child_rect(main, page).top <= child_rect(main, full).top;
+    // MUI leaves the header background showing behind full-window pages,
+    // where it would now clip the page.
+    let header = GetDlgItem(main, 1034);
+    if header != 0 && shown(header) == full_page {
+        ShowWindow(header, if full_page { SW_HIDE } else { SW_SHOWNA });
+    }
+    SetWindowPos(page, 0, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
+    let ids: &[i32] = if full_page { &[1, 2, 3] } else { &[1028, 1, 2, 3] };
+    let mut row = RECT { left: i32::MAX, top: i32::MAX, right: 0, bottom: 0 };
+    for &id in ids {
+        let b = GetDlgItem(main, id);
+        if b == 0 {
+            continue;
+        }
+        SetWindowPos(b, 0, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
+        if id != 1028 && shown(b) {
+            let r = child_rect(main, b);
+            row.left = row.left.min(r.left);
+            row.top = row.top.min(r.top);
+            row.bottom = row.bottom.max(r.bottom);
+        }
+    }
+    // Pages are styled before they're shown, and MUI turns redrawing off and
+    // on around full-window pages without repainting; repaint once shown.
+    SetTimer(main, ID_REPAINT, 30, Some(repaint_soon));
+    if row.top == i32::MAX {
         return;
     }
-    MapWindowPoints(0, parent, &mut b, 2);
-    let gap = px(8.0, dpi_scale(parent));
-    SetWindowPos(back, 0, b.left - gap, b.top, 0, 0, 0x0001 | 0x0004 | 0x0010); // no size, z-order, activation
-    SetPropW(back, prop_moved(), 1);
+    if !full_page {
+        clear_branding(main, page, pad_y);
+    }
+    let limit = row.top - pad_y;
+    let tall = 3 * (row.bottom - row.top);
+    let mut c = GetWindow(page, GW_CHILD);
+    while c != 0 {
+        let r = child_rect(main, c);
+        if r.bottom > limit && r.right > row.left && r.bottom - r.top > tall && limit - r.top > tall / 3 {
+            SetWindowPos(c, 0, 0, 0, r.right - r.left, limit - r.top, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+        }
+        c = GetWindow(c, GW_HWNDNEXT);
+    }
+}
+
+unsafe extern "system" fn repaint_soon(h: HWND, _msg: u32, id: usize, _time: u32) {
+    KillTimer(h, id);
+    RedrawWindow(h, null(), 0, RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN | RDW_FRAME);
+}
+
+/// The branding line now shares the button row, where some pages have
+/// controls (the folder page's space lines): lift the group of controls
+/// that reaches it, or hide the line on that page if there's no room.
+unsafe fn clear_branding(main: HWND, page: HWND, pad_y: i32) {
+    let brand = GetDlgItem(main, 1028);
+    if brand == 0 {
+        return;
+    }
+    let b = child_rect(main, brand);
+    let limit = b.top - 2 * pad_y;
+    let mut kids = Vec::new();
+    let mut c = GetWindow(page, GW_CHILD);
+    while c != 0 {
+        if shown(c) {
+            kids.push((c, child_rect(main, c)));
+        }
+        c = GetWindow(c, GW_HWNDNEXT);
+    }
+    let hits = |r: &RECT| r.bottom > limit && r.top < b.bottom && r.left < b.right && r.right > b.left;
+    let over = kids.iter().filter(|(_, r)| hits(r)).map(|(_, r)| r.bottom - limit).max().unwrap_or(0);
+    if over <= 0 {
+        ShowWindow(brand, SW_SHOWNA);
+        return;
+    }
+    let first = kids.iter().filter(|(_, r)| hits(r)).map(|(_, r)| r.top).min().unwrap_or(limit);
+    let reach = first - 3 * (b.bottom - b.top);
+    let group_top = kids.iter().filter(|(_, r)| r.top >= reach).map(|(_, r)| r.top).min().unwrap_or(first);
+    let above = kids.iter().filter(|(_, r)| r.top < reach).map(|(_, r)| r.bottom).max().unwrap_or(0);
+    if group_top - over < above + pad_y {
+        ShowWindow(brand, SW_HIDE);
+        return;
+    }
+    for (h, _) in kids.iter().filter(|(_, r)| r.top >= reach) {
+        let r = child_rect(page, *h);
+        SetWindowPos(*h, 0, r.left, r.top - over, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+    }
+    ShowWindow(brand, SW_SHOWNA);
+}
+
+/// A single-line text field beside a push button (the folder field and
+/// Browse) takes the button's height.
+unsafe fn match_fields(parent: HWND) {
+    let mut e = GetWindow(parent, GW_CHILD);
+    while e != 0 {
+        if class_name(e).eq_ignore_ascii_case("Edit") && GetWindowLongW(e, GWL_STYLE) & ES_MULTILINE == 0 {
+            let er = child_rect(parent, e);
+            let mut b = GetWindow(parent, GW_CHILD);
+            while b != 0 {
+                if GetPropW(b, prop_btn()) != 0 {
+                    let br = child_rect(parent, b);
+                    if br.top < er.bottom && br.bottom > er.top {
+                        if br.top != er.top || br.bottom != er.bottom {
+                            SetWindowPos(e, 0, er.left, br.top, er.right - er.left, br.bottom - br.top, SWP_NOZORDER | SWP_NOACTIVATE);
+                        }
+                        break;
+                    }
+                }
+                b = GetWindow(b, GW_HWNDNEXT);
+            }
+        }
+        e = GetWindow(e, GW_HWNDNEXT);
+    }
 }
 
 unsafe fn class_name(h: HWND) -> String {
@@ -449,6 +667,7 @@ unsafe fn skin(h: HWND) {
         match style & BS_TYPEMASK {
             0 | BS_DEFPUSHBUTTON | BS_OWNERDRAW => skin_push(h, style),
             BS_CHECKBOX | BS_AUTOCHECKBOX | BS_3STATE | BS_AUTO3STATE | BS_RADIOBUTTON | BS_AUTORADIOBUTTON => {
+                fit_check(h);
                 SetWindowSubclass(h, check_proc, ID_CHECK, 0);
                 InvalidateRect(h, null(), 0);
             }
@@ -554,6 +773,25 @@ unsafe fn control_logfont(h: HWND) -> Option<LOGFONTW> {
     Some(lf)
 }
 
+unsafe fn text_metrics(dc: HDC) -> TEXTMETRICW {
+    let mut tm: TEXTMETRICW = zeroed();
+    GetTextMetricsW(dc, &mut tm);
+    tm
+}
+
+/// The line height of the control's font.
+unsafe fn font_height(h: HWND) -> i32 {
+    let font = SendMessageW(h, WM_GETFONT, 0, 0);
+    let dc = GetDC(h);
+    let old = if font != 0 { SelectObject(dc, font) } else { 0 };
+    let tm = text_metrics(dc);
+    if old != 0 {
+        SelectObject(dc, old);
+    }
+    ReleaseDC(h, dc);
+    tm.tmHeight
+}
+
 /// Space Grotesk Medium at the control's size, for button labels (cached).
 unsafe fn label_font(h: HWND) -> HGDIOBJ {
     let base = control_logfont(h);
@@ -629,14 +867,61 @@ unsafe fn skin_push(h: HWND, style: i32) {
     // 1 = default push button; remembered so Enter-key styling survives.
     let is_default = (style & BS_TYPEMASK) == BS_DEFPUSHBUTTON;
     SetPropW(h, prop_btn(), if is_default { 2 } else { 1 });
+    // Owner-drawn so the stock button paints nothing itself; the subclass
+    // paints it. (WM_DRAWITEM to the parent is left alone: subclassing the
+    // NSIS window crashes when nsDialogs pages swap its window procedure.)
     SetWindowLongW(h, GWL_STYLE, (style & !BS_TYPEMASK) | BS_OWNERDRAW);
     SetWindowSubclass(h, button_proc, ID_BUTTON, 0);
-    let parent = GetParent(h);
-    if parent != 0 {
-        // Idempotent: the same id replaces nothing and adds nothing new.
-        SetWindowSubclass(parent, parent_proc, ID_PARENT, 0);
-    }
+    fit_button(h);
     InvalidateRect(h, null(), 0);
+}
+
+/// Width of the label's letters in `dc` (set up with `extra` spacing),
+/// without the spacing after the last one.
+unsafe fn label_width(dc: HDC, label: &[u16], extra: i32) -> i32 {
+    let mut size = SIZE::default();
+    GetTextExtentPoint32W(dc, label.as_ptr(), label.len() as i32, &mut size);
+    size.cx - extra
+}
+
+/// Letter spacing of button labels.
+fn label_extra(s: f32) -> i32 {
+    px(1.3, s)
+}
+
+/// Widens the button if its uppercase, letter-spaced label doesn't fit with
+/// some room each side. The bottom row is laid out again; other buttons grow
+/// away from the nearer edge of their dialog.
+unsafe fn fit_button(h: HWND) {
+    let label = button_label(&window_text(h));
+    if label.is_empty() {
+        return;
+    }
+    let s = dpi_scale(h);
+    let extra = label_extra(s);
+    let dc = GetDC(h);
+    let old = SelectObject(dc, label_font(h));
+    SetTextCharacterExtra(dc, extra);
+    let ink = label_width(dc, &label, extra);
+    SetTextCharacterExtra(dc, 0);
+    SelectObject(dc, old);
+    ReleaseDC(h, dc);
+    let need = ink + 2 * px(20.0, s);
+    let parent = GetParent(h);
+    let r = child_rect(parent, h);
+    if need <= r.right - r.left {
+        return;
+    }
+    let height = r.bottom - r.top;
+    if pads(parent).is_some() && matches!(GetDlgCtrlID(h), 1..=3) {
+        SetWindowPos(h, 0, 0, 0, need, height, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+        layout_row(parent);
+        return;
+    }
+    let mut pr = RECT::default();
+    GetClientRect(parent, &mut pr);
+    let left = if r.left + r.right < pr.right { r.left } else { r.right - need };
+    SetWindowPos(h, 0, left, r.top, need, height, SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
 unsafe extern "system" fn button_proc(h: HWND, msg: u32, w: WPARAM, l: LPARAM, _id: usize, _data: usize) -> LRESULT {
@@ -659,48 +944,59 @@ unsafe extern "system" fn button_proc(h: HWND, msg: u32, w: WPARAM, l: LPARAM, _
         }
         WM_SETTEXT | WM_ENABLE => {
             let r = DefSubclassProc(h, msg, w, l);
+            if msg == WM_SETTEXT {
+                fit_button(h);
+            }
             InvalidateRect(h, null(), 0);
             return r;
+        }
+        WM_PAINT => {
+            let mut ps: PAINTSTRUCT = zeroed();
+            let dc = BeginPaint(h, &mut ps);
+            draw_button(h, dc);
+            EndPaint(h, &ps);
+            return 0;
+        }
+        WM_PRINTCLIENT => {
+            draw_button(h, w as HDC);
+            return 0;
         }
         WM_ERASEBKGND => return 1,
         WM_NCDESTROY => {
             RemovePropW(h, prop_hot());
             RemovePropW(h, prop_btn());
-            RemovePropW(h, prop_moved());
             RemoveWindowSubclass(h, button_proc, ID_BUTTON);
+            return DefSubclassProc(h, msg, w, l);
         }
         _ => {}
     }
-    DefSubclassProc(h, msg, w, l)
-}
-
-unsafe extern "system" fn parent_proc(h: HWND, msg: u32, w: WPARAM, l: LPARAM, _id: usize, _data: usize) -> LRESULT {
-    if msg == WM_DRAWITEM && l != 0 {
-        let di = &*(l as *const DRAWITEMSTRUCT);
-        if di.CtlType == ODT_BUTTON && GetPropW(di.hwndItem, prop_btn()) != 0 {
-            draw_button(di);
-            return 1;
+    if repaints_directly(msg) && (msg != WM_MOUSEMOVE || GetCapture() == h) {
+        // Press, focus and keyboard-cue changes only send the parent
+        // WM_DRAWITEM; repaint here instead.
+        let r = DefSubclassProc(h, msg, w, l);
+        if IsWindow(h) != 0 {
+            InvalidateRect(h, null(), 0);
         }
-    } else if msg == WM_NCDESTROY {
-        RemoveWindowSubclass(h, parent_proc, ID_PARENT);
+        return r;
     }
     DefSubclassProc(h, msg, w, l)
 }
 
-unsafe fn draw_button(di: &DRAWITEMSTRUCT) {
-    let h = di.hwndItem;
+unsafe fn draw_button(h: HWND, hdc: HDC) {
+    let mut rc = RECT::default();
+    GetClientRect(h, &mut rc);
     let s = dpi_scale(h);
-    let disabled = di.itemState & ODS_DISABLED != 0 || IsWindowEnabled(h) == 0;
-    let pressed = di.itemState & ODS_SELECTED != 0;
+    let disabled = IsWindowEnabled(h) == 0;
+    let pressed = SendMessageW(h, BM_GETSTATE, 0, 0) & BST_PUSHED != 0;
     let hot = GetPropW(h, prop_hot()) != 0 && !disabled;
-    let focused = di.itemState & ODS_FOCUS != 0 && di.itemState & ODS_NOFOCUSRECT == 0;
+    let focused = GetFocus() == h && SendMessageW(h, WM_QUERYUISTATE, 0, 0) & UISF_HIDEFOCUS == 0;
     // The main action: IDOK (Next / Install / Finish / Uninstall) on the
     // main window.
     let primary = GetDlgCtrlID(h) == 1;
     let label = button_label(&window_text(h));
     let font = label_font(h);
 
-    buffered(di.hDC, &di.rcItem, |dc, r| {
+    buffered(hdc, &rc, |dc, r| {
         fill(dc, r, BG);
         let text;
         if primary {
@@ -736,13 +1032,18 @@ unsafe fn draw_button(di: &DRAWITEMSTRUCT) {
         let old = SelectObject(dc, font);
         SetBkMode(dc, TRANSPARENT);
         SetTextColor(dc, text);
-        SetTextCharacterExtra(dc, px(1.3, s));
-        let mut tr = *r;
+        let extra = label_extra(s);
+        SetTextCharacterExtra(dc, extra);
+        // Centre the letters themselves (DT_CENTER ignores the spacing), and
+        // the cap height rather than the line, as labels are all caps.
+        let tm = text_metrics(dc);
+        let cap = tm.tmAscent - tm.tmInternalLeading;
+        let x = r.left + (r.right - r.left - label_width(dc, &label, extra)) / 2;
+        let mut y = r.top + (r.bottom - r.top - cap + 1) / 2 - tm.tmInternalLeading;
         if pressed && !disabled {
-            tr.top += 1;
-            tr.bottom += 1;
+            y += 1;
         }
-        DrawTextW(dc, label.as_ptr(), label.len() as i32, &mut tr, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_HIDEPREFIX);
+        TextOutW(dc, x, y, label.as_ptr(), label.len() as i32);
         SetTextCharacterExtra(dc, 0);
         SelectObject(dc, old);
     });
@@ -815,6 +1116,25 @@ unsafe extern "system" fn check_proc(h: HWND, msg: u32, w: WPARAM, l: LPARAM, _i
     DefSubclassProc(h, msg, w, l)
 }
 
+/// The box's size and the gap to its focus marks.
+fn check_box_metrics(s: f32) -> (i32, i32) {
+    (px(15.0, s), px(3.0, s))
+}
+
+/// Tall enough for the box and its focus marks, about the same centre.
+unsafe fn fit_check(h: HWND) {
+    let s = dpi_scale(h);
+    let (size, gap) = check_box_metrics(s);
+    let need = size + 2 * (gap + px(1.0, s)) + px(2.0, s);
+    let parent = GetParent(h);
+    let r = child_rect(parent, h);
+    let height = r.bottom - r.top;
+    if height < need {
+        let top = r.top - (need - height) / 2;
+        SetWindowPos(h, 0, r.left, top, r.right - r.left, need, SWP_NOZORDER | SWP_NOACTIVATE);
+    }
+}
+
 unsafe fn paint_check(h: HWND, dc: HDC) {
     let mut rc = RECT::default();
     GetClientRect(h, &mut rc);
@@ -831,9 +1151,11 @@ unsafe fn paint_check(h: HWND, dc: HDC) {
 
     buffered(dc, &rc, |dc, r| {
         fill(dc, r, BG);
-        let size = px(15.0, s);
+        let (size, gap) = check_box_metrics(s);
+        let size = size.min(r.bottom - r.top - 2 * gap).max(px(8.0, s));
         let top = r.top + (r.bottom - r.top - size) / 2;
-        let bx = RECT { left: r.left + px(1.0, s), top, right: r.left + px(1.0, s) + size, bottom: top + size };
+        let left = r.left + gap + px(1.0, s);
+        let bx = RECT { left, top, right: left + size, bottom: top + size };
         let edge = if disabled {
             LINE
         } else if checked {
@@ -886,7 +1208,6 @@ unsafe fn paint_check(h: HWND, dc: HDC) {
 
         if focused && !disabled {
             // Green corner marks around the box show keyboard focus.
-            let gap = px(3.0, s);
             let ring = RECT { left: bx.left - gap, top: bx.top - gap, right: bx.right + gap, bottom: bx.bottom + gap };
             brackets(dc, &ring, px(4.0, s), px(1.0, s), ACCENT);
         }
@@ -919,20 +1240,38 @@ unsafe fn skin_edit(h: HWND) {
     let ex = GetWindowLongW(h, GWL_EXSTYLE) & !(WS_EX_CLIENTEDGE | WS_EX_STATICEDGE);
     SetWindowLongW(h, GWL_EXSTYLE, ex);
     SetWindowLongW(h, GWL_STYLE, GetWindowLongW(h, GWL_STYLE) | WS_BORDER);
+    SetWindowSubclass(h, edit_proc, ID_EDIT, 0);
     SetWindowPos(h, 0, 0, 0, 0, 0, SWP_FRAMECHANGED_ONLY);
     let m = px(8.0, dpi_scale(h)) as usize;
     SendMessageW(h, EM_SETMARGINS, EC_LEFTMARGIN | EC_RIGHTMARGIN, ((m << 16) | m) as isize);
-    SetWindowSubclass(h, edit_proc, ID_EDIT, 0);
     RedrawWindow(h, null(), 0, RDW_FRAME | RDW_INVALIDATE);
 }
 
 unsafe extern "system" fn edit_proc(h: HWND, msg: u32, w: WPARAM, l: LPARAM, _id: usize, _data: usize) -> LRESULT {
     match msg {
+        WM_NCCALCSIZE if l != 0 => {
+            // A single-line field draws its text at the top: pad the client
+            // area so the line sits in the middle.
+            let r = DefSubclassProc(h, msg, w, l);
+            let rc = &mut *(l as *mut RECT);
+            let th = font_height(h);
+            let extra = rc.bottom - rc.top - th;
+            if th > 0 && extra > 1 && GetWindowLongW(h, GWL_STYLE) & ES_MULTILINE == 0 {
+                rc.top += extra / 2;
+                rc.bottom -= extra - extra / 2;
+            }
+            return r;
+        }
         WM_NCPAINT => {
             let dc = GetWindowDC(h);
             let mut wr = RECT::default();
             GetWindowRect(h, &mut wr);
             let r = RECT { left: 0, top: 0, right: wr.right - wr.left, bottom: wr.bottom - wr.top };
+            let mut cr = RECT::default();
+            GetClientRect(h, &mut cr);
+            MapWindowPoints(h, 0, &mut cr, 2);
+            ExcludeClipRect(dc, cr.left - wr.left, cr.top - wr.top, cr.right - wr.left, cr.bottom - wr.top);
+            fill(dc, &r, FIELD);
             frame(dc, &r, 1, if GetFocus() == h { ACCENT } else { LINE_STRONG });
             ReleaseDC(h, dc);
             return 0;
