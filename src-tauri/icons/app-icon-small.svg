@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="256" height="256">
+  <!-- App icon for small sizes (16 to 48 px: taskbar, title bar, tray,
+       Explorer): the Bifrost mark simplified so it stays readable. Bolder
+       ring, bar and diamonds, larger on the plate; the fine ticks, side bars
+       and small diamonds are left out because they blur into the background
+       below 48 px. Full detail is in app-icon.svg. -->
+  <rect width="100" height="100" rx="20" fill="#121212"/>
+  <svg x="4" y="4" width="92" height="92" viewBox="0 0 100 100">
+    <path d="M62.1,7.7A44,44 0 0 1 62.1,92.3" fill="none" stroke="#4ade80" stroke-width="9"/>
+    <path d="M37.9,92.3A44,44 0 0 1 37.9,7.7" fill="none" stroke="#4ade80" stroke-width="9"/>
+    <rect x="45.5" y="2" width="9" height="96" fill="#4ade80"/>
+    <path d="M50,13 L61,24 L50,35 L39,24Z" fill="#121212" stroke="#4ade80" stroke-width="6"/>
+    <path d="M50,65 L61,76 L50,87 L39,76Z" fill="#121212" stroke="#4ade80" stroke-width="6"/>
+    <path d="M50,41 L59,50 L50,59 L41,50Z" fill="#4ade80"/>
+  </svg>
+</svg>

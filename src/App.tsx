@@ -36,9 +36,9 @@ import Browser from "./pages/Browser";
 import Activity from "./pages/Activity";
 import History from "./pages/History";
 import Settings from "./pages/Settings";
-import logo from "./assets/bifrost-logo.png";
+import logo from "./assets/bifrost-mark.svg";
 
-/** Bifrost mark: the bridge logo, downscaled from src-tauri/icons/bifrost_logo.png. */
+/** Bifrost mark: a copy of src-tauri/icons/bifrost-mark-green.svg. */
 function Logo() {
   return <img src={logo} width={18} height={18} alt="" draggable={false} />;
 }
