@@ -6,14 +6,14 @@
 
 **Your files never sit on a server.**
 
-Direct, end-to-end encrypted transfers and shared folders between Windows and Android, with a privacy receipt for every file.<br />
+Direct, end-to-end encrypted transfers and shared folders between macOS, Windows and Android, with a privacy receipt for every file.<br />
 No account, no cloud copy, no size limit, and every transfer picks up from the last verified megabyte.<br />
 <sub>Formerly Quanta, and before that Relayless.</sub>
 
 [![Latest release](https://img.shields.io/github/v/release/MisbahKhan0009/Relayless?display_name=release&style=flat-square&color=1ed760&labelColor=181818&label=release)](https://github.com/MisbahKhan0009/Relayless/releases/latest)
 [![Build](https://img.shields.io/github/actions/workflow/status/MisbahKhan0009/Relayless/build.yml?branch=main&style=flat-square&labelColor=181818&label=build)](https://github.com/MisbahKhan0009/Relayless/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-1ed760?style=flat-square&labelColor=181818)](LICENSE)
-[![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20Android-ffffff?style=flat-square&labelColor=181818)](#download)
+[![Platforms](https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Android-ffffff?style=flat-square&labelColor=181818)](#download)
 [![Website](https://img.shields.io/badge/website-relayless-1ed760?style=flat-square&labelColor=181818)](https://misbahkhan0009.github.io/Relayless/)
 
 [**Download**](https://github.com/MisbahKhan0009/Relayless/releases/latest) &nbsp;|&nbsp;
@@ -72,7 +72,7 @@ Sending a 64 GB file across continents usually means uploading it to someone els
 | **Live speed graph** | Receive and send speed over the last two minutes, with markers for pauses, reconnects and route changes. The sidebar keeps a live speed readout and a mini calendar of your history. |
 | **Privacy receipts and history** | A receipt per finished file and a local calendar of what moved, with whom and what kind of files. Never uploaded. |
 | **Safety words** | Five words, identical on both devices, to confirm a new pairing out loud. |
-| **Windows and Android** | Windows 10/11 and Android 7.0+, in any combination. On Windows, Bifrost starts when you sign in and keeps running in the tray when you close the window (quit from the tray). On Android, transfers continue with the screen off. |
+| **macOS, Windows and Android** | macOS 10.15+, Windows 10/11 and Android 7.0+, in any combination. On Mac and Windows, Bifrost starts when you sign in and keeps running in the menu bar or tray when you close the window (quit from that icon). On Android, transfers continue with the screen off. |
 
 ## Screenshots
 
@@ -91,13 +91,14 @@ Sending a 64 GB file across continents usually means uploading it to someone els
 
 | Platform | File | Requirements |
 |---|---|---|
+| **macOS** | `Bifrost-<version>-aarch64.dmg` | macOS 10.15 or newer, Apple silicon. Open the disk image and drag Bifrost to Applications. |
 | **Windows** | `Bifrost-Setup-<version>-x64.exe` | Windows 10 or 11, 64-bit. No administrator rights needed. |
 | **Android** | `Bifrost-<version>-android.apk` | Android 7.0 or newer. One universal APK for every phone and tablet. |
 
-Get both from the **[latest release](https://github.com/MisbahKhan0009/Relayless/releases/latest)**.
+Get them from the **[latest release](https://github.com/MisbahKhan0009/Relayless/releases/latest)**. An Intel Mac can still build its own app from source.
 
 > [!NOTE]
-> The builds aren't code-signed by a certificate authority yet. On Windows, SmartScreen may show *Windows protected your PC*: choose **More info → Run anyway**. On Android, allow your browser or file manager to install apps; if Play Protect warns, choose **More details → Install anyway**.
+> The builds aren't code-signed by a certificate authority yet. On macOS, the first launch may say the app is from an unidentified developer: right-click Bifrost, choose **Open**, then **Open** again. On Windows, SmartScreen may show *Windows protected your PC*: choose **More info → Run anyway**. On Android, allow your browser or file manager to install apps; if Play Protect warns, choose **More details → Install anyway**.
 
 ### Quick start
 
@@ -166,7 +167,7 @@ Found a vulnerability? Please follow [SECURITY.md](SECURITY.md) instead of openi
 
 ## Build from source
 
-**Requirements:** Rust (stable), Node.js 22. On Windows, the WebView2 runtime (preinstalled on Windows 10 and 11). For Android: JDK 21, Android SDK and NDK.
+**Requirements:** Rust (stable), Node.js 22. On macOS, Xcode's command-line tools. On Windows, the WebView2 runtime (preinstalled on Windows 10 and 11). For Android: JDK 21, Android SDK and NDK.
 
 ```sh
 git clone https://github.com/MisbahKhan0009/Relayless
@@ -177,6 +178,7 @@ npm run tauri dev                         # run the desktop app
 npm run dev:ui                            # UI only, with demo data, in a browser
 cargo test -p relayless-core --release    # engine tests
 
+npx tauri build                           # macOS app and disk image (on a Mac)
 npx tauri build --bundles nsis            # Windows installer
 npx tauri android build --apk             # Android APK
 ```
@@ -185,7 +187,7 @@ The engine tests run real transfers between in-process peers and cover pause and
 
 ### Continuous integration
 
-Every push to `main` runs the engine tests on Linux and Windows, builds the Windows installer and the Android APK, installs and launches each one (on a clean Windows runner and an Android 13 emulator), and publishes a GitHub Release with both files attached. Android builds are signed with one key across releases so updates install in place; see [Android signing](docs/ARCHITECTURE.md#android-signing).
+Every push to `main` runs the engine tests on Linux and Windows, builds the macOS disk image, the Windows installer and the Android APK, launches each one (on a Mac runner, a clean Windows runner and an Android 13 emulator), and publishes a GitHub Release with the files attached. Android builds are signed with one key across releases so updates install in place; see [Android signing](docs/ARCHITECTURE.md#android-signing).
 
 ## Project structure
 
@@ -214,7 +216,8 @@ DESIGN.md                    Visual system: colours, type, chart and calendar ru
 - [x] Invitations, short codes and device approval
 - [x] Privacy receipts, safety words, local history and live speed graph
 - [ ] Code-signed Windows installer
-- [ ] macOS and Linux builds
+- [x] macOS app (Apple silicon disk image on each release; Intel from source)
+- [ ] Linux builds
 - [x] Uploads into shared folders, with download / upload / both access per device
 - [x] Auto-sync of a shared folder (new files only, never deletes)
 - [x] Transfers resume on launch and when the network comes back

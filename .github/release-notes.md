@@ -9,8 +9,11 @@
 
 | Device | File |
 |---|---|
+| **macOS** 10.15 or newer (Apple silicon) | `Bifrost-…-aarch64.dmg` |
 | **Android** 7.0 or newer (any phone or tablet) | `Bifrost-…-android.apk` |
 | **Windows** 10 / 11 (64-bit) | `Bifrost-Setup-…-x64.exe` |
+
+**macOS:** open the disk image and drag Bifrost to Applications. The first launch may say the app is from an unidentified developer: right-click Bifrost, choose **Open**, then **Open** again.
 
 **Android:** tap the `.apk` below on your phone, then **Install**. If asked, allow your browser or file manager to install apps. On first launch, allow *All files access* and notifications. If Play Protect shows a warning for this new app, tap **More details → Install anyway**.
 

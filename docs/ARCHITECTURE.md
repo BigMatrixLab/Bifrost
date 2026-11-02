@@ -116,4 +116,4 @@ Switching keys means existing users must uninstall once before updating.
 - pausing before any chunk finishes (mid-chunk resume), across an app restart
 - sender going offline and returning, source file modified mid-transfer
 
-CI also installs and launches the Windows installer and the Android APK (Android 13 emulator) on every push.
+CI also launches the macOS app, installs and launches the Windows installer, and installs the Android APK on an Android 13 emulator on every push.
