@@ -62,7 +62,7 @@ CI runs the same tests on Linux and Windows and builds and launches both apps.
 
 ## Releases
 
-Every push to `main` that passes CI publishes a release named `v<version>-build<run>` with the Windows installer and Android APK attached. Bump `version` in `src-tauri/tauri.conf.json`, `Cargo.toml` and `package.json` for a new version, and add an entry to [CHANGELOG.md](CHANGELOG.md).
+Every push to `main` that passes CI publishes a release named `v<version>-build<run>` with the macOS disk image, Windows installer and Android APK attached. Bump `version` in `src-tauri/tauri.conf.json`, `Cargo.toml` and `package.json` for a new version, and add an entry to [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 

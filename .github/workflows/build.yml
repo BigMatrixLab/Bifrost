@@ -146,6 +146,81 @@ jobs:
             ${{ steps.out.outputs.file }}
             ${{ steps.out.outputs.file }}.sha256
 
+  macos:
+    name: macOS app
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: macos
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      # The app bundle only. Tauri's disk-image step drives Finder with AppleScript,
+      # which is unreliable on the hosted runner; the next step makes the image with hdiutil.
+      - name: Build app
+        run: .github/scripts/run.sh npx tauri build --bundles app
+
+      - name: Smoke test (launch, check engine starts)
+        run: bash .github/scripts/macos-smoke.sh "target/release/bundle/macos/Bifrost.app"
+
+      - name: Create disk image
+        id: out
+        run: |
+          set -euo pipefail
+          app="target/release/bundle/macos/Bifrost.app"
+          test -d "$app"
+          ver=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          case "$(uname -m)" in
+            arm64|aarch64) arch=aarch64 ;;
+            x86_64) arch=x64 ;;
+            *) arch=$(uname -m) ;;
+          esac
+          dest="Bifrost-${ver}-${arch}.dmg"
+          stage=$(mktemp -d)
+          cp -R "$app" "$stage/Bifrost.app"
+          ln -s /Applications "$stage/Applications"
+          hdiutil create -volname "Bifrost" -srcfolder "$stage" -ov -format UDZO "$dest"
+          rm -rf "$stage"
+          shasum -a 256 "$dest" > "$dest.sha256"
+          mnt=$(mktemp -d)
+          hdiutil attach -nobrowse -readonly -mountpoint "$mnt" "$dest"
+          test -d "$mnt/Bifrost.app"
+          hdiutil detach "$mnt" || hdiutil detach -force "$mnt"
+          rmdir "$mnt" || true
+          echo "file=$dest" >> "$GITHUB_OUTPUT"
+          echo "Built $dest ($(du -h "$dest" | awk '{print $1}')) sha256=$(awk '{print $1}' "$dest.sha256")"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Bifrost-macOS-dmg
+          path: |
+            ${{ steps.out.outputs.file }}
+            ${{ steps.out.outputs.file }}.sha256
+          if-no-files-found: error
+
+      - name: Publish GitHub release
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.1.0-build${{ github.run_number }}
+          name: Bifrost 0.1.0 (build ${{ github.run_number }})
+          body_path: .github/release-notes.md
+          make_latest: true
+          files: |
+            ${{ steps.out.outputs.file }}
+            ${{ steps.out.outputs.file }}.sha256
+
   android:
     name: Android APK
     runs-on: ubuntu-24.04

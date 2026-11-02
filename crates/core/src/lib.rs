@@ -1594,6 +1594,16 @@ pub fn set_low_priority(enable: bool) {
         let class = if enable { BELOW_NORMAL_PRIORITY_CLASS } else { NORMAL_PRIORITY_CLASS };
         SetPriorityClass(GetCurrentProcess(), class);
     }
-    #[cfg(not(windows))]
+    #[cfg(all(unix, not(target_os = "android")))]
+    unsafe {
+        // Positive nice yields the CPU to other apps. 0 is the current process.
+        extern "C" {
+            fn setpriority(which: i32, who: u32, prio: i32) -> i32;
+        }
+        const PRIO_PROCESS: i32 = 0;
+        let prio = if enable { 10 } else { 0 };
+        let _ = setpriority(PRIO_PROCESS, 0, prio);
+    }
+    #[cfg(not(any(windows, unix)))]
     let _ = enable;
 }

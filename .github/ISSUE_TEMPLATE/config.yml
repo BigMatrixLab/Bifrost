@@ -5,4 +5,4 @@ contact_links:
     about: Please report security issues privately.
   - name: Download Bifrost
     url: https://github.com/MisbahKhan0009/Relayless/releases/latest
-    about: Latest Windows installer and Android APK.
+    about: Latest macOS disk image, Windows installer and Android APK.

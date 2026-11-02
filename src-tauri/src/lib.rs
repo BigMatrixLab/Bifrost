@@ -1,5 +1,5 @@
 //! Bifrost desktop and Android app shell: Tauri commands, events, and
-//! platform integration (tray on Windows, background service on Android).
+//! platform integration (menu-bar tray on desktop, background service on Android).
 
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -55,18 +55,53 @@ fn show_main(app: &AppHandle) {
     }
 }
 
-#[cfg_attr(target_os = "android", allow(dead_code))]
+/// Name shown to other devices. Windows reports `COMPUTERNAME` in all caps;
+/// macOS has a cased Computer Name; anything else falls back to the hostname.
+#[cfg(not(target_os = "android"))]
 fn device_name() -> String {
+    read_device_name().map(prettify_device_name).unwrap_or_else(|| {
+        if cfg!(target_os = "macos") {
+            "Mac".to_string()
+        } else {
+            "This PC".to_string()
+        }
+    })
+}
+
+#[cfg(not(target_os = "android"))]
+fn read_device_name() -> Option<String> {
+    #[cfg(target_os = "macos")]
+    if let Some(name) = command_line("scutil", &["--get", "ComputerName"]) {
+        return Some(name);
+    }
     std::env::var("COMPUTERNAME")
-        .or_else(|_| std::env::var("HOSTNAME"))
-        .map(|n| {
-            let mut c = n.to_lowercase().chars().collect::<Vec<_>>();
-            if let Some(f) = c.first_mut() {
-                *f = f.to_ascii_uppercase();
-            }
-            c.into_iter().collect()
-        })
-        .unwrap_or_else(|_| "This PC".to_string())
+        .ok()
+        .filter(|n| !n.trim().is_empty())
+        .or_else(|| std::env::var("HOSTNAME").ok().filter(|n| !n.trim().is_empty()))
+        .or_else(|| command_line("hostname", &[]))
+}
+
+#[cfg(not(target_os = "android"))]
+fn command_line(program: &str, args: &[&str]) -> Option<String> {
+    let out = std::process::Command::new(program).args(args).output().ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let name = String::from_utf8(out.stdout).ok()?.trim().to_string();
+    if name.is_empty() { None } else { Some(name) }
+}
+
+#[cfg(not(target_os = "android"))]
+fn prettify_device_name(name: String) -> String {
+    let name = name.trim().to_string();
+    if name.chars().any(|c| c.is_lowercase()) {
+        return name;
+    }
+    let mut chars = name.to_lowercase().chars().collect::<Vec<_>>();
+    if let Some(first) = chars.first_mut() {
+        *first = first.to_ascii_uppercase();
+    }
+    chars.into_iter().collect()
 }
 
 fn init_logging(dir: &std::path::Path) {
@@ -393,7 +428,7 @@ fn remove_outgoing(s: State<AppState>, id: String) {
     s.core.remove_outgoing(&id)
 }
 
-/// Opens Explorer with the file selected (or the folder itself).
+/// Shows the file in the system file manager (Explorer, Finder, or the desktop's file app).
 #[tauri::command]
 fn reveal_path(path: String) -> CmdResult<()> {
     let p = PathBuf::from(&path);
@@ -409,12 +444,22 @@ fn reveal_path(path: String) -> CmdResult<()> {
         cmd.spawn().map_err(|e| e.to_string())?;
         Ok(())
     }
+    #[cfg(target_os = "macos")]
+    {
+        let mut cmd = std::process::Command::new("open");
+        if p.is_file() {
+            cmd.arg("-R");
+        }
+        cmd.arg(&p);
+        cmd.spawn().map_err(|e| e.to_string())?;
+        Ok(())
+    }
     #[cfg(target_os = "android")]
     {
         let _ = p;
         Err("Use Open on Android.".into())
     }
-    #[cfg(not(any(windows, target_os = "android")))]
+    #[cfg(not(any(windows, target_os = "android", target_os = "macos")))]
     {
         let target = if p.is_file() { p.parent().map(PathBuf::from).unwrap_or(p) } else { p };
         std::process::Command::new("xdg-open").arg(target).spawn().map_err(|e| e.to_string())?;
