@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { isActive, ago } from "../format";
 import { useStore } from "../store";
 import { Button, Empty, LinkReadout, SectionHeader, linkOf, usePhone, type Link } from "../ui";
-import { DotGlobe, relayRegion } from "../hud";
+import { DotGlobe, relayRegion, type GlobeDevice } from "../hud";
 import { FocusTransfer, useFocusJob } from "../focus";
 import { JobRow, SendRow } from "./Transfers";
 import { useShareFolder } from "./Shares";
@@ -26,12 +26,38 @@ function relayHost(url: string | null): string {
 
 /**
  * This device's network state. The globe marks the public relay regions and
- * which one is home; no device locations are looked up or shown.
+ * which one is home. Paired devices orbit it (offline ones dimmed), with a
+ * live wire while data moves; no device locations are looked up or shown.
  */
 function NetworkPanel() {
-  const { network, remotes, grants, settings } = useStore();
+  const { network, remotes, grants, settings, jobs, outgoing, pushes, incoming } = useStore();
   const online = !!network?.online;
   const home = relayRegion(network?.relayUrl);
+  const devices = useMemo<GlobeDevice[]>(() => {
+    const m = new Map<string, GlobeDevice>();
+    const add = (id: string, name: string, on: boolean) => {
+      const d = m.get(id);
+      if (d) d.online ||= on;
+      else m.set(id, { id, name, online: on, rx: false, tx: false });
+    };
+    // Devices that share folders with this one, and devices using this one's folders.
+    for (const r of remotes) add(r.peerId, r.name, r.status.state === "connected");
+    for (const g of grants) add(g.peerId, g.deviceName, g.connected);
+    const mark = (id: string, k: "rx" | "tx") => {
+      const d = m.get(id);
+      if (d) {
+        d[k] = true;
+        d.online = true;
+      }
+    };
+    // Arriving here: downloads from it, and its uploads into this device's folders.
+    for (const j of Object.values(jobs)) if (j.status === "downloading") mark(j.peerId, "rx");
+    for (const f of incoming) if (f.status === "receiving") mark(f.peerId, "rx");
+    // Leaving here: what it downloads from this device, and uploads into its folders.
+    for (const o of outgoing) if (o.status === "sending") mark(o.peerId, "tx");
+    for (const p of pushes) if (p.status === "uploading") mark(p.peerId, "tx");
+    return [...m.values()];
+  }, [remotes, grants, jobs, outgoing, pushes, incoming]);
   const linked = new Set([
     ...remotes.filter((r) => r.status.state === "connected").map((r) => r.peerId),
     ...grants.filter((g) => g.connected).map((g) => g.peerId),
@@ -47,7 +73,7 @@ function NetworkPanel() {
         </span>
       </div>
       <div className="netp-globe">
-        <DotGlobe size={176} online={online} home={home} label={settings?.deviceName} />
+        <DotGlobe size={176} online={online} home={home} label={settings?.deviceName} devices={devices} />
       </div>
       <dl className="netp-kv">
         <div>

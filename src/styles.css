@@ -4235,6 +4235,136 @@ html {
   background: rgba(var(--bg-rgb), 0.8);
 }
 
+/* Paired devices on an orbit around the globe (not at real places). Online
+   devices have a faint wire to the globe; while data moves, light runs along
+   it toward the receiver: green arriving here, silver leaving. Offline
+   devices are dimmed and have no wire. */
+.dg-orbit {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+.dg-orbit-ring {
+  fill: none;
+  stroke: rgba(var(--ink-rgb), 0.07);
+  stroke-width: 1;
+  stroke-dasharray: 1 4;
+}
+.dg-wire {
+  stroke: rgba(var(--ink-rgb), 0.22);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+.dg-wire-g.busy .dg-wire {
+  stroke: rgba(var(--ink-rgb), 0.14);
+  stroke-dasharray: none;
+}
+.dg-pulse {
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-dasharray: 4 8;
+  animation: dg-flow 0.9s linear infinite;
+}
+.dg-pulse.in {
+  stroke: var(--series-in);
+  filter: drop-shadow(0 0 3px rgba(var(--in-rgb), 0.9));
+}
+.dg-pulse.out {
+  stroke: var(--series-out);
+  filter: drop-shadow(0 0 3px rgba(var(--out-rgb), 0.8));
+}
+/* Lines are drawn from sender to receiver, so the dashes always move forward. */
+@keyframes dg-flow {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+.dg-dev-dot {
+  fill: var(--text);
+  stroke: rgba(var(--bg-rgb), 0.9);
+  stroke-width: 1.5;
+}
+.dg-dev.off .dg-dev-dot {
+  fill: rgba(var(--bg-rgb), 0.9);
+  stroke: rgba(var(--ink-rgb), 0.3);
+  stroke-width: 1;
+}
+.dg-dev.rx .dg-dev-dot {
+  fill: var(--series-in);
+}
+.dg-dev.tx .dg-dev-dot {
+  fill: var(--series-out);
+}
+.dg-dev-halo {
+  fill: none;
+  stroke: var(--series-in);
+  stroke-width: 1;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: dg-ping 1.6s ease-out infinite;
+}
+.dg-dev.tx .dg-dev-halo {
+  stroke: var(--series-out);
+}
+@keyframes dg-ping {
+  from {
+    opacity: 0.8;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+}
+.dg-dev-label {
+  position: absolute;
+  max-width: 92px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  color: var(--text-2);
+  pointer-events: auto;
+  cursor: default;
+}
+.dg-dev-label.up {
+  translate: -50% calc(-100% - 7px);
+}
+.dg-dev-label.down {
+  translate: -50% 7px;
+}
+.dg-dev-label.off {
+  color: var(--text-3);
+  opacity: 0.6;
+}
+.dg-dev-label.rx {
+  color: var(--series-in);
+}
+.dg-dev-label.tx {
+  color: var(--series-out);
+}
+.dg-more {
+  position: absolute;
+  translate: -50% -100%;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dg-pulse,
+  .dg-dev-halo {
+    animation: none;
+  }
+  .dg-pulse {
+    stroke-dasharray: none;
+  }
+}
+
 .sr-only {
   position: absolute;
   width: 1px;

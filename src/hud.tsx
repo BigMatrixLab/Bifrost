@@ -183,6 +183,127 @@ export function Globe({ size = 164, online }: { size?: number; online: boolean }
   );
 }
 
+// ------------------------------------------------------------------ paired devices around the globe
+
+/** A paired device as the globe shows it. */
+export interface GlobeDevice {
+  id: string;
+  name: string;
+  online: boolean;
+  /** Data is arriving from it right now. */
+  rx: boolean;
+  /** Data is going to it right now. */
+  tx: boolean;
+}
+
+/** Most devices drawn on the orbit; the rest are counted. */
+const ORBIT_MAX = 8;
+/** Half-width of each arc devices sit on, either side of straight up and down. */
+const ARC_HALF = 55;
+
+/** Extra distance for every other label on a crowded arc, so neighbours don't touch. */
+const STAGGER = 13;
+
+/** Box the globe needs with an orbit of radius `r` around it and `n` devices. */
+function orbitBox(r: number, n: number) {
+  // Dots stay within ±(90 - ARC_HALF)° of vertical, so the sides need less room.
+  const w = Math.round(2 * (r * Math.cos(((90 - ARC_HALF) * Math.PI) / 180) + 46));
+  // An arc with three or more devices staggers its labels.
+  const h = Math.round(2 * (r + 26 + (Math.min(n, ORBIT_MAX) >= 5 ? STAGGER : 0)));
+  return { w, h };
+}
+
+/**
+ * Paired devices on an orbit around the globe, not at a place on it:
+ * Bifrost doesn't know where a device is, so the position only spreads them
+ * out (active first, then online, then offline). Each online device has a
+ * wire to the globe; while data moves, light runs along it toward the
+ * receiver, green for data arriving here and silver for data leaving.
+ * Offline devices are dimmed, with no wire.
+ */
+function Orbit({ devices, cx, cy, rim, r }: { devices: GlobeDevice[]; cx: number; cy: number; rim: number; r: number }) {
+  const sorted = [...devices].sort(
+    (a, b) =>
+      Number(b.rx || b.tx) - Number(a.rx || a.tx) || Number(b.online) - Number(a.online) || a.name.localeCompare(b.name),
+  );
+  const shown = sorted.slice(0, ORBIT_MAX);
+  const more = sorted.length - shown.length;
+  // Top arc gets the first half (the busiest), the bottom arc the rest.
+  const top = Math.ceil(shown.length / 2);
+  const placed = shown.map((d, i) => {
+    const up = i < top;
+    const k = up ? top : shown.length - top;
+    const j = up ? i : i - top;
+    const deg = (up ? -90 : 90) - ARC_HALF + ((j + 0.5) * 2 * ARC_HALF) / k;
+    const a = (deg * Math.PI) / 180;
+    const cos = Math.cos(a);
+    const sin = Math.sin(a);
+    // With three or more on an arc, every other label sits a row further out.
+    const lift = k >= 3 && j % 2 === 1 ? STAGGER : 0;
+    return { d, up, lift, x: cx + r * cos, y: cy + r * sin, rx0: cx + (rim + 2) * cos, ry0: cy + (rim + 2) * sin, nx: -sin, ny: cos };
+  });
+  return (
+    <>
+      <svg className="dg-orbit" width={cx * 2} height={cy * 2} viewBox={`0 0 ${cx * 2} ${cy * 2}`} aria-hidden="true">
+        <circle cx={cx} cy={cy} r={r} className="dg-orbit-ring" />
+        {placed.map(({ d, x, y, rx0, ry0, nx, ny }) => {
+          if (!d.online) return null;
+          // Both directions at once: two strands side by side.
+          const both = d.rx && d.tx;
+          const off = both ? 1.8 : 0;
+          // Stop just short of the dot.
+          const back = 5 / Math.max(1, r - rim - 2);
+          const ex = x - (x - rx0) * back;
+          const ey = y - (y - ry0) * back;
+          return (
+            <g key={d.id} className={`dg-wire-g ${d.rx || d.tx ? "busy" : ""}`}>
+              <line x1={rx0} y1={ry0} x2={ex} y2={ey} className="dg-wire" />
+              {/* Light runs from sender to receiver. */}
+              {d.rx && (
+                <line x1={ex + nx * off} y1={ey + ny * off} x2={rx0 + nx * off} y2={ry0 + ny * off} className="dg-pulse in" />
+              )}
+              {d.tx && (
+                <line x1={rx0 - nx * off} y1={ry0 - ny * off} x2={ex - nx * off} y2={ey - ny * off} className="dg-pulse out" />
+              )}
+            </g>
+          );
+        })}
+        {placed.map(({ d, x, y }) => (
+          <g key={d.id} className={`dg-dev ${d.online ? "on" : "off"} ${d.rx ? "rx" : d.tx ? "tx" : ""}`}>
+            {(d.rx || d.tx) && <circle cx={x} cy={y} r={7} className="dg-dev-halo" />}
+            <circle cx={x} cy={y} r={3.5} className="dg-dev-dot" />
+          </g>
+        ))}
+      </svg>
+      {placed.map(({ d, up, lift, x, y }) => (
+        <span
+          key={d.id}
+          className={`dg-dev-label ${up ? "up" : "down"} ${d.online ? "on" : "off"} ${d.rx ? "rx" : d.tx ? "tx" : ""}`}
+          style={{ left: x, top: up ? y - lift : y + lift }}
+          title={`${d.name}: ${d.online ? (d.rx && d.tx ? "receiving and sending" : d.rx ? "sending to you" : d.tx ? "receiving from you" : "connected") : "offline"}`}
+          aria-hidden="true"
+        >
+          {d.name}
+        </span>
+      ))}
+      {more > 0 && (
+        <span className="dg-more" style={{ left: cx, top: cy * 2 - 4 }} aria-hidden="true">
+          +{more} more
+        </span>
+      )}
+    </>
+  );
+}
+
+/** Screen-reader summary of the devices on the orbit. */
+function orbitText(devices: GlobeDevice[]) {
+  if (!devices.length) return "";
+  const parts = devices.map((d) =>
+    !d.online ? `${d.name} (offline)` : d.rx && d.tx ? `${d.name} (sending and receiving)` : d.rx ? `${d.name} (sending to you)` : d.tx ? `${d.name} (receiving from you)` : `${d.name} (connected)`,
+  );
+  return ` Paired devices: ${parts.join("; ")}.`;
+}
+
 // ------------------------------------------------------------------ dotted globe (cobe)
 
 /**
@@ -266,15 +387,29 @@ const facing = (lon: number) => (3 * Math.PI) / 2 - (lon * Math.PI) / 180;
  * the home relay in green. These are the servers that help devices find each
  * other and, when routers block a direct path, forward encrypted packets.
  *
- * Unlike the showcase it draws no arcs: relays don't send data to each
- * other, and Bifrost never knows where a peer is, so any line between
- * places would be made up. No device is ever placed on the globe.
+ * Unlike the showcase it draws no arcs between places: relays don't send
+ * data to each other, and Bifrost never knows where a peer is. Paired
+ * devices sit on an orbit around the globe instead (see `Orbit`), never at
+ * a location on it.
  *
  * It only animates while it's on screen, the device is online and the user
  * hasn't asked for reduced motion, at about 30 frames a second, so it costs
  * almost nothing when nobody is looking at it.
  */
-export function DotGlobe({ size = 170, online, home, label }: { size?: number; online: boolean; home: string | null; label?: string }) {
+export function DotGlobe({
+  size = 170,
+  online,
+  home,
+  label,
+  devices = [],
+}: {
+  size?: number;
+  online: boolean;
+  home: string | null;
+  label?: string;
+  /** Paired devices, drawn on an orbit around the globe. */
+  devices?: GlobeDevice[];
+}) {
   const ref = useRef<HTMLCanvasElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const [ok] = useState(hasWebGL);
@@ -407,16 +542,31 @@ export function DotGlobe({ size = 170, online, home, label }: { size?: number; o
     };
   }, [ok, size, online, home, light]);
 
-  if (!ok) return <Globe size={size} online={online} />;
-  // A HUD frame around the globe: a tick scale, in SVG.
-  const box = Math.round(size * 1.12);
-  const c = box / 2;
+  // A HUD frame around the globe: a tick scale, in SVG. With paired devices
+  // the box grows to fit their orbit.
+  const orbitR = size * 0.62;
+  const box = devices.length ? orbitBox(orbitR, devices.length) : { w: Math.round(size * 1.12), h: Math.round(size * 1.12) };
+  const cx = box.w / 2;
+  const cy = box.h / 2;
   const tr = size * 0.5;
+  if (!ok) {
+    return (
+      <div className={`dot-globe ${online ? "on" : "off"}`} style={{ width: box.w, height: box.h }}>
+        <div className="dg-stage" style={{ width: size, height: size }}>
+          <Globe size={size} online={online} />
+        </div>
+        {devices.length > 0 && <Orbit devices={devices} cx={cx} cy={cy} rim={size * 0.34} r={orbitR} />}
+        <span className="sr-only">{orbitText(devices)}</span>
+      </div>
+    );
+  }
   return (
-    <div className={`dot-globe ${online ? "on" : "off"}`} style={{ width: box, height: box }}>
-      <svg className="dg-frame" width={box} height={box} viewBox={`0 0 ${box} ${box}`} aria-hidden="true">
-        <circle cx={c} cy={c} r={tr} className="dg-ticks" strokeDasharray={`0.8 ${((2 * Math.PI * tr) / 90 - 0.8).toFixed(3)}`} />
+    <div className={`dot-globe ${online ? "on" : "off"}`} style={{ width: box.w, height: box.h }}>
+      <svg className="dg-frame" width={box.w} height={box.h} viewBox={`0 0 ${box.w} ${box.h}`} aria-hidden="true">
+        <circle cx={cx} cy={cy} r={tr} className="dg-ticks" strokeDasharray={`0.8 ${((2 * Math.PI * tr) / 90 - 0.8).toFixed(3)}`} />
       </svg>
+      {/* cobe's disc rim is at about 0.4 of the canvas from its centre. */}
+      {devices.length > 0 && <Orbit devices={devices} cx={cx} cy={cy} rim={size * 0.4} r={orbitR} />}
       <div className="dg-stage" ref={stage} style={{ width: size, height: size }}>
         {/* cobe moves the canvas into a wrapper of its own, so React keeps
             nothing else in this div. */}
@@ -442,6 +592,7 @@ export function DotGlobe({ size = 170, online, home, label }: { size?: number; o
       </div>
       <span className="sr-only">
         Public relay regions: {RELAY_REGIONS.map((r) => `${r.name} (${r.code})${r.code === home ? `, your home relay${label ? ` (${label})` : ""}` : ""}`).join("; ")}.
+        {orbitText(devices)}
       </span>
     </div>
   );
