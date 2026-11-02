@@ -8,7 +8,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
-use iroh::endpoint::{Connection, RecvStream, SendStream, VarInt};
+use iroh::endpoint::{Connection, RecvStream, SendStream, StoppedError, VarInt, WriteError};
 use iroh::EndpointId;
 use tokio::sync::oneshot;
 use tracing::{debug, warn};
@@ -797,6 +797,32 @@ async fn stat(share: &ShareRow, path: &[String]) -> Response {
     .unwrap_or_else(|_| Response::err(ErrCode::Io, "internal error"))
 }
 
+/// Runs a write on a chunk stream, ending it as soon as the receiver stops
+/// the stream (pause, cancel, a moved or failed chunk).
+///
+/// A plain write doesn't always notice: when connection-level flow control
+/// is used up, noq reports the write as blocked before it checks for
+/// STOP_SENDING, and if the stream's own window is also full nothing wakes
+/// the writer again until the connection closes. The handler would then hang
+/// on, counting as an active stream with an unfinished chunk. The `stopped`
+/// future (from `SendStream::stopped`, created before the write) is woken by
+/// the STOP_SENDING itself.
+async fn unless_stopped<T, E: From<WriteError>>(
+    stopped: impl std::future::Future<Output = Result<Option<VarInt>, StoppedError>>,
+    write: impl std::future::Future<Output = Result<T, E>>,
+) -> Result<T, E> {
+    tokio::select! {
+        biased;
+        r = write => r,
+        s = stopped => Err(E::from(match s {
+            Ok(Some(code)) => WriteError::Stopped(code),
+            Ok(None) => WriteError::ClosedStream,
+            Err(StoppedError::ConnectionLost(e)) => WriteError::ConnectionLost(e),
+            Err(StoppedError::ZeroRttRejected) => WriteError::ZeroRttRejected,
+        })),
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 async fn serve_chunk(
     inner: &Arc<Inner>,
@@ -886,7 +912,7 @@ async fn serve_chunk(
         }
     };
 
-    if let Err(e) = write_frame(send, &Response::Chunk { len: len - from }).await {
+    if let Err(e) = unless_stopped(send.stopped(), write_frame(send, &Response::Chunk { len: len - from })).await {
         let cat = diag::classify_anyhow(&e);
         let outcome = if cat == diag::ErrCat::PeerStopped { "stopped" } else { "failed" };
         if outcome == "failed" {
@@ -977,8 +1003,8 @@ async fn serve_chunk(
                 }
             };
             let t = Instant::now();
-            let wrote = match send.write_all(&buf[..n]).await {
-                Ok(()) => send.write_all(&hash).await,
+            let wrote = match unless_stopped(send.stopped(), send.write_all(&buf[..n])).await {
+                Ok(()) => unless_stopped(send.stopped(), send.write_all(&hash)).await,
                 Err(e) => Err(e),
             };
             let wd = t.elapsed();

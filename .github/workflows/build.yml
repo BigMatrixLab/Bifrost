@@ -152,6 +152,19 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      # The Rust and Gradle builds plus the emulator system image don't fit in
+      # the runner's free space (the emulator step failed with "No space left
+      # on device"). Drop preinstalled toolchains this job never uses.
+      - name: Free disk space
+        shell: bash
+        run: |
+          df -h /
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/share/swift \
+            /usr/local/share/boost /usr/local/share/powershell /usr/local/share/chromium \
+            /opt/hostedtoolcache/CodeQL /opt/microsoft /opt/google/chrome
+          sudo docker image prune --all --force > /dev/null 2>&1 || true
+          df -h /
+
       - uses: actions/setup-node@v5
         with:
           node-version: 22
