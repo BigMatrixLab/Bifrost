@@ -1,23 +1,34 @@
 import { useState } from "react";
 import { FolderOpen, KeyRound, Monitor, PlugZap, RefreshCw, Trash2, Waypoints, Zap } from "lucide-react";
-import { api, canDownload, canUpload, errorText, permissionText, type Remote, type RemoteShare } from "../api";
-import { ago, speed } from "../format";
+import { api, canDownload, canUpload, errorText, permissionText, type Job, type Remote, type RemoteShare } from "../api";
+import { ago, isActive, speed } from "../format";
 import { pickFolder } from "../platform";
 import { useStore } from "../store";
 import { Button, Empty, HudStrip, IconButton, Modal, SafetyWords, SectionHeader, SignalBars, Toggle, linkOf } from "../ui";
 
 /** Auto-sync for one shared folder: on/off, its local folder and last check. */
 function SyncButton({ peerId, share }: { peerId: string; share: RemoteShare }) {
-  const { syncs, settings, toast, refreshSyncs } = useStore();
+  const { syncs, settings, toast, refreshSyncs, jobs } = useStore();
   const sync = syncs.find((x) => x.peerId === peerId && x.shareId === share.id);
+  // Busy while a check runs (the first one starts as soon as sync is turned
+  // on) or while files from this folder download into the sync folder.
+  const norm = (p: string) => p.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+  const syncDir = sync ? norm(sync.destDir) + "/" : "";
+  // Not while a job waits for the other device: nothing is moving then.
+  const moving = (s: Job["status"]) => isActive(s) && s !== "waiting_peer" && s !== "waiting_direct";
+  const downloading =
+    !!sync &&
+    Object.values(jobs).some((j) => j.peerId === peerId && j.shareId === share.id && moving(j.status) && norm(j.destPath).startsWith(syncDir));
+  const active = !!sync && (sync.syncing || (!sync.lastSyncAt && !sync.lastError) || downloading);
   const [open, setOpen] = useState(false);
   const [dest, setDest] = useState("");
-  const [existing, setExisting] = useState(false);
+  // On by default: turning sync on downloads what's there now, then new files.
+  const [existing, setExisting] = useState(true);
   const [busy, setBusy] = useState(false);
   const sep = (settings?.downloadDir ?? "").includes("\\") ? "\\" : "/";
   const openDialog = () => {
     setDest(sync?.destDir ?? `${settings?.downloadDir ?? ""}${sep}${share.name.replace(/[<>:"/\\|?*]/g, "_")}`);
-    setExisting(false);
+    setExisting(true);
     setOpen(true);
   };
   const run = async (f: () => Promise<unknown>, ok: string) => {
@@ -43,7 +54,7 @@ function SyncButton({ peerId, share }: { peerId: string; share: RemoteShare }) {
       <Button
         size="sm"
         variant={sync ? "primary" : "secondary"}
-        icon={<RefreshCw size={14} className={sync?.syncing ? "spin" : ""} />}
+        icon={<RefreshCw size={14} className={active ? "spin" : ""} />}
         title={title}
         onClick={openDialog}
       >
