@@ -254,7 +254,9 @@ fn expand_dir(root: &Path) -> Expanded {
         let mut any = false;
         for e in rd.flatten() {
             let Ok(ft) = e.file_type() else { continue };
-            if ft.is_symlink() {
+            // System files (.DS_Store, Thumbs.db, ...) stay behind; a folder
+            // holding only those counts as empty.
+            if ft.is_symlink() || crate::util::is_system_file(&e.file_name().to_string_lossy()) {
                 continue;
             }
             any = true;

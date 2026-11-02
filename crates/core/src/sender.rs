@@ -22,7 +22,7 @@ use crate::proto::*;
 use crate::types::{perm_can_download, perm_can_upload, AccessRequest, CoreEvent};
 use crate::upload::{self as up, is_upload_temp};
 use crate::util::{
-    now_ms, open_source, random_id, read_exact_at, short_peer, system_time_ms,
+    is_system_file, now_ms, open_source, random_id, read_exact_at, short_peer, system_time_ms,
 };
 
 const APPROVAL_TIMEOUT: Duration = Duration::from_secs(15 * 60);
@@ -715,7 +715,7 @@ async fn list_dir(inner: &Inner, peer: EndpointId, share: &ShareRow, perm: Strin
             }
             let Ok(meta) = e.metadata() else { continue };
             let name = e.file_name().to_string_lossy().to_string();
-            if ft.is_file() && is_upload_temp(&name) {
+            if (ft.is_file() && is_upload_temp(&name)) || is_system_file(&name) {
                 continue;
             }
             let size = if ft.is_dir() { 0 } else { meta.len() };
@@ -754,7 +754,7 @@ async fn walk_dir(share: &ShareRow, path: &[String]) -> Response {
                     continue;
                 }
                 let name = e.file_name().to_string_lossy().to_string();
-                if ft.is_file() && is_upload_temp(&name) {
+                if (ft.is_file() && is_upload_temp(&name)) || is_system_file(&name) {
                     continue;
                 }
                 let mut r = rel.clone();

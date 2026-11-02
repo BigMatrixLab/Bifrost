@@ -39,11 +39,13 @@ if [ "$alive" != yes ]; then
   cat "$stdout" || true
 fi
 
-# A second launch must hand over to the running instance and exit.
+# A second launch must hand over to the running instance and exit. Allow
+# 25 s: the handoff can wait up to 10 s for the running instance to answer,
+# and a cold runner is slow to start a process.
 "$bin" --minimized >"$stdout.2" 2>&1 &
 pid2=$!
 second_exited=no
-for _ in $(seq 1 12); do
+for _ in $(seq 1 25); do
   if ! kill -0 "$pid2" 2>/dev/null; then
     second_exited=yes
     break

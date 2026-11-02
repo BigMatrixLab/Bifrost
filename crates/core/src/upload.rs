@@ -747,6 +747,11 @@ fn check_tree(dir: &Path, rel: &[String], owned: &HashMap<String, UploadRow>, my
             }
             return Err(Response::err(ErrCode::Denied, "Someone is still uploading into this folder."));
         }
+        // Files the owner's system added by itself (Finder's .DS_Store when
+        // the owner opens the folder) don't stop the uploader deleting it.
+        if crate::util::is_system_file(&name) {
+            continue;
+        }
         let mut sub = rel.to_vec();
         sub.push(name);
         let meta = e.metadata().map_err(|e| Response::err(ErrCode::Io, format!("{e}")))?;

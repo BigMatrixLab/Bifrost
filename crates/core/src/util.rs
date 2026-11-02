@@ -130,6 +130,37 @@ const RESERVED: &[&str] = &[
     "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
 ];
 
+/// Files and folders an operating system creates by itself, which nobody
+/// means to share: Finder's `.DS_Store` and `._*` resource forks, macOS
+/// volume folders, and Windows's thumbnail caches, `desktop.ini` and system
+/// folders. They are left out of listings, downloads, auto-sync and uploads.
+pub fn is_system_file(name: &str) -> bool {
+    let n = name.to_ascii_lowercase();
+    n.starts_with("._")
+        || matches!(
+            n.as_str(),
+            ".ds_store"
+                | ".localized"
+                | ".spotlight-v100"
+                | ".trashes"
+                | ".fseventsd"
+                | ".temporaryitems"
+                | ".documentrevisions-v100"
+                | ".apdisk"
+                | "thumbs.db"
+                | "ehthumbs.db"
+                | "ehthumbs_vista.db"
+                | "desktop.ini"
+                | "$recycle.bin"
+                | "system volume information"
+        )
+}
+
+/// True if any part of a relative path is a system file or folder.
+pub fn in_system_path(path: &[String]) -> bool {
+    path.iter().any(|c| is_system_file(c))
+}
+
 /// Makes an untrusted remote filename safe to create locally on Windows.
 pub fn sanitize_filename(name: &str) -> String {
     let mut s: String = name

@@ -803,12 +803,16 @@ impl Core {
                 if self.inner.db.set_remote_share_permission(peer_id, share_id, &permission).unwrap_or(false) {
                     self.inner.emit(CoreEvent::RemotesChanged);
                 }
+                // Current owners leave system files out; older ones don't.
+                let n = entries.len();
+                let entries: Vec<_> = entries.into_iter().filter(|e| !util::is_system_file(&e.name)).collect();
+                let hidden = (n - entries.len()) as u64;
                 Ok(ListResult {
                     entries: entries
                         .into_iter()
                         .map(|e| RemoteEntry { name: e.name, is_dir: e.dir, size: e.size, modified_ms: e.mtime_ms, mine: e.mine })
                         .collect(),
-                    total,
+                    total: total.saturating_sub(hidden),
                     offset,
                     permission,
                 })
@@ -943,7 +947,8 @@ impl Core {
                     self.inner.log("warning", &format!("\"{last}\" has too many files; only the first {} were queued", list.len()), None);
                 }
                 let base = PathBuf::from(sanitize_filename(&last));
-                for f in list {
+                // Older owners still list system files (.DS_Store, Thumbs.db, ...).
+                for f in list.into_iter().filter(|f| !util::in_system_path(&f.path)) {
                     let mut rel = base.clone();
                     for c in &f.path {
                         rel.push(sanitize_filename(c));

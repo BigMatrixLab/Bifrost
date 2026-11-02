@@ -105,6 +105,8 @@ async fn pass_inner(inner: &Arc<Inner>, row: &mut SyncRow) -> Result<usize> {
         .await
         .map_err(|e| anyhow!("{e}"))?;
     let Response::Walk { files, truncated } = resp else { bail!("Unexpected reply from the owner.") };
+    // Older owners still list system files (.DS_Store, Thumbs.db, ...).
+    let files: Vec<_> = files.into_iter().filter(|f| !crate::util::in_system_path(&f.path)).collect();
 
     let seen = inner.db.sync_seen(&row.peer_id, &row.share_id)?;
     let present: HashSet<String> = files.iter().map(|f| f.path.join("/")).collect();

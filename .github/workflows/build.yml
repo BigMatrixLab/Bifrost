@@ -112,14 +112,19 @@ jobs:
           $mem = if ($alive) { [math]::Round((Get-Process -Id $app.Id).WorkingSet64 / 1MB, 1) } else { 0 }
           Write-Host "Process alive: $alive, working set: $mem MB"
           # A second launch must hand over to the running instance and exit.
+          # The handoff waits up to 10 s for the running instance to answer
+          # (tauri-plugin-single-instance), and a cold runner can take a few
+          # seconds just to start the process, so allow 25 s.
           $second = Start-Process -FilePath $exe.FullName -PassThru
-          Start-Sleep -Seconds 6
-          $secondExited = $second.HasExited
-          Write-Host "Second instance exited (single-instance handoff): $secondExited"
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+          $secondExited = $second.WaitForExit(25000)
+          Write-Host "Second instance exited (single-instance handoff): $secondExited after $([math]::Round($sw.Elapsed.TotalSeconds, 1)) s"
           Get-Process -Name "Bifrost" -ErrorAction SilentlyContinue | Stop-Process -Force
           $ok = $alive -and ($text -match "started as") -and $secondExited
           $summary = "alive=$alive started=$($text -match 'started as') secondExited=$secondExited ws=${mem}MB"
           if (-not $ok) {
+            # Read the log again: it now includes anything logged during the handoff.
+            if (Test-Path $log) { $text = Get-Content $log -Raw }
             $enc = ($text -replace '%','%25' -replace "`r",'' -replace "`n",'%0A')
             Write-Host "::error title=Smoke test failed ($summary)::$enc"
             exit 1
