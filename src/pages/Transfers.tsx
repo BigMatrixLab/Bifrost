@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import {
   ChevronDown,
-  ChevronRight,
   CirclePause,
   Download,
   ExternalLink,
@@ -78,11 +77,6 @@ export function JobRow({ job, compact = false }: { job: Job; compact?: boolean }
       </div>
       <div className="stack">
         <div className="hstack">
-          {!compact && (
-            <IconButton label={open ? "Hide details" : "Show details"} onClick={() => setOpen(!open)} style={{ width: 22, height: 22, marginLeft: -4 }}>
-              {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-            </IconButton>
-          )}
           <span className="job-title truncate selectable" title={job.remotePath.join(" / ")}>{job.displayName}</span>
         </div>
         <div className="job-meta">
@@ -125,6 +119,16 @@ export function JobRow({ job, compact = false }: { job: Job; compact?: boolean }
         {["completed", "canceled", "failed"].includes(job.status) && (
           <IconButton label="Remove from list" disabled={busy} onClick={() => run(() => api.removeJob(job.id))}>
             <Trash2 size={15} />
+          </IconButton>
+        )}
+        {!compact && (
+          <IconButton
+            label={open ? "Hide details" : "Show details"}
+            aria-expanded={open}
+            className={`job-chev ${open ? "open" : ""}`}
+            onClick={() => setOpen(!open)}
+          >
+            <ChevronDown size={16} />
           </IconButton>
         )}
       </div>

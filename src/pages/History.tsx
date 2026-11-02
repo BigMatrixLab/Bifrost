@@ -204,6 +204,16 @@ function share(part: number, total: number) {
   return p > 0 && p < 0.01 ? "<1%" : `${Math.round(p * 100)}%`;
 }
 
+/** Colour key for the split meters, shown on both side cards. */
+function SideLegend() {
+  return (
+    <span className="side-legend">
+      <span><i style={{ background: SERIES.in }} />Received</span>
+      <span><i style={{ background: SERIES.out }} />Sent</span>
+    </span>
+  );
+}
+
 /** A row's received and sent amounts, each with its arrow and colour. */
 function SplitVals({ inB, outB }: { inB: number; outB: number }) {
   return (
@@ -650,18 +660,13 @@ export default function History() {
         </section>
 
         <aside className="history-side">
-          <section className="side-block hud-side" aria-label="With whom" ref={whoRef} onPointerLeave={() => setSideTip(null)}>
+          <section className="side-block hud-side" aria-label="By device" ref={whoRef} onPointerLeave={() => setSideTip(null)}>
             <div className="side-head">
               <h3>
-                With whom
+                By device
                 {pairs.length > 0 && <span className="side-count num">{String(pairs.length).padStart(2, "0")}</span>}
               </h3>
-              {dir === "both" && pairs.length > 0 && (
-                <span className="side-legend">
-                  <span><i style={{ background: SERIES.in }} />Received</span>
-                  <span><i style={{ background: SERIES.out }} />Sent</span>
-                </span>
-              )}
+              {dir === "both" && pairs.length > 0 && <SideLegend />}
             </div>
             {pairs.length === 0 ? (
               <span className="small faint">No devices in this period.</span>
@@ -695,13 +700,16 @@ export default function History() {
             )}
           </section>
 
-          <section className="side-block hud-side" aria-label="What moved" ref={whatRef} onPointerLeave={() => setSideTip(null)}>
+          <section className="side-block hud-side" aria-label="By file type" ref={whatRef} onPointerLeave={() => setSideTip(null)}>
             <div className="side-head">
-              <h3>
-                What
-                {cats.length > 0 && <span className="side-count num">{String(cats.length).padStart(2, "0")}</span>}
-              </h3>
-              {cats.length > 0 && <span className="side-sum num">{bytes(catTotal)} · {scope.length} file{scope.length === 1 ? "" : "s"}</span>}
+              <div className="side-title">
+                <h3>
+                  By file type
+                  {cats.length > 0 && <span className="side-count num">{String(cats.length).padStart(2, "0")}</span>}
+                </h3>
+                {cats.length > 0 && <span className="side-sum num">{bytes(catTotal)} · {scope.length} file{scope.length === 1 ? "" : "s"}</span>}
+              </div>
+              {dir === "both" && cats.length > 0 && <SideLegend />}
             </div>
             {cats.length === 0 ? (
               <span className="small faint">No files in this period.</span>
