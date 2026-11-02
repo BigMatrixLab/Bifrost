@@ -26,8 +26,9 @@ function relayHost(url: string | null): string {
 
 /**
  * This device's network state. The globe marks the public relay regions and
- * which one is home. Paired devices orbit it (offline ones dimmed), with a
- * live wire while data moves; no device locations are looked up or shown.
+ * which one is home. Paired devices are dots at made-up spots on the map
+ * (offline ones grey), with a live wire while data moves; no device
+ * locations are looked up.
  */
 function NetworkPanel() {
   const { network, remotes, grants, settings, jobs, outgoing, pushes, incoming } = useStore();

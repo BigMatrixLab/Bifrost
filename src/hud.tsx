@@ -183,7 +183,7 @@ export function Globe({ size = 164, online }: { size?: number; online: boolean }
   );
 }
 
-// ------------------------------------------------------------------ paired devices around the globe
+// ------------------------------------------------------------------ paired devices on the globe
 
 /** A paired device as the globe shows it. */
 export interface GlobeDevice {
@@ -196,112 +196,173 @@ export interface GlobeDevice {
   tx: boolean;
 }
 
-/** Most devices drawn on the orbit; the rest are counted. */
-const ORBIT_MAX = 8;
-/** Half-width of each arc devices sit on, either side of straight up and down. */
-const ARC_HALF = 55;
+/**
+ * Spots on land, spread over the continents, that devices are pinned to: one
+ * each, picked from a hash of the device's ID so a device keeps its spot.
+ * Bifrost doesn't know where a device is, so these are not locations; they
+ * only put each device somewhere on the map.
+ */
+const DEVICE_SPOTS: [number, number][] = [
+  [51.5, -0.1], [40.4, -3.7], [59.3, 18.1], [41.9, 12.5], [52.2, 21.0], [30.0, 31.2], [6.5, 3.4],
+  [-1.3, 36.8], [-26.2, 28.0], [25.2, 55.3], [24.9, 67.0], [28.6, 77.2], [23.8, 90.4], [13.8, 100.5],
+  [1.35, 103.8], [39.9, 116.4], [31.2, 121.5], [35.7, 139.7], [37.6, 127.0], [-6.2, 106.8], [-33.9, 151.2],
+  [-37.8, 145.0], [-36.8, 174.8], [55.8, 37.6], [43.7, -79.4], [41.9, -87.6], [29.8, -95.4], [19.4, -99.1],
+  [4.7, -74.1], [-12.0, -77.0], [-23.5, -46.6], [-34.6, -58.4], [49.3, -123.1], [61.2, -149.9], [64.1, -21.9],
+];
 
-/** Extra distance for every other label on a crowded arc, so neighbours don't touch. */
-const STAGGER = 13;
+/**
+ * One colour per device, for its marker, tag and wire. None is green or amber,
+ * which mean "this device" and "relay" on the globe. Darker shades in the
+ * light theme so they read on the pale sphere.
+ */
+const DEVICE_COLORS = [
+  { dark: "#22d3ee", light: "#0891b2" },
+  { dark: "#a78bfa", light: "#7c3aed" },
+  { dark: "#f472b6", light: "#db2777" },
+  { dark: "#fb923c", light: "#ea580c" },
+  { dark: "#38bdf8", light: "#0284c7" },
+  { dark: "#e879f9", light: "#c026d3" },
+  { dark: "#2dd4bf", light: "#0d9488" },
+  { dark: "#fb7185", light: "#e11d48" },
+  { dark: "#818cf8", light: "#4f46e5" },
+];
+/** Offline devices: a grey marker. */
+const OFFLINE: [number, number, number] = [0.42, 0.42, 0.45];
+const OFFLINE_LIGHT: [number, number, number] = [0.62, 0.62, 0.64];
 
-/** Box the globe needs with an orbit of radius `r` around it and `n` devices. */
-function orbitBox(r: number, n: number) {
-  // Dots stay within ±(90 - ARC_HALF)° of vertical, so the sides need less room.
-  const w = Math.round(2 * (r * Math.cos(((90 - ARC_HALF) * Math.PI) / 180) + 46));
-  // An arc with three or more devices staggers its labels.
-  const h = Math.round(2 * (r + 26 + (Math.min(n, ORBIT_MAX) >= 5 ? STAGGER : 0)));
-  return { w, h };
+const rgb01 = (hex: string): [number, number, number] => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255) as [number, number, number];
+
+/** FNV-1a: a small, stable hash of a device ID. */
+function hash(s: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
+type V3 = [number, number, number];
+
+/** cobe's own conversion from latitude and longitude to a unit vector. */
+function toVec([lat, lon]: readonly [number, number]): V3 {
+  const r = (lat * Math.PI) / 180;
+  const a = (lon * Math.PI) / 180 - Math.PI;
+  const o = Math.cos(r);
+  return [-o * Math.cos(a), Math.sin(r), o * Math.sin(a)];
+}
+
+/** Angle between two places, in degrees. */
+function apart(a: readonly [number, number], b: readonly [number, number]) {
+  const p = toVec(a);
+  const q = toVec(b);
+  return (Math.acos(Math.max(-1, Math.min(1, p[0] * q[0] + p[1] * q[1] + p[2] * q[2]))) * 180) / Math.PI;
 }
 
 /**
- * Paired devices on an orbit around the globe, not at a place on it:
- * Bifrost doesn't know where a device is, so the position only spreads them
- * out (active first, then online, then offline). Each online device has a
- * wire to the globe; while data moves, light runs along it toward the
- * receiver, green for data arriving here and silver for data leaving.
- * Offline devices are dimmed, with no wire.
+ * Where a point of the scene lands on the canvas (0..1), and whether it can
+ * be seen: the same maths cobe uses for its marker anchors (square canvas,
+ * scale 1, no offset). Hidden means behind the globe.
  */
-function Orbit({ devices, cx, cy, rim, r }: { devices: GlobeDevice[]; cx: number; cy: number; rim: number; r: number }) {
-  const sorted = [...devices].sort(
-    (a, b) =>
-      Number(b.rx || b.tx) - Number(a.rx || a.tx) || Number(b.online) - Number(a.online) || a.name.localeCompare(b.name),
-  );
-  const shown = sorted.slice(0, ORBIT_MAX);
-  const more = sorted.length - shown.length;
-  // Top arc gets the first half (the busiest), the bottom arc the rest.
-  const top = Math.ceil(shown.length / 2);
-  const placed = shown.map((d, i) => {
-    const up = i < top;
-    const k = up ? top : shown.length - top;
-    const j = up ? i : i - top;
-    const deg = (up ? -90 : 90) - ARC_HALF + ((j + 0.5) * 2 * ARC_HALF) / k;
-    const a = (deg * Math.PI) / 180;
-    const cos = Math.cos(a);
-    const sin = Math.sin(a);
-    // With three or more on an arc, every other label sits a row further out.
-    const lift = k >= 3 && j % 2 === 1 ? STAGGER : 0;
-    return { d, up, lift, x: cx + r * cos, y: cy + r * sin, rx0: cx + (rim + 2) * cos, ry0: cy + (rim + 2) * sin, nx: -sin, ny: cos };
-  });
-  return (
-    <>
-      <svg className="dg-orbit" width={cx * 2} height={cy * 2} viewBox={`0 0 ${cx * 2} ${cy * 2}`} aria-hidden="true">
-        <circle cx={cx} cy={cy} r={r} className="dg-orbit-ring" />
-        {placed.map(({ d, x, y, rx0, ry0, nx, ny }) => {
-          if (!d.online) return null;
-          // Both directions at once: two strands side by side.
-          const both = d.rx && d.tx;
-          const off = both ? 1.8 : 0;
-          // Stop just short of the dot.
-          const back = 5 / Math.max(1, r - rim - 2);
-          const ex = x - (x - rx0) * back;
-          const ey = y - (y - ry0) * back;
-          return (
-            <g key={d.id} className={`dg-wire-g ${d.rx || d.tx ? "busy" : ""}`}>
-              <line x1={rx0} y1={ry0} x2={ex} y2={ey} className="dg-wire" />
-              {/* Light runs from sender to receiver. */}
-              {d.rx && (
-                <line x1={ex + nx * off} y1={ey + ny * off} x2={rx0 + nx * off} y2={ry0 + ny * off} className="dg-pulse in" />
-              )}
-              {d.tx && (
-                <line x1={rx0 - nx * off} y1={ry0 - ny * off} x2={ex - nx * off} y2={ey - ny * off} className="dg-pulse out" />
-              )}
-            </g>
-          );
-        })}
-        {placed.map(({ d, x, y }) => (
-          <g key={d.id} className={`dg-dev ${d.online ? "on" : "off"} ${d.rx ? "rx" : d.tx ? "tx" : ""}`}>
-            {(d.rx || d.tx) && <circle cx={x} cy={y} r={7} className="dg-dev-halo" />}
-            <circle cx={x} cy={y} r={3.5} className="dg-dev-dot" />
-          </g>
-        ))}
-      </svg>
-      {placed.map(({ d, up, lift, x, y }) => (
-        <span
-          key={d.id}
-          className={`dg-dev-label ${up ? "up" : "down"} ${d.online ? "on" : "off"} ${d.rx ? "rx" : d.tx ? "tx" : ""}`}
-          style={{ left: x, top: up ? y - lift : y + lift }}
-          title={`${d.name}: ${d.online ? (d.rx && d.tx ? "receiving and sending" : d.rx ? "sending to you" : d.tx ? "receiving from you" : "connected") : "offline"}`}
-          aria-hidden="true"
-        >
-          {d.name}
-        </span>
-      ))}
-      {more > 0 && (
-        <span className="dg-more" style={{ left: cx, top: cy * 2 - 4 }} aria-hidden="true">
-          +{more} more
-        </span>
-      )}
-    </>
-  );
+function project(p: V3, phi: number, theta: number) {
+  const cr = Math.cos(theta);
+  const ca = Math.cos(phi);
+  const so = Math.sin(theta);
+  const si = Math.sin(phi);
+  const c = ca * p[0] + si * p[2];
+  const s = si * so * p[0] + cr * p[1] - ca * so * p[2];
+  const z = -si * cr * p[0] + so * p[1] + ca * cr * p[2];
+  return { x: (c + 1) / 2, y: (-s + 1) / 2, vis: z >= 0 || c * c + s * s >= 0.64 };
 }
 
-/** Screen-reader summary of the devices on the orbit. */
-function orbitText(devices: GlobeDevice[]) {
+/** cobe's sphere radius, and how far markers and wires sit above it. */
+const SPHERE = 0.8;
+const ELEVATION = 0.02;
+/**
+ * Wires are cobe's own arcs, as in its "CDN" showcase (`arcHeight` 0.25).
+ * `arcWidth` is in clip-space units, so a small canvas needs a larger value
+ * than the showcase's 0.5 to get a line about 2 px wide.
+ */
+const WIRE_HEIGHT = 0.25;
+const WIRE_WIDTH = 2.2;
+/** A pulse's tail, as a share of the wire's length. */
+const PULSE_TAIL = 0.12;
+/** Pulses on a wire at once, and how long each takes to cross it. */
+const PULSES = 3;
+const PULSE_MS = 1800;
+
+/**
+ * A point on a wire, `t` of the way from `from` to `to`, on the canvas
+ * (0..1), and whether it can be seen. This is cobe's arc curve: a quadratic
+ * Bézier through a point raised above the middle.
+ */
+function wirePoint(from: readonly [number, number], to: readonly [number, number], t: number, phi: number, theta: number) {
+  const a = toVec(from);
+  const b = toVec(to);
+  const m: V3 = [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+  const len = Math.hypot(...m) || 1;
+  const r = SPHERE + ELEVATION;
+  const h = (SPHERE + WIRE_HEIGHT + ELEVATION) / len;
+  const u = 1 - t;
+  const p: V3 = [0, 1, 2].map((k) => u * u * a[k] * r + 2 * u * t * m[k] * h + t * t * b[k] * r) as V3;
+  return project(p, phi, theta);
+}
+
+/**
+ * One pulse on a wire: its tail as SVG path data and its head, in canvas
+ * pixels. Parts behind the globe are left out; a hidden head returns null.
+ */
+function pulseShape(from: readonly [number, number], to: readonly [number, number], t: number, phi: number, theta: number, size: number) {
+  const steps = 6;
+  let d = "";
+  let open = false;
+  let head: { x: number; y: number } | null = null;
+  for (let i = 0; i <= steps; i++) {
+    const s = Math.max(0, t - PULSE_TAIL * (1 - i / steps));
+    const q = wirePoint(from, to, s, phi, theta);
+    if (!q.vis) {
+      open = false;
+      head = null;
+      continue;
+    }
+    d += `${open ? "L" : "M"}${(q.x * size).toFixed(1)} ${(q.y * size).toFixed(1)}`;
+    open = true;
+    if (i === steps) head = { x: q.x * size, y: q.y * size };
+  }
+  return { d, head };
+}
+
+/** Each device's spot and colour, kept apart from the relays, this device and each other. */
+function placeDevices(devices: GlobeDevice[], avoid: (readonly [number, number])[]) {
+  const out = new Map<string, { loc: [number, number]; color: number; marker: string }>();
+  const taken = new Set<number>();
+  const usedColors = new Set<number>();
+  for (const d of [...devices].sort((x, y) => (x.id < y.id ? -1 : 1))) {
+    const h = hash(d.id);
+    let spot = -1;
+    for (let k = 0; k < DEVICE_SPOTS.length && spot < 0; k++) {
+      const i = (h + k) % DEVICE_SPOTS.length;
+      if (taken.has(i)) continue;
+      const near = [...avoid, ...[...taken].map((t) => DEVICE_SPOTS[t])].some((p) => apart(p, DEVICE_SPOTS[i]) < 14);
+      if (!near) spot = i;
+    }
+    if (spot < 0) spot = [...Array(DEVICE_SPOTS.length).keys()].find((i) => !taken.has(i)) ?? h % DEVICE_SPOTS.length;
+    taken.add(spot);
+    let color = (h >>> 8) % DEVICE_COLORS.length;
+    for (let k = 0; k < DEVICE_COLORS.length && usedColors.has(color); k++) color = (color + 1) % DEVICE_COLORS.length;
+    usedColors.add(color);
+    out.set(d.id, { loc: DEVICE_SPOTS[spot], color, marker: `rl-dev-${h.toString(36)}` });
+  }
+  return out;
+}
+
+/** Screen-reader summary of the devices on the globe. */
+function devicesText(devices: GlobeDevice[]) {
   if (!devices.length) return "";
   const parts = devices.map((d) =>
     !d.online ? `${d.name} (offline)` : d.rx && d.tx ? `${d.name} (sending and receiving)` : d.rx ? `${d.name} (sending to you)` : d.tx ? `${d.name} (receiving from you)` : `${d.name} (connected)`,
   );
-  return ` Paired devices: ${parts.join("; ")}.`;
+  return ` Paired devices, shown at made-up places on the map: ${parts.join("; ")}.`;
 }
 
 // ------------------------------------------------------------------ dotted globe (cobe)
@@ -381,16 +442,23 @@ function useLightTheme(): boolean {
 /** Rotation that puts a longitude in the middle of the globe's face. */
 const facing = (lon: number) => (3 * Math.PI) / 2 - (lon * Math.PI) / 180;
 
+/** The globe's tilt toward you. */
+const THETA = 0.24;
+/** This device's spot when it has no home relay to sit on. */
+const SELF_SPOT: [number, number] = [38.7, -9.1];
+
 /**
  * The Network panel's globe, after cobe's "CDN" showcase: a slowly turning
  * dotted Earth (WebGL) with a labelled dot at each public relay region,
- * the home relay in green. These are the servers that help devices find each
- * other and, when routers block a direct path, forward encrypted packets.
+ * the home relay in green and tagged with this device's name. These are the
+ * servers that help devices find each other and, when routers block a direct
+ * path, forward encrypted packets.
  *
- * Unlike the showcase it draws no arcs between places: relays don't send
- * data to each other, and Bifrost never knows where a peer is. Paired
- * devices sit on an orbit around the globe instead (see `Orbit`), never at
- * a location on it.
+ * Paired devices are dots on the map too, each in its own colour (grey while
+ * offline), and turn with it. Bifrost doesn't know where a device is, so each
+ * one gets a made-up spot (see `DEVICE_SPOTS`). An online device has a faint
+ * wire to this device; while data moves, light runs along it toward the
+ * receiver.
  *
  * It only animates while it's on screen, the device is online and the user
  * hasn't asked for reduced motion, at about 30 frames a second, so it costs
@@ -407,7 +475,7 @@ export function DotGlobe({
   online: boolean;
   home: string | null;
   label?: string;
-  /** Paired devices, drawn on an orbit around the globe. */
+  /** Paired devices, drawn at made-up spots on the map. */
   devices?: GlobeDevice[];
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -418,17 +486,75 @@ export function DotGlobe({
   // across re-creations.
   const phi = useRef(facing(RELAY_REGIONS.find((r) => r.code === home)?.location[1] ?? 8.68));
 
+  // This device sits on its home relay; without one (custom relays,
+  // offline) it gets a spot of its own.
+  const homeRelay = RELAY_REGIONS.find((r) => r.code === home);
+  const self: readonly [number, number] = homeRelay?.location ?? SELF_SPOT;
+  const idsKey = devices.map((d) => d.id).sort().join(",");
+  const places = useMemo(
+    () => placeDevices(devices, [...RELAY_REGIONS.map((r) => r.location), self]),
+    // Spots depend only on which devices there are, not on their state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [idsKey, self[0], self[1]],
+  );
+  // The animation loop reads the latest devices without restarting the globe.
+  const live = useRef({ devices, places, light, self, homeRelay: !!homeRelay });
+  live.current = { devices, places, light, self, homeRelay: !!homeRelay };
+  const draw = useRef<(() => void) | null>(null);
+
   useEffect(() => {
     const canvas = ref.current;
     const gl = canvas?.parentElement;
     if (!canvas || !gl || !ok) return;
     const look = light ? (online ? GLOBE_LOOK.lightOnline : GLOBE_LOOK.lightOffline) : online ? GLOBE_LOOK.online : GLOBE_LOOK.offline;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const markers = (t: number) => {
+      const { devices, places, light, self, homeRelay } = live.current;
+      const relays = RELAY_REGIONS.map((r) => ({
+        location: [...r.location] as [number, number],
+        size: r.code === home ? 0.06 : 0.05,
+        ...(r.code === home && online ? { color: light ? HOME_LIGHT : HOME } : {}),
+      }));
+      const me = homeRelay ? [] : [{ location: [...self] as [number, number], size: 0.06, color: online ? (light ? HOME_LIGHT : HOME) : light ? OFFLINE_LIGHT : OFFLINE }];
+      // Devices with data moving pulse gently.
+      const beat = reduce.matches ? 0 : Math.sin(t * 0.006);
+      const devs = devices.flatMap((d) => {
+        const p = places.get(d.id);
+        if (!p) return [];
+        const busy = d.online && (d.rx || d.tx);
+        const c = DEVICE_COLORS[p.color];
+        return [
+          {
+            location: [...p.loc] as [number, number],
+            size: busy ? 0.06 + 0.015 * beat : 0.05,
+            color: d.online ? rgb01(light ? c.light : c.dark) : light ? OFFLINE_LIGHT : OFFLINE,
+          },
+        ];
+      });
+      return [...relays, ...me, ...devs];
+    };
+    // cobe arcs from this device to every online device, in the device's
+    // colour: full strength while data moves, dimmed while idle.
+    const arcs = () => {
+      const { devices, places, light, self } = live.current;
+      return devices.flatMap((d) => {
+        const p = places.get(d.id);
+        if (!p || !d.online) return [];
+        const c = rgb01(light ? DEVICE_COLORS[p.color].light : DEVICE_COLORS[p.color].dark);
+        const busy = d.rx || d.tx;
+        // Idle: mixed toward the panel colour, so it stays visible but quiet.
+        const bg = light ? 1 : 0.05;
+        const k = busy ? 1 : 0.5;
+        const color = c.map((v) => bg + (v - bg) * k) as [number, number, number];
+        return [{ from: [...self] as [number, number], to: [...p.loc] as [number, number], color }];
+      });
+    };
     const globe = createGlobe(canvas, {
       width: size,
       height: size,
       devicePixelRatio: Math.min(2, window.devicePixelRatio || 1),
       phi: phi.current,
-      theta: 0.24,
+      theta: THETA,
       // Dense dot grid (cobe's default is 10,000). Keep it below 32,768: cobe's
       // shader decodes a sample's index with bits up to 16,384 only, so higher
       // indices (the southern part of the sphere) land in the wrong place and
@@ -436,64 +562,85 @@ export function DotGlobe({
       mapSamples: 32000,
       mapBaseBrightness: light ? 0 : 0.02,
       markerColor: light ? DOT_LIGHT : DOT,
-      markerElevation: 0.02,
-      markers: RELAY_REGIONS.map((r) => ({
-        location: [...r.location] as [number, number],
-        size: r.code === home ? 0.06 : 0.05,
-        id: `rl-relay-${r.code}`,
-        ...(r.code === home && online ? { color: light ? HOME_LIGHT : HOME } : {}),
-      })),
+      markerElevation: ELEVATION,
+      markers: markers(0),
+      arcs: arcs(),
+      arcColor: light ? DOT_LIGHT : DOT,
+      arcWidth: WIRE_WIDTH,
+      arcHeight: WIRE_HEIGHT,
       scale: 1,
       ...look,
     });
 
-    // Label fading. cobe places one anchor per marker (left/top in % of the
-    // canvas) and sets --cobe-visible-<id> on :root while it faces us. On a
-    // small globe, tags near the rim crowd each other, so each tag also fades
-    // as its marker nears the edge of the disc.
-    const labels = RELAY_REGIONS.map((r) => {
-      const id = `rl-relay-${r.code}`;
-      return {
-        id,
-        anchor: canvas.parentElement?.querySelector<HTMLElement>(`[style*="--cobe-${id}"]`) ?? null,
-        label: stage.current?.querySelector<HTMLElement>(`[data-relay="${r.code}"]`) ?? null,
-      };
-    });
-    const root = document.documentElement;
+    // Tags and wires follow the markers, placed with the same maths cobe
+    // uses (`project`). A tag fades as its marker nears the rim or goes
+    // behind the globe, and gives way to one nearer the middle that it
+    // would overlap; this device and busy devices win over the rest.
+    const lift = SPHERE + ELEVATION;
     const fadeLabels = () => {
-      const vars = getComputedStyle(root);
-      // Nearest the centre first, so a label that would overlap one closer
-      // to the middle is the one that gives way.
-      const placed = labels
-        .filter((l) => l.anchor && l.label)
-        .map((l) => {
-          const x = parseFloat(l.anchor!.style.left) / 100;
-          const y = parseFloat(l.anchor!.style.top) / 100;
-          return { l, x, y, w: l.label!.offsetWidth || 40, d: Math.hypot(x - 0.5, y - 0.5) };
-        })
-        .sort((a, b) => a.d - b.d);
+      const el = stage.current;
+      if (!el) return;
+      const tags = [...el.querySelectorAll<HTMLElement>("[data-loc]")].map((l) => {
+        const [lat, lon] = l.dataset.loc!.split(",").map(Number);
+        const v = toVec([lat, lon]);
+        const q = project([v[0] * lift, v[1] * lift, v[2] * lift], phi.current, THETA);
+        return { l, x: q.x, y: q.y, vis: q.vis, w: l.offsetWidth || 40, d: Math.hypot(q.x - 0.5, q.y - 0.5), rank: Number(l.dataset.rank ?? 2) };
+      });
+      tags.sort((a, b) => a.rank - b.rank || a.d - b.d);
       const kept: { x: number; y: number; w: number }[] = [];
-      for (const { l, x, y, w, d } of placed) {
-        if (!l.anchor || !l.label) continue;
-        const facingUs = vars.getPropertyValue(`--cobe-visible-${l.id}`).trim() !== "";
+      for (const { l, x, y, vis, w, d } of tags) {
         // The disc's rim is at about 0.4 of the canvas from the centre; fade
         // over the last stretch before it.
         const fromRim = Math.min(1, Math.max(0, (0.41 - d) / 0.05));
-        // Tags are about 17 px tall and centred on their marker; keep them apart.
+        // Tags are about 17 px tall and sit just above their marker; keep them apart.
         const clash = kept.some((k) => Math.abs(k.x - x) * size < (k.w + w) / 2 + 2 && Math.abs(k.y - y) * size < 19);
-        const o = facingUs && !clash ? fromRim : 0;
+        const o = vis && !clash ? fromRim : 0;
         if (o > 0.3) kept.push({ x, y, w });
-        // Placed from the anchor's own coordinates rather than CSS anchor
-        // positioning, so labels show in every WebView, not only new ones.
-        l.label.style.left = l.anchor.style.left;
-        l.label.style.top = l.anchor.style.top;
-        l.label.style.opacity = o.toFixed(2);
-        l.label.style.filter = o > 0.98 ? "" : `blur(${((1 - o) * 5).toFixed(1)}px)`;
+        l.style.left = `${(x * 100).toFixed(2)}%`;
+        l.style.top = `${(y * 100).toFixed(2)}%`;
+        l.style.opacity = o.toFixed(2);
+        l.style.filter = o > 0.98 ? "" : `blur(${((1 - o) * 5).toFixed(1)}px)`;
       }
     };
-    fadeLabels();
+    // Pulses: bright comets running along a busy wire from sender to
+    // receiver, a few at a time, evenly spaced. Not drawn with reduced motion.
+    const drawPulses = (t: number) => {
+      const el = stage.current;
+      if (!el) return;
+      for (const g of el.querySelectorAll<SVGGElement>("g[data-from]")) {
+        const a = g.dataset.from!.split(",").map(Number) as [number, number];
+        const b = g.dataset.to!.split(",").map(Number) as [number, number];
+        const k = Number(g.dataset.k ?? 0);
+        const tail = g.querySelector("path");
+        const head = g.querySelector("circle");
+        if (!tail || !head) continue;
+        if (reduce.matches) {
+          g.style.display = "none";
+          continue;
+        }
+        g.style.display = "";
+        const pos = (t / PULSE_MS + k / PULSES) % 1;
+        const s = pulseShape(a, b, pos, phi.current, THETA, size);
+        tail.setAttribute("d", s.d);
+        // Fades in leaving the sender and out arriving, so pulses don't pop.
+        const fade = Math.min(1, pos / 0.08, (1 - pos) / 0.08);
+        g.style.opacity = fade.toFixed(2);
+        if (s.head) {
+          head.setAttribute("cx", s.head.x.toFixed(1));
+          head.setAttribute("cy", s.head.y.toFixed(1));
+          head.style.display = "";
+        } else {
+          head.style.display = "none";
+        }
+      }
+    };
+    const render = (t: number) => {
+      globe.update({ phi: phi.current, markers: markers(t), arcs: arcs() });
+      fadeLabels();
+      drawPulses(t);
+    };
+    render(performance.now());
 
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
     let raf = 0;
     let last = 0;
     let onScreen = true;
@@ -503,8 +650,7 @@ export function DotGlobe({
       const dt = last ? Math.min(t - last, 100) : 32;
       last = t;
       phi.current += dt * 0.00016; // one turn in about 40 s
-      globe.update({ phi: phi.current });
-      fadeLabels();
+      render(t);
     };
     const stop = () => {
       cancelAnimationFrame(raf);
@@ -516,6 +662,10 @@ export function DotGlobe({
       if (run && !raf) raf = requestAnimationFrame(frame);
       else if (!run && raf) stop();
     };
+    // While the globe is still, device changes are drawn straight away.
+    draw.current = () => {
+      if (!raf) render(performance.now());
+    };
     const io = new IntersectionObserver(([e]) => {
       onScreen = e.isIntersecting;
       sync();
@@ -525,6 +675,7 @@ export function DotGlobe({
     sync();
 
     return () => {
+      draw.current = null;
       stop();
       io.disconnect();
       reduce.removeEventListener("change", sync);
@@ -542,57 +693,96 @@ export function DotGlobe({
     };
   }, [ok, size, online, home, light]);
 
-  // A HUD frame around the globe: a tick scale, in SVG. With paired devices
-  // the box grows to fit their orbit.
-  const orbitR = size * 0.62;
-  const box = devices.length ? orbitBox(orbitR, devices.length) : { w: Math.round(size * 1.12), h: Math.round(size * 1.12) };
-  const cx = box.w / 2;
-  const cy = box.h / 2;
+  const stateKey = devices.map((d) => `${d.id}:${+d.online}${+d.rx}${+d.tx}`).join("|");
+  useEffect(() => draw.current?.(), [stateKey, places]);
+
+  // A HUD frame around the globe: a tick scale, in SVG.
+  const box = Math.round(size * 1.12);
+  const c = box / 2;
   const tr = size * 0.5;
   if (!ok) {
     return (
-      <div className={`dot-globe ${online ? "on" : "off"}`} style={{ width: box.w, height: box.h }}>
-        <div className="dg-stage" style={{ width: size, height: size }}>
-          <Globe size={size} online={online} />
-        </div>
-        {devices.length > 0 && <Orbit devices={devices} cx={cx} cy={cy} rim={size * 0.34} r={orbitR} />}
-        <span className="sr-only">{orbitText(devices)}</span>
-      </div>
+      <>
+        <Globe size={size} online={online} />
+        <span className="sr-only">{devicesText(devices)}</span>
+      </>
     );
   }
+  const loc = (p: readonly [number, number]) => `${p[0]},${p[1]}`;
   return (
-    <div className={`dot-globe ${online ? "on" : "off"}`} style={{ width: box.w, height: box.h }}>
-      <svg className="dg-frame" width={box.w} height={box.h} viewBox={`0 0 ${box.w} ${box.h}`} aria-hidden="true">
-        <circle cx={cx} cy={cy} r={tr} className="dg-ticks" strokeDasharray={`0.8 ${((2 * Math.PI * tr) / 90 - 0.8).toFixed(3)}`} />
+    <div className={`dot-globe ${online ? "on" : "off"}`} style={{ width: box, height: box }}>
+      <svg className="dg-frame" width={box} height={box} viewBox={`0 0 ${box} ${box}`} aria-hidden="true">
+        <circle cx={c} cy={c} r={tr} className="dg-ticks" strokeDasharray={`0.8 ${((2 * Math.PI * tr) / 90 - 0.8).toFixed(3)}`} />
       </svg>
-      {/* cobe's disc rim is at about 0.4 of the canvas from its centre. */}
-      {devices.length > 0 && <Orbit devices={devices} cx={cx} cy={cy} rim={size * 0.4} r={orbitR} />}
       <div className="dg-stage" ref={stage} style={{ width: size, height: size }}>
         {/* cobe moves the canvas into a wrapper of its own, so React keeps
             nothing else in this div. */}
         <div className="dg-gl">
           <canvas ref={ref} className="dg-canvas" style={{ width: size, height: size }} aria-hidden="true" />
         </div>
-        {/* Labels follow cobe's marker anchors and fade out near the rim and
-            behind the globe. */}
-        {RELAY_REGIONS.map((r) => {
+        {/* The wires are cobe arcs on the canvas. While data moves, pulses
+            run along them from sender to receiver; their shape and position
+            are set per frame. */}
+        <svg className="dg-wires" width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
+          {devices.flatMap((d) => {
+            const p = places.get(d.id);
+            if (!p || !d.online) return [];
+            const col = light ? DEVICE_COLORS[p.color].light : DEVICE_COLORS[p.color].dark;
+            const runs: [string, readonly [number, number], readonly [number, number]][] = [];
+            if (d.rx) runs.push(["in", p.loc, self]);
+            if (d.tx) runs.push(["out", self, p.loc]);
+            return runs.flatMap(([dir, from, to]) =>
+              Array.from({ length: PULSES }, (_, k) => (
+                <g key={`${d.id}-${dir}-${k}`} data-from={loc(from)} data-to={loc(to)} data-k={k} className="dg-pulse" style={{ ["--dc" as string]: col }}>
+                  <path />
+                  <circle r={2.2} />
+                </g>
+              )),
+            );
+          })}
+        </svg>
+        {/* Tags follow their markers and fade out near the rim and behind
+            the globe. Position, opacity and blur are set per frame. */}
+        {RELAY_REGIONS.map((r) => (
+          <span
+            key={r.code}
+            data-loc={loc(r.location)}
+            data-rank={r.code === home ? 0 : 2}
+            className={`dg-relay ${r.code === home ? "home" : ""}`}
+            style={{ opacity: 0 }}
+            aria-hidden="true"
+          >
+            <span className="dg-tag">{r.code === home && label ? label : r.code}</span>
+          </span>
+        ))}
+        {!homeRelay && label && (
+          <span data-loc={loc(self)} data-rank={0} className="dg-relay home" style={{ opacity: 0 }} aria-hidden="true">
+            <span className="dg-tag">{label}</span>
+          </span>
+        )}
+        {devices.map((d) => {
+          const p = places.get(d.id);
+          if (!p) return null;
+          const col = DEVICE_COLORS[p.color];
+          const busy = d.online && (d.rx || d.tx);
           return (
             <span
-              key={r.code}
-              data-relay={r.code}
-              className={`dg-relay ${r.code === home ? "home" : ""}`}
-              // Position, opacity and blur are set per frame by fadeLabels().
-              style={{ opacity: 0 }}
+              key={d.id}
+              data-loc={loc(p.loc)}
+              data-rank={busy ? 1 : d.online ? 2 : 3}
+              className={`dg-relay dev ${d.online ? "on" : "off"} ${busy ? "busy" : ""}`}
+              style={{ opacity: 0, ["--dc" as string]: light ? col.light : col.dark, ["--dc-ink" as string]: light ? "#fff" : "#0b0b0d" }}
+              title={`${d.name}: ${d.online ? (d.rx && d.tx ? "sending and receiving" : d.rx ? "sending to you" : d.tx ? "receiving from you" : "connected") : "offline"}`}
               aria-hidden="true"
             >
-              <span className="dg-tag">{r.code === home && label ? label : r.code}</span>
+              <span className="dg-tag">{d.name}</span>
             </span>
           );
         })}
       </div>
       <span className="sr-only">
         Public relay regions: {RELAY_REGIONS.map((r) => `${r.name} (${r.code})${r.code === home ? `, your home relay${label ? ` (${label})` : ""}` : ""}`).join("; ")}.
-        {orbitText(devices)}
+        {devicesText(devices)}
       </span>
     </div>
   );
