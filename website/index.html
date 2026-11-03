@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Bifrost: your files never sit on a server</title>
+    <title>Bifrost: send files of any size, device to device</title>
     <meta
       name="description"
       content="Free, open-source app that sends files of any size directly between Macs, Windows PCs and Android phones. End-to-end encrypted, resumable, no account, no cloud copy, and a privacy receipt for every transfer."
@@ -13,6 +13,7 @@
     <script>
       // Apply the saved theme (or the system one) before anything paints.
       (function () {
+        document.documentElement.classList.add("js");
         var t;
         try { t = localStorage.getItem("bifrost-site-theme"); } catch (e) {}
         if (t !== "light" && t !== "dark") t = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
@@ -25,7 +26,7 @@
     <link rel="icon" type="image/svg+xml" href="assets/bifrost-mark.svg" />
     <link rel="apple-touch-icon" href="assets/icon-256.png" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Bifrost: your files never sit on a server" />
+    <meta property="og:title" content="Bifrost: send files of any size, device to device" />
     <meta property="og:description" content="Direct, encrypted, resumable transfers and shared folders between macOS, Windows and Android, with a privacy receipt for every file. No account, no cloud copy, no size limit." />
     <meta property="og:image" content="https://misbahkhan0009.github.io/Relayless/assets/og.png" />
     <meta property="og:url" content="https://misbahkhan0009.github.io/Relayless/" />
@@ -55,628 +56,733 @@
 
     <a class="skip" href="#main">Skip to content</a>
 
-    <header class="nav">
-      <div class="wrap nav-inner">
-        <a class="brand" href="#top" aria-label="Bifrost home">
-          <svg class="brand-mark" width="26" height="26" aria-hidden="true"><use href="#mark" /></svg>
-          <span>Bifrost</span>
+    <!-- Floating section rail: icons only; hovering or focusing it expands it to the right with names. -->
+    <nav class="rail panel" aria-label="Sections" data-rail>
+      <a class="rail-brand" href="#top" aria-label="Bifrost, back to top">
+        <svg class="brand-mark" width="24" height="24" aria-hidden="true"><use href="#mark" /></svg>
+        <span class="rail-label brand-word">Bifrost</span>
+      </a>
+      <div class="rail-list" data-rail-list>
+        <span class="rail-mark" data-rail-mark aria-hidden="true"></span>
+        <a class="rail-item" href="#top" data-nav="top">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" /></svg>
+          <span class="rail-label">Overview</span>
         </a>
-        <nav class="nav-links" aria-label="Sections">
-          <a href="#privacy">Privacy</a>
-          <a href="#how">How it works</a>
-          <a href="#features">Features</a>
-          <a href="#security">Security</a>
-          <a href="#faq">FAQ</a>
-        </nav>
-        <div class="nav-actions">
-          <a class="gh-link" href="https://github.com/MisbahKhan0009/Relayless" aria-label="Bifrost on GitHub">
-            <svg viewBox="0 0 16 16" width="17" height="17" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-            <span class="gh-text">GitHub</span>
-            <span class="stars num" data-stars hidden></span>
-          </a>
-          <button class="icon-btn theme-toggle" type="button" data-theme-toggle aria-label="Switch to light theme" title="Switch theme">
-            <svg class="i-sun" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></g></svg>
-            <svg class="i-moon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" d="M20.99 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.78 9.79z"/></svg>
-          </button>
-          <a class="btn btn-primary btn-sm" href="#download">Download</a>
-        </div>
+        <a class="rail-item" href="#privacy" data-nav="privacy">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-3.5 8-10V5l-8-3-8 3v7c0 6.5 8 10 8 10zM9 12l2 2 4-4" /></svg>
+          <span class="rail-label">Privacy</span>
+        </a>
+        <a class="rail-item" href="#words" data-nav="words">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2zM8 9h8M8 13h5" /></svg>
+          <span class="rail-label">Safety words</span>
+        </a>
+        <a class="rail-item" href="#how" data-nav="how">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h.01M5 12h.01M5 18h.01M9 6h11M9 12h11M9 18h11" /></svg>
+          <span class="rail-label">How it works</span>
+        </a>
+        <a class="rail-item" href="#features" data-nav="features">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z" /></svg>
+          <span class="rail-label">Features</span>
+        </a>
+        <a class="rail-item" href="#security" data-nav="security">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4" /></svg>
+          <span class="rail-label">Security</span>
+        </a>
+        <a class="rail-item" href="#compare" data-nav="compare">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 7h18M6 7l-3 7a3 3 0 0 0 6 0zM18 7l-3 7a3 3 0 0 0 6 0z" /></svg>
+          <span class="rail-label">Compare</span>
+        </a>
+        <a class="rail-item accent" href="#download" data-nav="download">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 21h16" /></svg>
+          <span class="rail-label">Download</span>
+        </a>
+        <a class="rail-item" href="#open-source" data-nav="open-source">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6" /></svg>
+          <span class="rail-label">Open source</span>
+        </a>
+        <a class="rail-item" href="#faq" data-nav="faq">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01" /></svg>
+          <span class="rail-label">FAQ</span>
+        </a>
       </div>
-    </header>
+      <div class="rail-foot">
+        <a class="rail-item" href="https://github.com/MisbahKhan0009/Relayless" aria-label="Bifrost on GitHub">
+          <svg viewBox="0 0 16 16" class="fill" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" /></svg>
+          <span class="rail-label">GitHub <span class="stars num" data-stars hidden></span></span>
+        </a>
+        <button class="rail-item theme-toggle" type="button" data-theme-toggle aria-label="Switch to light theme">
+          <svg class="i-sun" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" /></svg>
+          <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.99 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.78 9.79z" /></svg>
+          <span class="rail-label" data-theme-label>Light theme</span>
+        </button>
+      </div>
+    </nav>
 
     <main id="main">
-      <!-- ============================================================ hero -->
-      <section class="hero" id="top">
-        <div class="wrap hero-grid">
-          <div class="hero-copy">
-            <p class="lab accent"><span class="live-dot" aria-hidden="true"></span>macOS · Windows · Android</p>
-            <h1>Your files never sit on a server.</h1>
-            <p class="lede">
-              Bifrost sends files of any size straight from one device to another, end-to-end encrypted, and picks up
-              from the last verified megabyte after any interruption. Every transfer ends with a receipt that shows the
-              route it took and what servers kept along the way: nothing.
-            </p>
-            <div class="cta-row">
-              <a class="btn btn-primary btn-lg" data-primary-dl href="#download">
-                <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0-5-5m5 5 5-5M4 21h16"/></svg>
-                <span data-primary-label>Download Bifrost</span>
-              </a>
-              <a class="btn btn-secondary btn-lg" href="#download">All platforms</a>
-            </div>
-            <p class="fineprint">Free and open source under the MIT license. No account, no analytics, no cloud copy.</p>
-          </div>
 
-          <div class="demo" aria-label="Interactive transfer demo">
-            <div class="panel focus demo-card" data-state="running">
-              <div class="focus-head">
-                <span class="lab">Active transfer</span>
-                <span class="tag">Simulation</span>
+      <!-- ============================================================ overview (hero + live app) -->
+      <section class="hero screen" id="top">
+        <div class="fit">
+          <div class="wrap hero2">
+            <div class="hero-head">
+              <div>
+                <p class="lab accent"><span class="live-dot" aria-hidden="true"></span>File sharing · macOS · Windows · Android</p>
+                <h1>Send files of any size, device to device.</h1>
+              </div>
+              <div class="hero-side">
+                <p class="lede">
+                  Bifrost sends files over the internet straight from one device to another, end-to-end encrypted.
+                  Nothing is uploaded to a cloud, and an interrupted transfer picks up where it stopped.
+                </p>
+                <div class="cta-row">
+                  <a class="btn btn-primary btn-lg" data-primary-dl href="#download">
+                    <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0-5-5m5 5 5-5M4 21h16"/></svg>
+                    <span data-primary-label>Download Bifrost</span>
+                  </a>
+                  <a class="btn btn-secondary btn-lg" href="#download">All platforms</a>
+                </div>
+                <p class="fineprint">Free and open source · No account · No size limit · 0 bytes stored on servers</p>
+              </div>
+            </div>
+
+            <div class="hero-stage">
+              <div class="band">
+                <figure class="band-desktop panel live" data-live="overview" data-narrow="overview" data-script="showcase">
+                  <div class="live-screen">
+                    <img class="poster t-dark w-only" src="assets/screens/desktop-overview.webp" width="2560" height="1600" loading="lazy" alt="Bifrost Overview: the active transfer with its chunk ring, the network globe and a live throughput graph" />
+                    <img class="poster t-light w-only" src="assets/screens/desktop-overview-light.webp" width="2560" height="1600" loading="lazy" alt="Bifrost Overview in the light theme: the active transfer with its chunk ring, the network globe and a live throughput graph" />
+                    <img class="poster t-dark n-only" src="assets/screens/phone-transfers.webp" width="1170" height="2532" loading="lazy" alt="Transfers on Android with live speeds and a throughput graph" />
+                    <img class="poster t-light n-only" src="assets/screens/phone-transfers-light.webp" width="1170" height="2532" loading="lazy" alt="Transfers on Android in the light theme" />
+                  </div>
+                </figure>
+                <figure class="band-phone live phone" data-live="devices" data-phone data-script="browse">
+                  <div class="live-screen">
+                    <img class="poster t-dark" src="assets/screens/phone-browse.webp" width="1170" height="2532" loading="lazy" alt="Bifrost on Android browsing a shared folder" />
+                    <img class="poster t-light" src="assets/screens/phone-browse-light.webp" width="1170" height="2532" loading="lazy" alt="Bifrost on Android in the light theme, browsing a shared folder" />
+                  </div>
+                </figure>
               </div>
 
-              <div class="focus-body">
-                <div class="ring" aria-hidden="true">
-                  <svg viewBox="0 0 200 200" width="200" height="200">
-                    <circle class="ring-outer" cx="100" cy="100" r="97" />
-                    <g class="ring-segs" data-segs></g>
-                    <g class="ring-ticks" data-ticks></g>
-                    <path class="ring-cursor" d="M100 2 l-4 -6 h8z" />
-                  </svg>
-                  <div class="ring-center">
-                    <span class="ring-pct num"><b data-pct>38.6</b><small>%</small></span>
-                    <span class="lab" data-ring-label>Verified</span>
-                    <span class="ring-bytes num" data-saved-text>1.62 GB / 4.20 GB</span>
+              <div class="demo" aria-label="Interactive transfer demo">
+                <div class="panel focus demo-card" data-state="running">
+                  <div class="focus-head">
+                    <span class="lab">Active transfer</span>
+                    <span class="tag">Simulation</span>
                   </div>
-                </div>
 
-                <div class="focus-info">
-                  <p class="lab accent focus-status" data-status>Receiving · from Dhaka-Edit-Bay</p>
-                  <p class="focus-name">season-2-raw-footage.zip</p>
-                  <dl class="facts">
-                    <div><dt class="lab">Speed</dt><dd class="num" data-speed>0 MB/s</dd></div>
-                    <div><dt class="lab">Time left</dt><dd class="num" data-eta>–</dd></div>
-                    <div><dt class="lab">Blocks verified</dt><dd class="num" data-blocks>0</dd></div>
-                    <div><dt class="lab">Route</dt><dd data-route>Direct · 176 ms</dd></div>
+                  <div class="focus-body">
+                    <div class="ring" aria-hidden="true">
+                      <svg viewBox="0 0 200 200" width="200" height="200">
+                        <circle class="ring-outer" cx="100" cy="100" r="97" />
+                        <g class="ring-segs" data-segs></g>
+                        <g class="ring-ticks" data-ticks></g>
+                        <path class="ring-cursor" d="M100 2 l-4 -6 h8z" />
+                      </svg>
+                      <div class="ring-center">
+                        <span class="ring-pct num"><b data-pct>38.6</b><small>%</small></span>
+                        <span class="lab" data-ring-label>Verified</span>
+                        <span class="ring-bytes num" data-saved-text>1.62 GB / 4.20 GB</span>
+                      </div>
+                    </div>
+
+                    <div class="focus-info">
+                      <p class="lab accent focus-status" data-status>Receiving · from Dhaka-Edit-Bay</p>
+                      <p class="focus-name">season-2-raw-footage.zip</p>
+                      <dl class="facts">
+                        <div><dt class="lab">Speed</dt><dd class="num" data-speed>0 MB/s</dd></div>
+                        <div><dt class="lab">Time left</dt><dd class="num" data-eta>–</dd></div>
+                        <div><dt class="lab">Blocks verified</dt><dd class="num" data-blocks>0</dd></div>
+                        <div><dt class="lab">Route</dt><dd data-route>Direct · 176 ms</dd></div>
+                      </dl>
+                    </div>
+                  </div>
+
+                  <div class="link-line" data-link>
+                    <span class="ll-node rx" aria-hidden="true"></span>
+                    <span class="ll-wire" aria-hidden="true"><i></i><i></i><i></i></span>
+                    <span class="ll-node tx" aria-hidden="true"></span>
+                    <span class="ll-end"><b class="ll-tag">RX</b>Berlin-Studio</span>
+                    <span class="ll-end right">Dhaka-Edit-Bay<b class="ll-tag">TX</b></span>
+                  </div>
+
+                  <div class="demo-actions">
+                    <button class="btn btn-secondary btn-md" type="button" data-toggle>Pause</button>
+                    <button class="btn btn-ghost btn-md" type="button" data-drop>Drop the connection</button>
+                  </div>
+
+                  <ol class="demo-log" data-log aria-live="polite"></ol>
+
+                  <dl class="demo-receipt" data-receipt hidden>
+                    <div><dt class="lab">Route</dt><dd>Direct, device to device (100%)</dd></div>
+                    <div><dt class="lab">Verified</dt><dd class="num">4,301 blocks of 1 MiB, then the whole file</dd></div>
+                    <div><dt class="lab">Stored on servers</dt><dd class="accent">0 bytes</dd></div>
                   </dl>
                 </div>
+                <p class="demo-note">Simulation. Try Pause, or drop the connection.</p>
               </div>
-
-              <div class="link-line" data-link>
-                <span class="ll-node rx" aria-hidden="true"></span>
-                <span class="ll-wire" aria-hidden="true"><i></i><i></i><i></i></span>
-                <span class="ll-node tx" aria-hidden="true"></span>
-                <span class="ll-end"><b class="ll-tag">RX</b>Berlin-Studio</span>
-                <span class="ll-end right">Dhaka-Edit-Bay<b class="ll-tag">TX</b></span>
-              </div>
-
-              <div class="demo-actions">
-                <button class="btn btn-secondary btn-md" type="button" data-toggle>Pause</button>
-                <button class="btn btn-ghost btn-md" type="button" data-drop>Drop the connection</button>
-              </div>
-
-              <ol class="demo-log" data-log aria-live="polite"></ol>
-
-              <dl class="demo-receipt" data-receipt hidden>
-                <div><dt class="lab">Route</dt><dd>Direct, device to device (100%)</dd></div>
-                <div><dt class="lab">Verified</dt><dd class="num">4,301 blocks of 1 MiB, then the whole file</dd></div>
-                <div><dt class="lab">Stored on servers</dt><dd class="accent">0 bytes</dd></div>
-              </dl>
             </div>
-            <p class="demo-note">A live simulation of the app's active transfer panel. Try pausing, or cutting the connection.</p>
           </div>
-        </div>
-      </section>
-
-      <!-- ============================================================ product band (live app) -->
-      <section class="shot-band" aria-label="Bifrost on a computer and on an Android phone">
-        <div class="wrap band">
-          <figure class="band-desktop panel live" data-live="overview" data-narrow="overview" data-script="showcase">
-            <div class="live-screen">
-              <img class="poster t-dark w-only" src="assets/screens/desktop-overview.webp" width="2560" height="1600" loading="lazy" alt="Bifrost Overview: the active transfer with its chunk ring, the network globe and a live throughput graph" />
-              <img class="poster t-light w-only" src="assets/screens/desktop-overview-light.webp" width="2560" height="1600" loading="lazy" alt="Bifrost Overview in the light theme: the active transfer with its chunk ring, the network globe and a live throughput graph" />
-              <img class="poster t-dark n-only" src="assets/screens/phone-transfers.webp" width="1170" height="2532" loading="lazy" alt="Transfers on Android with live speeds and a throughput graph" />
-              <img class="poster t-light n-only" src="assets/screens/phone-transfers-light.webp" width="1170" height="2532" loading="lazy" alt="Transfers on Android in the light theme" />
-            </div>
-          </figure>
-          <figure class="band-phone live phone" data-live="devices" data-phone data-script="browse">
-            <div class="live-screen">
-              <img class="poster t-dark" src="assets/screens/phone-browse.webp" width="1170" height="2532" loading="lazy" alt="Bifrost on Android browsing a shared folder" />
-              <img class="poster t-light" src="assets/screens/phone-browse-light.webp" width="1170" height="2532" loading="lazy" alt="Bifrost on Android in the light theme, browsing a shared folder" />
-            </div>
-          </figure>
-        </div>
-        <div class="wrap">
-          <dl class="stat-strip panel">
-            <div><dt class="lab">Stored on servers</dt><dd class="num accent">0 bytes</dd></div>
-            <div><dt class="lab">Resumes from</dt><dd class="num">last 1 MiB</dd></div>
-            <div><dt class="lab">File size limit</dt><dd>None</dd></div>
-            <div><dt class="lab">Account needed</dt><dd>No</dd></div>
-          </dl>
         </div>
       </section>
 
       <!-- ============================================================ receipt -->
-      <section class="section" id="privacy">
-        <div class="wrap receipt-section">
-          <div class="receipt-copy">
-            <p class="lab"><span class="idx">01</span>Privacy</p>
-            <h2>Privacy you can check.</h2>
-            <p class="section-lede">
-              Anyone can write "private" on a landing page. Bifrost gives you a receipt for every file instead, kept on
-              both devices, that says exactly how it travelled. Here is one, line by line.
-            </p>
-          </div>
-          <div class="receipt panel" role="table" aria-label="Example privacy receipt">
-            <div class="rs-head" role="row">
-              <span class="rs-ico" role="cell" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M10 11.5v5l4-2.5z"/></svg>
-              </span>
-              <span class="rs-title" role="cell">
-                <strong>scene-041-take-2.mov</strong>
-                <span><span class="num">18.2 GB</span> from Dhaka-Edit-Bay, Oct 14 at 4:35 PM</span>
-              </span>
-              <span class="tag tag-ok" role="cell">Direct</span>
+      <section class="section screen" id="privacy">
+        <div class="fit">
+          <div class="wrap receipt-section">
+            <div class="receipt-copy">
+              <p class="lab"><span class="idx">01</span>Privacy</p>
+              <h2>Privacy you can check.</h2>
+              <p class="section-lede">
+                Anyone can write "private" on a landing page. Bifrost gives you a receipt for every file instead, kept on
+                both devices, that says exactly how it travelled. Here is one, line by line.
+              </p>
             </div>
-            <div class="rs-row" role="row">
-              <span class="lab" role="cell">Route</span>
-              <span class="rs-v" role="cell">Direct, device to device</span>
-              <span class="rs-why" role="cell">The bytes went from one disk to the other. If a relay ever has to step in, the receipt says how much it carried, encrypted.</span>
-            </div>
-            <div class="rs-row" role="row">
-              <span class="lab" role="cell">Encryption</span>
-              <span class="rs-v" role="cell">QUIC · TLS 1.3</span>
-              <span class="rs-why" role="cell">The keys exist only on the two devices. Each device proves its identity with its own key on every connection.</span>
-            </div>
-            <div class="rs-row" role="row">
-              <span class="lab" role="cell">Verified</span>
-              <span class="rs-v num" role="cell">18,637 blocks of 1 MiB</span>
-              <span class="rs-why" role="cell">Every block is checked with BLAKE3 as it arrives, then the whole file again before it gets its name.</span>
-            </div>
-            <div class="rs-row" role="row">
-              <span class="lab" role="cell">Fingerprint</span>
-              <span class="rs-v num" role="cell">8c2d fb51 99af f2f1 a6f2 0abd</span>
-              <span class="rs-why" role="cell">Both devices record the same fingerprint, so either side can show the file arrived exactly as sent.</span>
-            </div>
-            <div class="rs-row" role="row">
-              <span class="lab" role="cell">Safety words</span>
-              <span class="rs-v" role="cell"><span class="words"><i>cedar</i><i>lantern</i><i>otter</i><i>quartz</i><i>violet</i></span></span>
-              <span class="rs-why" role="cell">Five words both devices derive from their keys. Same words on both screens means nobody was in between.</span>
-            </div>
-            <div class="rs-row" role="row">
-              <span class="lab" role="cell">Stored on servers</span>
-              <span class="rs-v accent num" role="cell">0 bytes</span>
-              <span class="rs-why" role="cell">No account, no upload, no copy. There is no Bifrost server to keep one.</span>
+            <div class="receipt panel" role="table" aria-label="Example privacy receipt">
+              <div class="rs-head" role="row">
+                <span class="rs-ico" role="cell" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M10 11.5v5l4-2.5z"/></svg>
+                </span>
+                <span class="rs-title" role="cell">
+                  <strong>scene-041-take-2.mov</strong>
+                  <span><span class="num">18.2 GB</span> from Dhaka-Edit-Bay, Oct 14 at 4:35 PM</span>
+                </span>
+                <span class="tag tag-ok" role="cell">Direct</span>
+              </div>
+              <div class="rs-row" role="row">
+                <span class="lab" role="cell">Route</span>
+                <span class="rs-v" role="cell">Direct, device to device</span>
+                <span class="rs-why" role="cell">The bytes went from one disk to the other. If a relay ever has to step in, the receipt says how much it carried, encrypted.</span>
+              </div>
+              <div class="rs-row" role="row">
+                <span class="lab" role="cell">Encryption</span>
+                <span class="rs-v" role="cell">QUIC · TLS 1.3</span>
+                <span class="rs-why" role="cell">The keys exist only on the two devices. Each device proves its identity with its own key on every connection.</span>
+              </div>
+              <div class="rs-row" role="row">
+                <span class="lab" role="cell">Verified</span>
+                <span class="rs-v num" role="cell">18,637 blocks of 1 MiB</span>
+                <span class="rs-why" role="cell">Every block is checked with BLAKE3 as it arrives, then the whole file again before it gets its name.</span>
+              </div>
+              <div class="rs-row" role="row">
+                <span class="lab" role="cell">Fingerprint</span>
+                <span class="rs-v num" role="cell">8c2d fb51 99af f2f1 a6f2 0abd</span>
+                <span class="rs-why" role="cell">Both devices record the same fingerprint, so either side can show the file arrived exactly as sent.</span>
+              </div>
+              <div class="rs-row" role="row">
+                <span class="lab" role="cell">Safety words</span>
+                <span class="rs-v" role="cell"><span class="words"><i>cedar</i><i>lantern</i><i>otter</i><i>quartz</i><i>violet</i></span></span>
+                <span class="rs-why" role="cell">Five words both devices derive from their keys. Same words on both screens means nobody was in between.</span>
+              </div>
+              <div class="rs-row" role="row">
+                <span class="lab" role="cell">Stored on servers</span>
+                <span class="rs-v accent num" role="cell">0 bytes</span>
+                <span class="rs-why" role="cell">No account, no upload, no copy. There is no Bifrost server to keep one.</span>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       <!-- ============================================================ safety words -->
-      <section class="section" id="words">
-        <div class="wrap words-section">
-          <div class="device-pair" aria-label="Both devices show the same safety words">
-            <div class="device panel">
-              <span class="lab">On Berlin-Studio</span>
-              <span class="words big"><i>cedar</i><i>lantern</i><i>otter</i><i>quartz</i><i>violet</i></span>
+      <section class="section screen" id="words">
+        <div class="fit">
+          <div class="wrap words-section">
+            <div class="device-pair" aria-label="Both devices show the same safety words">
+              <div class="device panel">
+                <span class="lab">On Berlin-Studio</span>
+                <span class="words big"><i>cedar</i><i>lantern</i><i>otter</i><i>quartz</i><i>violet</i></span>
+              </div>
+              <div class="device-link" aria-hidden="true"><span></span><b class="tag tag-ok">Match</b><span></span></div>
+              <div class="device panel">
+                <span class="lab">On Dhaka-Edit-Bay</span>
+                <span class="words big"><i>cedar</i><i>lantern</i><i>otter</i><i>quartz</i><i>violet</i></span>
+              </div>
             </div>
-            <div class="device-link" aria-hidden="true"><span></span><b class="tag tag-ok">Match</b><span></span></div>
-            <div class="device panel">
-              <span class="lab">On Dhaka-Edit-Bay</span>
-              <span class="words big"><i>cedar</i><i>lantern</i><i>otter</i><i>quartz</i><i>violet</i></span>
+            <div>
+              <p class="lab"><span class="idx">02</span>Safety words</p>
+              <h2>Five words rule out a middle-man.</h2>
+              <p class="section-lede">
+                When a new device asks for access, both screens show five words made from the two devices' keys. Read
+                them to each other. If they match, the connection is between you two and no one else. If anyone tried to
+                sit in the middle, the words would be different.
+              </p>
             </div>
-          </div>
-          <div>
-            <p class="lab"><span class="idx">02</span>Safety words</p>
-            <h2>Five words rule out a middle-man.</h2>
-            <p class="section-lede">
-              When a new device asks for access, both screens show five words made from the two devices' keys. Read
-              them to each other. If they match, the connection is between you two and no one else. If anyone tried to
-              sit in the middle, the words would be different.
-            </p>
           </div>
         </div>
       </section>
 
       <!-- ============================================================ how -->
-      <section class="section" id="how">
-        <div class="wrap">
-          <p class="lab"><span class="idx">03</span>How it works</p>
-          <h2>Four steps, no uploads.</h2>
-          <p class="section-lede">Each file travels once, from one disk to the other, and leaves a matching receipt on both devices.</p>
-          <ol class="steps panel">
-            <li>
-              <span class="step-n num">01</span>
-              <h3>Share a folder</h3>
-              <p>Pick one folder on the device with the files. Nothing outside it can be listed, read or written.</p>
-            </li>
-            <li>
-              <span class="step-n num">02</span>
-              <h3>Invite a device</h3>
-              <p>Choose what it may do (download, upload or both) and send a 16-character code like <span class="code-chip num">K7QM-9XRT-4HWD-P2NA</span>, a link or a QR code.</p>
-            </li>
-            <li>
-              <span class="step-n num">03</span>
-              <h3>Approve and compare</h3>
-              <p>You see the device's name, its access and the five safety words before it can browse anything.</p>
-            </li>
-            <li>
-              <span class="step-n num">04</span>
-              <h3>Every byte checked</h3>
-              <p>Each megabyte is hash-verified on arrival, and the whole file once more before it gets its name.</p>
-            </li>
-          </ol>
+      <section class="section screen" id="how">
+        <div class="fit">
+          <div class="wrap">
+            <p class="lab"><span class="idx">03</span>How it works</p>
+            <h2>Four steps, no uploads.</h2>
+            <p class="section-lede">Each file travels once, from one disk to the other, and leaves a matching receipt on both devices.</p>
+            <ol class="steps panel">
+              <li>
+                <span class="step-n num">01</span>
+                <h3>Share a folder</h3>
+                <p>Pick one folder on the device with the files. Nothing outside it can be listed, read or written.</p>
+              </li>
+              <li>
+                <span class="step-n num">02</span>
+                <h3>Invite a device</h3>
+                <p>Choose what it may do (download, upload or both) and send a 16-character code like <span class="code-chip num">K7QM-9XRT-4HWD-P2NA</span>, a link or a QR code.</p>
+              </li>
+              <li>
+                <span class="step-n num">03</span>
+                <h3>Approve and compare</h3>
+                <p>You see the device's name, its access and the five safety words before it can browse anything.</p>
+              </li>
+              <li>
+                <span class="step-n num">04</span>
+                <h3>Every byte checked</h3>
+                <p>Each megabyte is hash-verified on arrival, and the whole file once more before it gets its name.</p>
+              </li>
+            </ol>
+          </div>
         </div>
       </section>
 
       <!-- ============================================================ features -->
-      <section class="section" id="features">
-        <div class="wrap">
-          <p class="lab"><span class="idx">04</span>Features</p>
-        </div>
-        <div class="wrap feature-list">
-          <article class="feature">
-            <div class="feature-copy">
-              <h2>Interruptions cost seconds, not hours.</h2>
-              <p>
-                Progress is saved after every verified megabyte. A dropped connection, a pause, a closed laptop or a
-                power cut loses at most the block in flight. Unfinished transfers start again when the app opens and
-                retry as soon as the network is back.
-              </p>
-              <ul class="ticks">
-                <li>Pause and resume any time</li>
-                <li>Survives app restarts and reboots</li>
-                <li>Stops if the sender changes the file mid-transfer, instead of mixing two versions</li>
-              </ul>
-            </div>
-            <figure class="feature-shot panel live" data-live="transfers" data-narrow="transfers" data-script="transfers">
-              <div class="live-screen">
-                <img class="poster t-dark w-only" src="assets/screens/desktop-transfers.webp" width="2560" height="1600" loading="lazy" alt="Transfers: speeds, what's left to receive and send, a live throughput graph with dropped, direct and paused markers, and the transfer list" />
-                <img class="poster t-light w-only" src="assets/screens/desktop-transfers-light.webp" width="2560" height="1600" loading="lazy" alt="Transfers in the light theme, with a live throughput graph and the transfer list" />
-                <img class="poster t-dark n-only" src="assets/screens/phone-transfers.webp" width="1170" height="2532" loading="lazy" alt="Transfers on Android with live speeds and a throughput graph" />
-                <img class="poster t-light n-only" src="assets/screens/phone-transfers-light.webp" width="1170" height="2532" loading="lazy" alt="Transfers on Android in the light theme" />
-              </div>
-            </figure>
-          </article>
-
-          <article class="feature flip">
-            <div class="feature-copy">
-              <h2>Each device gets its own access.</h2>
-              <p>
-                An invitation says what its device can do: download, upload, or both. Change any device's access later
-                from the Send page; the others keep theirs. Invitations expire, can be limited to a number of devices,
-                and can be revoked.
-              </p>
-              <ul class="ticks">
-                <li>Devices that may upload can add files and whole folders</li>
-                <li>Uploads never overwrite: a taken name gets " (1)"</li>
-                <li>A device can delete only what it uploaded itself</li>
-              </ul>
-            </div>
-            <figure class="feature-shot panel live" data-live="shares" data-narrow="shares" data-script="access">
-              <div class="live-screen">
-                <img class="poster t-dark w-only" src="assets/screens/desktop-shares.webp" width="2560" height="1600" loading="lazy" alt="Send page: a shared folder with three devices set to Both, Download and Upload, and its invitation codes" />
-                <img class="poster t-light w-only" src="assets/screens/desktop-shares-light.webp" width="2560" height="1600" loading="lazy" alt="Send page in the light theme: per-device access and invitation codes" />
-              </div>
-            </figure>
-          </article>
-
-          <article class="feature">
-            <div class="feature-copy">
-              <h2>Browse first, then choose.</h2>
-              <p>
-                The receiver sees the shared folder with names, sizes and dates, filters it, and downloads single files
-                or whole folders to a place of its choosing. Big folders load as you scroll, so a directory with
-                thousands of files stays quick.
-              </p>
-              <ul class="ticks">
-                <li>Folder downloads keep their structure</li>
-                <li>Auto-sync pulls new files from a folder every minute</li>
-                <li>Auto-sync never deletes anything on your side</li>
-              </ul>
-            </div>
-            <figure class="feature-shot panel live" data-live="devices" data-narrow="devices" data-script="browse">
-              <div class="live-screen">
-                <img class="poster t-dark w-only" src="assets/screens/desktop-browse.webp" width="2560" height="1600" loading="lazy" alt="Remote folder browser with Upload folder and Upload files buttons, and files marked Yours" />
-                <img class="poster t-light w-only" src="assets/screens/desktop-browse-light.webp" width="2560" height="1600" loading="lazy" alt="Remote folder browser in the light theme" />
-                <img class="poster t-dark n-only" src="assets/screens/phone-browse.webp" width="1170" height="2532" loading="lazy" alt="Bifrost on Android browsing a shared folder" />
-                <img class="poster t-light n-only" src="assets/screens/phone-browse-light.webp" width="1170" height="2532" loading="lazy" alt="Bifrost on Android in the light theme, browsing a shared folder" />
-              </div>
-            </figure>
-          </article>
-
-          <article class="feature flip" id="history">
-            <div class="feature-copy">
-              <h2>Your history stays home.</h2>
-              <p>
-                A month calendar shows what came in and went out each day. See who you trade the most data with, what
-                kind of files they are, and how much ever went through a relay. All of it is worked out on your device
-                from your own receipts.
-              </p>
-              <ul class="ticks">
-                <li>Never uploaded, never synced</li>
-                <li>Kept for a year by default, or 90 days, 30 days, forever, or not at all</li>
-                <li>Keep sizes and receipts without file names if you prefer</li>
-              </ul>
-            </div>
-            <figure class="feature-shot panel live" data-live="history" data-narrow="history" data-script="history">
-              <div class="live-screen">
-                <img class="poster t-dark w-only" src="assets/screens/desktop-history.webp" width="2560" height="1600" loading="lazy" alt="History: received, sent and relayed totals, a month calendar with a bar per day, and totals per device and per file type" />
-                <img class="poster t-light w-only" src="assets/screens/desktop-history-light.webp" width="2560" height="1600" loading="lazy" alt="History in the light theme: totals, a month calendar, and totals per device and per file type" />
-                <img class="poster t-dark n-only" src="assets/screens/phone-history.webp" width="1170" height="2532" loading="lazy" alt="History calendar on Android" />
-                <img class="poster t-light n-only" src="assets/screens/phone-history-light.webp" width="1170" height="2532" loading="lazy" alt="History calendar on Android in the light theme" />
-              </div>
-            </figure>
-          </article>
-
-          <article class="feature phone-feature">
-            <div class="feature-copy">
-              <h2>The same app on every device.</h2>
-              <p>
-                Send between a Mac, a Windows PC and an Android phone in any combination. On Mac and Windows, Bifrost
-                starts when you sign in and keeps running in the menu bar or tray when you close the window. On Android,
-                transfers keep running with the screen off and show their progress in a notification.
-              </p>
-              <ul class="ticks">
-                <li>macOS 10.15+, Windows 10 and 11, Android 7.0+</li>
-                <li>Light and dark themes, like this page</li>
-                <li>Saves to Downloads/Bifrost by default</li>
-              </ul>
-            </div>
-            <div class="phones">
-              <figure class="live phone" data-live="history" data-phone data-script="history">
-                <div class="live-screen">
-                  <img class="poster t-dark" src="assets/screens/phone-history.webp" width="1170" height="2532" loading="lazy" alt="History calendar on Android" />
-                  <img class="poster t-light" src="assets/screens/phone-history-light.webp" width="1170" height="2532" loading="lazy" alt="History calendar on Android in the light theme" />
+      <!-- ============================================================ features (carousel) -->
+      <!-- Pinned while you scroll through it: each scroll step slides the next page in from the side. -->
+      <section class="features" id="features" data-carousel style="--slides: 6" aria-roledescription="carousel" aria-label="Features">
+        <span class="car-stop" style="--k: 0" aria-hidden="true"></span>
+        <span class="car-stop" style="--k: 1" aria-hidden="true"></span>
+        <span class="car-stop" style="--k: 2" aria-hidden="true"></span>
+        <span class="car-stop" style="--k: 3" aria-hidden="true"></span>
+        <span class="car-stop" style="--k: 4" aria-hidden="true"></span>
+        <span class="car-stop" style="--k: 5" aria-hidden="true"></span>
+        <div class="car-view">
+          <div class="car-strip" data-car-strip>
+            <div class="slide" data-slide="0" aria-roledescription="slide" aria-label="1 of 6: Resume">
+              <div class="fit">
+                <div class="wrap">
+                  <article class="feature">
+                    <div class="feature-copy">
+                      <h2>Interruptions cost seconds, not hours.</h2>
+                      <p>
+                        Progress is saved after every verified megabyte. A dropped connection, a pause, a closed laptop or a
+                        power cut loses at most the block in flight. Unfinished transfers start again when the app opens and
+                        retry as soon as the network is back.
+                      </p>
+                      <ul class="ticks">
+                        <li>Pause and resume any time</li>
+                        <li>Survives app restarts and reboots</li>
+                        <li>Stops if the sender changes the file mid-transfer, instead of mixing two versions</li>
+                      </ul>
+                    </div>
+                    <figure class="feature-shot panel live" data-live="transfers" data-narrow="transfers" data-script="transfers">
+                      <div class="live-screen">
+                        <img class="poster t-dark w-only" src="assets/screens/desktop-transfers.webp" width="2560" height="1600" loading="lazy" alt="Transfers: speeds, what's left to receive and send, a live throughput graph with dropped, direct and paused markers, and the transfer list" />
+                        <img class="poster t-light w-only" src="assets/screens/desktop-transfers-light.webp" width="2560" height="1600" loading="lazy" alt="Transfers in the light theme, with a live throughput graph and the transfer list" />
+                        <img class="poster t-dark n-only" src="assets/screens/phone-transfers.webp" width="1170" height="2532" loading="lazy" alt="Transfers on Android with live speeds and a throughput graph" />
+                        <img class="poster t-light n-only" src="assets/screens/phone-transfers-light.webp" width="1170" height="2532" loading="lazy" alt="Transfers on Android in the light theme" />
+                      </div>
+                    </figure>
+                  </article>
                 </div>
-              </figure>
-              <figure class="live phone" data-live="transfers" data-phone data-script="transfers">
-                <div class="live-screen">
-                  <img class="poster t-dark" src="assets/screens/phone-transfers.webp" width="1170" height="2532" loading="lazy" alt="Transfers on Android with live speeds and a throughput graph" />
-                  <img class="poster t-light" src="assets/screens/phone-transfers-light.webp" width="1170" height="2532" loading="lazy" alt="Transfers on Android in the light theme" />
-                </div>
-              </figure>
+              </div>
             </div>
-          </article>
-        </div>
-
-        <div class="wrap">
-          <ul class="tiles">
-            <li class="panel">
-              <span class="tile-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 0 1-15.5 6.2M3 12a9 9 0 0 1 15.5-6.2M18 2v4h-4M6 22v-4h4"/></svg></span>
-              <h3>Auto-sync</h3>
-              <p>Turn it on for any folder you can download from. New files arrive in a local folder every minute, and as soon as the network is back.</p>
-            </li>
-            <li class="panel">
-              <span class="tile-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" d="M3 7h18M3 12h18M3 17h18"/></svg></span>
-              <h3>Several connections</h3>
-              <p>On long, lossy direct paths the receiver opens up to 8 connections to one sender, and keeps only the ones that raise the speed.</p>
-            </li>
-            <li class="panel">
-              <span class="tile-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></span>
-              <h3>Fast over distance</h3>
-              <p>QUIC with 12 parallel streams per file (up to 32) and an adaptive flow window keeps a high-latency link full.</p>
-            </li>
-            <li class="panel">
-              <span class="tile-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg></span>
-              <h3>Know who uses your folders</h3>
-              <p>A notice when another device downloads from or uploads to your folders, one per batch rather than one per file.</p>
-            </li>
-            <li class="panel">
-              <span class="tile-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5v14M3 3h6v6H3zM15 15h6v6h-6z"/></svg></span>
-              <h3>Your own relay</h3>
-              <p>The public relays are rate-limited. Point Bifrost at your own relay server in Settings for full speed when no direct path exists.</p>
-            </li>
-            <li class="panel">
-              <span class="tile-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" d="M4 21V10M10 21V4M16 21v-7M22 21H2"/></svg></span>
-              <h3>Light on the machine</h3>
-              <p>Files stream from disk in small blocks and are never loaded whole. The app runs at low CPU priority, with optional upload and download limits.</p>
-            </li>
-          </ul>
+            <div class="slide" data-slide="1" aria-roledescription="slide" aria-label="2 of 6: Access">
+              <div class="fit">
+                <div class="wrap">
+                  <article class="feature flip">
+                    <div class="feature-copy">
+                      <h2>Each device gets its own access.</h2>
+                      <p>
+                        An invitation says what its device can do: download, upload, or both. Change any device's access later
+                        from the Send page; the others keep theirs. Invitations expire, can be limited to a number of devices,
+                        and can be revoked.
+                      </p>
+                      <ul class="ticks">
+                        <li>Devices that may upload can add files and whole folders</li>
+                        <li>Uploads never overwrite: a taken name gets " (1)"</li>
+                        <li>A device can delete only what it uploaded itself</li>
+                      </ul>
+                    </div>
+                    <figure class="feature-shot panel live" data-live="shares" data-narrow="shares" data-script="access">
+                      <div class="live-screen">
+                        <img class="poster t-dark w-only" src="assets/screens/desktop-shares.webp" width="2560" height="1600" loading="lazy" alt="Send page: a shared folder with three devices set to Both, Download and Upload, and its invitation codes" />
+                        <img class="poster t-light w-only" src="assets/screens/desktop-shares-light.webp" width="2560" height="1600" loading="lazy" alt="Send page in the light theme: per-device access and invitation codes" />
+                      </div>
+                    </figure>
+                  </article>
+                </div>
+              </div>
+            </div>
+            <div class="slide" data-slide="2" aria-roledescription="slide" aria-label="3 of 6: Browse">
+              <div class="fit">
+                <div class="wrap">
+                  <article class="feature">
+                    <div class="feature-copy">
+                      <h2>Browse first, then choose.</h2>
+                      <p>
+                        The receiver sees the shared folder with names, sizes and dates, filters it, and downloads single files
+                        or whole folders to a place of its choosing. Big folders load as you scroll, so a directory with
+                        thousands of files stays quick.
+                      </p>
+                      <ul class="ticks">
+                        <li>Folder downloads keep their structure</li>
+                        <li>Auto-sync pulls new files from a folder every minute</li>
+                        <li>Auto-sync never deletes anything on your side</li>
+                      </ul>
+                    </div>
+                    <figure class="feature-shot panel live" data-live="devices" data-narrow="devices" data-script="browse">
+                      <div class="live-screen">
+                        <img class="poster t-dark w-only" src="assets/screens/desktop-browse.webp" width="2560" height="1600" loading="lazy" alt="Remote folder browser with Upload folder and Upload files buttons, and files marked Yours" />
+                        <img class="poster t-light w-only" src="assets/screens/desktop-browse-light.webp" width="2560" height="1600" loading="lazy" alt="Remote folder browser in the light theme" />
+                        <img class="poster t-dark n-only" src="assets/screens/phone-browse.webp" width="1170" height="2532" loading="lazy" alt="Bifrost on Android browsing a shared folder" />
+                        <img class="poster t-light n-only" src="assets/screens/phone-browse-light.webp" width="1170" height="2532" loading="lazy" alt="Bifrost on Android in the light theme, browsing a shared folder" />
+                      </div>
+                    </figure>
+                  </article>
+                </div>
+              </div>
+            </div>
+            <div class="slide" data-slide="3" aria-roledescription="slide" aria-label="4 of 6: History">
+              <div class="fit">
+                <div class="wrap">
+                  <article class="feature flip" id="history">
+                    <div class="feature-copy">
+                      <h2>Your history stays home.</h2>
+                      <p>
+                        A month calendar shows what came in and went out each day. See who you trade the most data with, what
+                        kind of files they are, and how much ever went through a relay. All of it is worked out on your device
+                        from your own receipts.
+                      </p>
+                      <ul class="ticks">
+                        <li>Never uploaded, never synced</li>
+                        <li>Kept for a year by default, or 90 days, 30 days, forever, or not at all</li>
+                        <li>Keep sizes and receipts without file names if you prefer</li>
+                      </ul>
+                    </div>
+                    <figure class="feature-shot panel live" data-live="history" data-narrow="history" data-script="history">
+                      <div class="live-screen">
+                        <img class="poster t-dark w-only" src="assets/screens/desktop-history.webp" width="2560" height="1600" loading="lazy" alt="History: received, sent and relayed totals, a month calendar with a bar per day, and totals per device and per file type" />
+                        <img class="poster t-light w-only" src="assets/screens/desktop-history-light.webp" width="2560" height="1600" loading="lazy" alt="History in the light theme: totals, a month calendar, and totals per device and per file type" />
+                        <img class="poster t-dark n-only" src="assets/screens/phone-history.webp" width="1170" height="2532" loading="lazy" alt="History calendar on Android" />
+                        <img class="poster t-light n-only" src="assets/screens/phone-history-light.webp" width="1170" height="2532" loading="lazy" alt="History calendar on Android in the light theme" />
+                      </div>
+                    </figure>
+                  </article>
+                </div>
+              </div>
+            </div>
+            <div class="slide" data-slide="4" aria-roledescription="slide" aria-label="5 of 6: Every device">
+              <div class="fit">
+                <div class="wrap">
+                  <article class="feature phone-feature">
+                    <div class="feature-copy">
+                      <h2>The same app on every device.</h2>
+                      <p>
+                        Send between a Mac, a Windows PC and an Android phone in any combination. On Mac and Windows, Bifrost
+                        starts when you sign in and keeps running in the menu bar or tray when you close the window. On Android,
+                        transfers keep running with the screen off and show their progress in a notification.
+                      </p>
+                      <ul class="ticks">
+                        <li>macOS 10.15+, Windows 10 and 11, Android 7.0+</li>
+                        <li>Light and dark themes, like this page</li>
+                        <li>Saves to Downloads/Bifrost by default</li>
+                      </ul>
+                    </div>
+                    <div class="phones">
+                      <figure class="live phone" data-live="history" data-phone data-script="history">
+                        <div class="live-screen">
+                          <img class="poster t-dark" src="assets/screens/phone-history.webp" width="1170" height="2532" loading="lazy" alt="History calendar on Android" />
+                          <img class="poster t-light" src="assets/screens/phone-history-light.webp" width="1170" height="2532" loading="lazy" alt="History calendar on Android in the light theme" />
+                        </div>
+                      </figure>
+                      <figure class="live phone" data-live="transfers" data-phone data-script="transfers">
+                        <div class="live-screen">
+                          <img class="poster t-dark" src="assets/screens/phone-transfers.webp" width="1170" height="2532" loading="lazy" alt="Transfers on Android with live speeds and a throughput graph" />
+                          <img class="poster t-light" src="assets/screens/phone-transfers-light.webp" width="1170" height="2532" loading="lazy" alt="Transfers on Android in the light theme" />
+                        </div>
+                      </figure>
+                    </div>
+                  </article>
+                </div>
+              </div>
+            </div>
+            <div class="slide" data-slide="5" aria-roledescription="slide" aria-label="6 of 6: And more">
+              <div class="fit">
+                <div class="wrap">
+                  <ul class="tiles">
+                    <li class="panel">
+                      <span class="tile-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 0 1-15.5 6.2M3 12a9 9 0 0 1 15.5-6.2M18 2v4h-4M6 22v-4h4"/></svg></span>
+                      <h3>Auto-sync</h3>
+                      <p>Turn it on for any folder you can download from. New files arrive in a local folder every minute, and as soon as the network is back.</p>
+                    </li>
+                    <li class="panel">
+                      <span class="tile-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" d="M3 7h18M3 12h18M3 17h18"/></svg></span>
+                      <h3>Several connections</h3>
+                      <p>On long, lossy direct paths the receiver opens up to 8 connections to one sender, and keeps only the ones that raise the speed.</p>
+                    </li>
+                    <li class="panel">
+                      <span class="tile-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></span>
+                      <h3>Fast over distance</h3>
+                      <p>QUIC with 12 parallel streams per file (up to 32) and an adaptive flow window keeps a high-latency link full.</p>
+                    </li>
+                    <li class="panel">
+                      <span class="tile-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg></span>
+                      <h3>Know who uses your folders</h3>
+                      <p>A notice when another device downloads from or uploads to your folders, one per batch rather than one per file.</p>
+                    </li>
+                    <li class="panel">
+                      <span class="tile-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5v14M3 3h6v6H3zM15 15h6v6h-6z"/></svg></span>
+                      <h3>Your own relay</h3>
+                      <p>The public relays are rate-limited. Point Bifrost at your own relay server in Settings for full speed when no direct path exists.</p>
+                    </li>
+                    <li class="panel">
+                      <span class="tile-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" d="M4 21V10M10 21V4M16 21v-7M22 21H2"/></svg></span>
+                      <h3>Light on the machine</h3>
+                      <p>Files stream from disk in small blocks and are never loaded whole. The app runs at low CPU priority, with optional upload and download limits.</p>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="car-bar">
+            <div class="wrap car-bar-inner">
+              <p class="lab"><span class="idx">04</span>Features <span class="car-name" data-car-name>Resume</span></p>
+              <div class="car-dashes" role="group" aria-label="Feature pages">
+                <button type="button" data-car-dash="0" aria-label="Resume"><i></i><span>01</span></button>
+                <button type="button" data-car-dash="1" aria-label="Access"><i></i><span>02</span></button>
+                <button type="button" data-car-dash="2" aria-label="Browse"><i></i><span>03</span></button>
+                <button type="button" data-car-dash="3" aria-label="History"><i></i><span>04</span></button>
+                <button type="button" data-car-dash="4" aria-label="Every device"><i></i><span>05</span></button>
+                <button type="button" data-car-dash="5" aria-label="And more"><i></i><span>06</span></button>
+              </div>
+              <span class="car-count num"><b data-car-i>01</b> / 06</span>
+              <span class="car-arrows">
+                <button class="icon-btn" type="button" data-car-prev aria-label="Previous feature">
+                  <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" d="m15 18-6-6 6-6"/></svg>
+                </button>
+                <button class="icon-btn" type="button" data-car-next aria-label="Next feature">
+                  <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" d="m9 18 6-6-6-6"/></svg>
+                </button>
+              </span>
+            </div>
+          </div>
         </div>
       </section>
 
       <!-- ============================================================ security -->
-      <section class="section" id="security">
-        <div class="wrap">
-          <p class="lab"><span class="idx">05</span>Security</p>
-          <h2>Who sees what.</h2>
-          <p class="section-lede">
-            Two devices on the internet need a little help to find each other. Here is everything that help can see,
-            and everything it can't.
-          </p>
-          <div class="sees panel">
-            <div class="sees-col">
-              <h3 class="lab accent">Only your two devices</h3>
-              <ul>
-                <li>File names, folder listings and file contents</li>
-                <li>Who you share with, and your transfer history</li>
-                <li>Receipts, fingerprints and safety words</li>
-                <li>Invitation keys, stored only as hashes on the sender</li>
-              </ul>
+      <section class="section screen" id="security">
+        <div class="fit">
+          <div class="wrap">
+            <p class="lab"><span class="idx">05</span>Security</p>
+            <h2>Who sees what.</h2>
+            <p class="section-lede">
+              Two devices on the internet need a little help to find each other. Here is everything that help can see,
+              and everything it can't.
+            </p>
+            <div class="sees panel">
+              <div class="sees-col">
+                <h3 class="lab accent">Only your two devices</h3>
+                <ul>
+                  <li>File names, folder listings and file contents</li>
+                  <li>Who you share with, and your transfer history</li>
+                  <li>Receipts, fingerprints and safety words</li>
+                  <li>Invitation keys, stored only as hashes on the sender</li>
+                </ul>
+              </div>
+              <div class="sees-col">
+                <h3 class="lab">The lookup and relay servers</h3>
+                <ul>
+                  <li>Two device IDs and their IP addresses, so the devices can punch through routers</li>
+                  <li>For a short code, an encrypted invitation it can't open, while the invitation is active</li>
+                  <li>Encrypted packets it can't read, only when routers block a direct path (never, in Direct only mode)</li>
+                </ul>
+              </div>
+              <div class="sees-col">
+                <h3 class="lab">Anyone else, including us</h3>
+                <ul>
+                  <li>Nothing. There is no Bifrost account, server or analytics.</li>
+                </ul>
+              </div>
             </div>
-            <div class="sees-col">
-              <h3 class="lab">The lookup and relay servers</h3>
-              <ul>
-                <li>Two device IDs and their IP addresses, so the devices can punch through routers</li>
-                <li>For a short code, an encrypted invitation it can't open, while the invitation is active</li>
-                <li>Encrypted packets it can't read, only when routers block a direct path (never, in Direct only mode)</li>
-              </ul>
-            </div>
-            <div class="sees-col">
-              <h3 class="lab">Anyone else, including us</h3>
-              <ul>
-                <li>Nothing. There is no Bifrost account, server or analytics.</li>
-              </ul>
-            </div>
+            <ul class="sec-list">
+              <li><strong>Invitations you control</strong><span>Random 128-bit keys that expire, can be limited to a number of devices, and can be revoked.</span></li>
+              <li><strong>Short codes</strong><span>16 characters, stretched with Argon2id. They unlock an encrypted record, so the lookup service never sees the invitation.</span></li>
+              <li><strong>Checked on every request</strong><span>The owner checks each request against that device's own access, so a change applies at once. Paths, symlinks and junctions that leave the folder are refused.</span></li>
+              <li><strong>Direct first, never silent</strong><span>A direct path is always tried first. The route is shown live and every relayed byte is on the receipt. Direct only is one setting away.</span></li>
+            </ul>
           </div>
-          <ul class="sec-list">
-            <li><strong>Invitations you control</strong><span>Random 128-bit keys that expire, can be limited to a number of devices, and can be revoked.</span></li>
-            <li><strong>Short codes</strong><span>16 characters, stretched with Argon2id. They unlock an encrypted record, so the lookup service never sees the invitation.</span></li>
-            <li><strong>Checked on every request</strong><span>The owner checks each request against that device's own access, so a change applies at once. Paths, symlinks and junctions that leave the folder are refused.</span></li>
-            <li><strong>Direct first, never silent</strong><span>A direct path is always tried first. The route is shown live and every relayed byte is on the receipt. Direct only is one setting away.</span></li>
-          </ul>
         </div>
       </section>
 
       <!-- ============================================================ compare -->
-      <section class="section" id="compare">
-        <div class="wrap">
-          <p class="lab"><span class="idx">06</span>Compare</p>
-          <h2>How it compares.</h2>
-          <div class="table-wrap panel">
-            <table>
-              <thead>
-                <tr>
-                  <th scope="col"><span class="sr">Capability</span></th>
-                  <th scope="col" class="us">Bifrost</th>
-                  <th scope="col">Cloud share links</th>
-                  <th scope="col">Chat and messaging apps</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr><th scope="row">File size limit</th><td class="us">None</td><td>Usually a few GB</td><td>Usually 2 GB or less</td></tr>
-                <tr><th scope="row">Travels over the internet</th><td class="us">Once, device to device</td><td>Twice: upload, then download</td><td>Twice, through their servers</td></tr>
-                <tr><th scope="row">Copy kept on a server</th><td class="us">Never</td><td>Until the link expires</td><td>Often</td></tr>
-                <tr><th scope="row">Resumes after a drop</th><td class="us">From the last verified megabyte</td><td>Sometimes</td><td>Rarely</td></tr>
-                <tr><th scope="row">Verifies every byte</th><td class="us">Yes, block by block</td><td>Varies</td><td>Varies</td></tr>
-                <tr><th scope="row">Both devices online</th><td class="us">Required</td><td>Not required</td><td>Not required</td></tr>
-              </tbody>
-            </table>
+      <section class="section screen" id="compare">
+        <div class="fit">
+          <div class="wrap">
+            <p class="lab"><span class="idx">06</span>Compare</p>
+            <h2>How it compares.</h2>
+            <div class="table-wrap panel">
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col"><span class="sr">Capability</span></th>
+                    <th scope="col" class="us">Bifrost</th>
+                    <th scope="col">Cloud share links</th>
+                    <th scope="col">Chat and messaging apps</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><th scope="row">File size limit</th><td class="us">None</td><td>Usually a few GB</td><td>Usually 2 GB or less</td></tr>
+                  <tr><th scope="row">Travels over the internet</th><td class="us">Once, device to device</td><td>Twice: upload, then download</td><td>Twice, through their servers</td></tr>
+                  <tr><th scope="row">Copy kept on a server</th><td class="us">Never</td><td>Until the link expires</td><td>Often</td></tr>
+                  <tr><th scope="row">Resumes after a drop</th><td class="us">From the last verified megabyte</td><td>Sometimes</td><td>Rarely</td></tr>
+                  <tr><th scope="row">Verifies every byte</th><td class="us">Yes, block by block</td><td>Varies</td><td>Varies</td></tr>
+                  <tr><th scope="row">Both devices online</th><td class="us">Required</td><td>Not required</td><td>Not required</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="fineprint">Bifrost trades the convenience of an always-on server for privacy and no size limits: the sender has to stay online while the receiver downloads.</p>
           </div>
-          <p class="fineprint">Bifrost trades the convenience of an always-on server for privacy and no size limits: the sender has to stay online while the receiver downloads.</p>
         </div>
       </section>
 
       <!-- ============================================================ download -->
-      <section class="section" id="download">
-        <div class="wrap">
-          <p class="lab"><span class="idx">07</span>Download</p>
-          <h2>Download Bifrost.</h2>
-          <p class="section-lede"><span data-version>Latest release</span>. Free, no account needed. New versions install over the old one and keep your devices and history.</p>
-          <div class="dl-grid">
-            <a class="dl panel" data-dl="macos" href="https://github.com/MisbahKhan0009/Relayless/releases/latest">
-              <span class="dl-head">
-                <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path fill="currentColor" d="M16.37 12.6c-.02-2.3 1.88-3.4 1.96-3.46-1.07-1.56-2.73-1.77-3.32-1.8-1.41-.14-2.76.83-3.47.83-.72 0-1.82-.81-2.99-.79-1.54.02-2.96.9-3.75 2.27-1.6 2.78-.41 6.89 1.15 9.14.76 1.1 1.67 2.34 2.86 2.3 1.15-.05 1.58-.74 2.97-.74 1.38 0 1.77.74 2.98.72 1.24-.02 2.02-1.12 2.77-2.23.88-1.28 1.24-2.52 1.26-2.59-.03-.01-2.4-.92-2.42-3.65zM14.1 5.86c.63-.77 1.06-1.83.94-2.89-.91.04-2.02.61-2.67 1.37-.58.67-1.1 1.76-.96 2.8 1.02.08 2.06-.52 2.69-1.28z"/></svg>
-                <span class="tag" data-rec hidden>For this device</span>
-              </span>
-              <span class="dl-name">macOS</span>
-              <span class="dl-meta" data-meta="macos">macOS 10.15 or newer, Apple silicon</span>
-              <span class="btn btn-primary btn-md">Download .dmg</span>
-            </a>
-            <a class="dl panel" data-dl="windows" href="https://github.com/MisbahKhan0009/Relayless/releases/latest">
-              <span class="dl-head">
-                <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path fill="currentColor" d="M3 5.5 10.5 4.4v7.1H3zm0 13L10.5 19.6v-7H3zm8.5 1.3L21 21v-8.4h-9.5zm0-15.6v7.3H21V3z"/></svg>
-                <span class="tag" data-rec hidden>For this device</span>
-              </span>
-              <span class="dl-name">Windows</span>
-              <span class="dl-meta" data-meta="windows">Windows 10 and 11, 64-bit, no admin rights needed</span>
-              <span class="btn btn-primary btn-md">Download .exe</span>
-            </a>
-            <a class="dl panel" data-dl="android" href="https://github.com/MisbahKhan0009/Relayless/releases/latest">
-              <span class="dl-head">
-                <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path fill="currentColor" d="M17.6 9.48 19.44 6.3a.38.38 0 0 0-.66-.38l-1.86 3.22a11.5 11.5 0 0 0-9.84 0L5.22 5.92a.38.38 0 0 0-.66.38L6.4 9.48A10.8 10.8 0 0 0 1 18h22a10.8 10.8 0 0 0-5.4-8.52zM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5z"/></svg>
-                <span class="tag" data-rec hidden>For this device</span>
-              </span>
-              <span class="dl-name">Android</span>
-              <span class="dl-meta" data-meta="android">Android 7.0 and newer, one APK for every phone and tablet</span>
-              <span class="btn btn-primary btn-md">Download .apk</span>
-            </a>
-          </div>
-          <details class="install-help panel">
-            <summary><span class="lab">Seeing a warning when you install?</span></summary>
-            <div class="install-body">
-              <p>Bifrost is new and not yet code-signed by a certificate authority, so your system may ask you to confirm.</p>
-              <ul>
-                <li><b>macOS:</b> open the disk image and drag Bifrost to Applications. If the first launch says the app is from an unidentified developer, right-click Bifrost, choose <b>Open</b>, then <b>Open</b> again.</li>
-                <li><b>Windows:</b> if SmartScreen shows "Windows protected your PC", choose <b>More info</b>, then <b>Run anyway</b>.</li>
-                <li><b>Android:</b> allow your browser or file manager to install apps when asked. If Play Protect warns, choose <b>More details</b>, then <b>Install anyway</b>. On first launch, allow All files access and notifications.</li>
-              </ul>
-              <p>Every file in a release has a matching <span class="num">.sha256</span> checksum, so you can confirm it is genuine.</p>
+      <section class="section screen" id="download">
+        <div class="fit">
+          <div class="wrap">
+            <p class="lab"><span class="idx">07</span>Download</p>
+            <h2>Download Bifrost.</h2>
+            <p class="section-lede"><span data-version>Latest release</span>. Free, no account needed. New versions install over the old one and keep your devices and history.</p>
+            <div class="dl-grid">
+              <a class="dl panel" data-dl="macos" href="https://github.com/MisbahKhan0009/Relayless/releases/latest">
+                <span class="dl-head">
+                  <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path fill="currentColor" d="M16.37 12.6c-.02-2.3 1.88-3.4 1.96-3.46-1.07-1.56-2.73-1.77-3.32-1.8-1.41-.14-2.76.83-3.47.83-.72 0-1.82-.81-2.99-.79-1.54.02-2.96.9-3.75 2.27-1.6 2.78-.41 6.89 1.15 9.14.76 1.1 1.67 2.34 2.86 2.3 1.15-.05 1.58-.74 2.97-.74 1.38 0 1.77.74 2.98.72 1.24-.02 2.02-1.12 2.77-2.23.88-1.28 1.24-2.52 1.26-2.59-.03-.01-2.4-.92-2.42-3.65zM14.1 5.86c.63-.77 1.06-1.83.94-2.89-.91.04-2.02.61-2.67 1.37-.58.67-1.1 1.76-.96 2.8 1.02.08 2.06-.52 2.69-1.28z"/></svg>
+                  <span class="tag" data-rec hidden>For this device</span>
+                </span>
+                <span class="dl-name">macOS</span>
+                <span class="dl-meta" data-meta="macos">macOS 10.15 or newer, Apple silicon</span>
+                <span class="btn btn-primary btn-md">Download .dmg</span>
+              </a>
+              <a class="dl panel" data-dl="windows" href="https://github.com/MisbahKhan0009/Relayless/releases/latest">
+                <span class="dl-head">
+                  <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path fill="currentColor" d="M3 5.5 10.5 4.4v7.1H3zm0 13L10.5 19.6v-7H3zm8.5 1.3L21 21v-8.4h-9.5zm0-15.6v7.3H21V3z"/></svg>
+                  <span class="tag" data-rec hidden>For this device</span>
+                </span>
+                <span class="dl-name">Windows</span>
+                <span class="dl-meta" data-meta="windows">Windows 10 and 11, 64-bit, no admin rights needed</span>
+                <span class="btn btn-primary btn-md">Download .exe</span>
+              </a>
+              <a class="dl panel" data-dl="android" href="https://github.com/MisbahKhan0009/Relayless/releases/latest">
+                <span class="dl-head">
+                  <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path fill="currentColor" d="M17.6 9.48 19.44 6.3a.38.38 0 0 0-.66-.38l-1.86 3.22a11.5 11.5 0 0 0-9.84 0L5.22 5.92a.38.38 0 0 0-.66.38L6.4 9.48A10.8 10.8 0 0 0 1 18h22a10.8 10.8 0 0 0-5.4-8.52zM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5z"/></svg>
+                  <span class="tag" data-rec hidden>For this device</span>
+                </span>
+                <span class="dl-name">Android</span>
+                <span class="dl-meta" data-meta="android">Android 7.0 and newer, one APK for every phone and tablet</span>
+                <span class="btn btn-primary btn-md">Download .apk</span>
+              </a>
             </div>
-          </details>
+            <details class="install-help panel">
+              <summary><span class="lab">Seeing a warning when you install?</span></summary>
+              <div class="install-body">
+                <p>Bifrost is new and not yet code-signed by a certificate authority, so your system may ask you to confirm.</p>
+                <ul>
+                  <li><b>macOS:</b> open the disk image and drag Bifrost to Applications. If the first launch says the app is from an unidentified developer, right-click Bifrost, choose <b>Open</b>, then <b>Open</b> again.</li>
+                  <li><b>Windows:</b> if SmartScreen shows "Windows protected your PC", choose <b>More info</b>, then <b>Run anyway</b>.</li>
+                  <li><b>Android:</b> allow your browser or file manager to install apps when asked. If Play Protect warns, choose <b>More details</b>, then <b>Install anyway</b>. On first launch, allow All files access and notifications.</li>
+                </ul>
+                <p>Every file in a release has a matching <span class="num">.sha256</span> checksum, so you can confirm it is genuine.</p>
+              </div>
+            </details>
+          </div>
         </div>
       </section>
 
       <!-- ============================================================ open source -->
-      <section class="section" id="open-source">
-        <div class="wrap oss panel">
-          <div>
-            <p class="lab"><span class="idx">08</span>Open source</p>
-            <h2>Built in the open.</h2>
-            <p>
-              Bifrost is MIT licensed. The transfer engine is a Rust library on iroh, with end-to-end tests for pauses,
-              crashes, corruption, source changes, uploads, permissions and auto-sync. The apps use Tauri with a React
-              interface. Issues, ideas and pull requests are welcome.
-            </p>
-            <div class="cta-row">
-              <a class="btn btn-primary btn-md" href="https://github.com/MisbahKhan0009/Relayless">View the source</a>
-              <a class="btn btn-secondary btn-md" href="https://github.com/MisbahKhan0009/Relayless/blob/main/CONTRIBUTING.md">Contributing guide</a>
+      <section class="section screen" id="open-source">
+        <div class="fit">
+          <div class="wrap oss panel">
+            <div>
+              <p class="lab"><span class="idx">08</span>Open source</p>
+              <h2>Built in the open.</h2>
+              <p>
+                Bifrost is MIT licensed. The transfer engine is a Rust library on iroh, with end-to-end tests for pauses,
+                crashes, corruption, source changes, uploads, permissions and auto-sync. The apps use Tauri with a React
+                interface. Issues, ideas and pull requests are welcome.
+              </p>
+              <div class="cta-row">
+                <a class="btn btn-primary btn-md" href="https://github.com/MisbahKhan0009/Relayless">View the source</a>
+                <a class="btn btn-secondary btn-md" href="https://github.com/MisbahKhan0009/Relayless/blob/main/CONTRIBUTING.md">Contributing guide</a>
+              </div>
             </div>
+            <pre class="code" aria-label="Build from source"><code><span class="c"># Build and run from source</span>
+  git clone https://github.com/MisbahKhan0009/Relayless
+  cd Relayless &amp;&amp; npm ci
+  npm run tauri dev
+
+  <span class="c"># The interface alone, with demo data</span>
+  npm run dev:ui
+
+  <span class="c"># Engine tests: real transfers, pauses,</span>
+  <span class="c"># crashes, corruption, uploads</span>
+  cargo test -p relayless-core --release</code></pre>
           </div>
-          <pre class="code" aria-label="Build from source"><code><span class="c"># Build and run from source</span>
-git clone https://github.com/MisbahKhan0009/Relayless
-cd Relayless &amp;&amp; npm ci
-npm run tauri dev
-
-<span class="c"># The interface alone, with demo data</span>
-npm run dev:ui
-
-<span class="c"># Engine tests: real transfers, pauses,</span>
-<span class="c"># crashes, corruption, uploads</span>
-cargo test -p relayless-core --release</code></pre>
         </div>
       </section>
 
       <!-- ============================================================ faq -->
-      <section class="section" id="faq">
-        <div class="wrap faq">
-          <div>
-            <p class="lab"><span class="idx">09</span>FAQ</p>
-            <h2>Questions.</h2>
-          </div>
-          <div class="faq-list">
-            <details>
-              <summary>Do both devices have to be online?</summary>
-              <p>Yes, while files move. If either one goes offline, the transfer waits and continues from where it stopped when both are back. It also starts again by itself when the app opens.</p>
-            </details>
-            <details>
-              <summary>What if a direct connection is impossible?</summary>
-              <p>Some networks, mobile data in particular, block direct paths. Bifrost tries direct first and, if none opens within about 5 seconds, continues through a public relay. The data stays end-to-end encrypted, so the relay can't read or keep it, and Bifrost moves to a direct path as soon as one opens. The receipt shows how much went through the relay. If you'd rather wait for a direct path, choose Direct only in Settings.</p>
-            </details>
-            <details>
-              <summary>Why is a relayed transfer slow?</summary>
-              <p>The free public relays are rate-limited, often to around 1 Mbit/s. Turning on UPnP or IPv6 on your router usually gives a direct path. You can also run your own relay and set it under Settings, Connection, Relay server. The <a href="https://github.com/MisbahKhan0009/Relayless/blob/main/docs/RELAY.md">relay guide</a> walks through both.</p>
-            </details>
-            <details>
-              <summary>Is there a size limit?</summary>
-              <p>No. Files are streamed from disk in small blocks, so a 500 GB file uses the same memory as a 5 MB one. You need enough free space on the receiving side.</p>
-            </details>
-            <details>
-              <summary>How fast is it?</summary>
-              <p>As fast as the slower of the two connections allows, which is usually the sender's upload speed. Twelve parallel streams per file keep long-distance links full, and on lossy direct paths the receiver can add connections to the same sender while each one raises the speed.</p>
-            </details>
-            <details>
-              <summary>Can the other person see my other files?</summary>
-              <p>No. They can only reach the folder you shared, and only after you approve their device. A device allowed only to upload sees just what it added, like a drop box. You can change a device's access, stop sharing or remove a device at any time.</p>
-            </details>
-            <details>
-              <summary>Can someone overwrite or delete my files?</summary>
-              <p>No. Uploads go to a temporary file, are verified, then saved under a free name, so nothing existing is replaced. A device can delete only files it uploaded itself and that you haven't changed since.</p>
-            </details>
-            <details>
-              <summary>Where is my transfer history stored?</summary>
-              <p>Only in the app's database on your device. Nothing is synced or uploaded. You choose how long it is kept, can keep it without file names, and can clear it at any time in Settings.</p>
-            </details>
-            <details>
-              <summary>What are safety words for?</summary>
-              <p>They let two people confirm, out loud or over a call, that their devices are talking to each other directly. They are derived from both devices' keys, so a device in the middle would produce different words.</p>
-            </details>
-            <details>
-              <summary>Does it run on Intel Macs, Linux or iPhone?</summary>
-              <p>Releases include an Apple silicon build for macOS; an Intel Mac can build the app from source. Linux builds are on the roadmap. There is no iPhone or iPad app.</p>
-            </details>
-            <details>
-              <summary>Does it cost anything?</summary>
-              <p>No. Bifrost is free and open source. There is no account and no paid tier.</p>
-            </details>
+      <section class="section screen faq-screen" id="faq" data-nofit>
+        <div class="fit">
+          <div class="wrap faq">
+            <div>
+              <p class="lab"><span class="idx">09</span>FAQ</p>
+              <h2>Questions.</h2>
+            </div>
+            <div class="faq-list">
+              <details name="faq">
+                <summary>Do both devices have to be online?</summary>
+                <p>Yes, while files move. If either one goes offline, the transfer waits and continues from where it stopped when both are back. It also starts again by itself when the app opens.</p>
+              </details>
+              <details name="faq">
+                <summary>What if a direct connection is impossible?</summary>
+                <p>Some networks, mobile data in particular, block direct paths. Bifrost tries direct first and, if none opens within about 5 seconds, continues through a public relay. The data stays end-to-end encrypted, so the relay can't read or keep it, and Bifrost moves to a direct path as soon as one opens. The receipt shows how much went through the relay. If you'd rather wait for a direct path, choose Direct only in Settings.</p>
+              </details>
+              <details name="faq">
+                <summary>Why is a relayed transfer slow?</summary>
+                <p>The free public relays are rate-limited, often to around 1 Mbit/s. Turning on UPnP or IPv6 on your router usually gives a direct path. You can also run your own relay and set it under Settings, Connection, Relay server. The <a href="https://github.com/MisbahKhan0009/Relayless/blob/main/docs/RELAY.md">relay guide</a> walks through both.</p>
+              </details>
+              <details name="faq">
+                <summary>Is there a size limit?</summary>
+                <p>No. Files are streamed from disk in small blocks, so a 500 GB file uses the same memory as a 5 MB one. You need enough free space on the receiving side.</p>
+              </details>
+              <details name="faq">
+                <summary>How fast is it?</summary>
+                <p>As fast as the slower of the two connections allows, which is usually the sender's upload speed. Twelve parallel streams per file keep long-distance links full, and on lossy direct paths the receiver can add connections to the same sender while each one raises the speed.</p>
+              </details>
+              <details name="faq">
+                <summary>Can the other person see my other files?</summary>
+                <p>No. They can only reach the folder you shared, and only after you approve their device. A device allowed only to upload sees just what it added, like a drop box. You can change a device's access, stop sharing or remove a device at any time.</p>
+              </details>
+              <details name="faq">
+                <summary>Can someone overwrite or delete my files?</summary>
+                <p>No. Uploads go to a temporary file, are verified, then saved under a free name, so nothing existing is replaced. A device can delete only files it uploaded itself and that you haven't changed since.</p>
+              </details>
+              <details name="faq">
+                <summary>Where is my transfer history stored?</summary>
+                <p>Only in the app's database on your device. Nothing is synced or uploaded. You choose how long it is kept, can keep it without file names, and can clear it at any time in Settings.</p>
+              </details>
+              <details name="faq">
+                <summary>What are safety words for?</summary>
+                <p>They let two people confirm, out loud or over a call, that their devices are talking to each other directly. They are derived from both devices' keys, so a device in the middle would produce different words.</p>
+              </details>
+              <details name="faq">
+                <summary>Does it run on Intel Macs, Linux or iPhone?</summary>
+                <p>Releases include an Apple silicon build for macOS; an Intel Mac can build the app from source. Linux builds are on the roadmap. There is no iPhone or iPad app.</p>
+              </details>
+              <details name="faq">
+                <summary>Does it cost anything?</summary>
+                <p>No. Bifrost is free and open source. There is no account and no paid tier.</p>
+              </details>
+            </div>
           </div>
         </div>
       </section>

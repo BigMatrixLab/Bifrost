@@ -1,4 +1,5 @@
-// Bifrost website: theme switch, hero transfer demo, section highlight,
+// Bifrost website: theme switch, hero transfer demo, full-screen sections
+// (fit to the viewport, arrival animation), the section rail, and
 // platform-aware download links from the latest GitHub release. The live app
 // frames that replace the screenshots are in live.js.
 (() => {
@@ -32,7 +33,8 @@
     if (toggle) {
       const next = t === "light" ? "dark" : "light";
       toggle.setAttribute("aria-label", `Switch to ${next} theme`);
-      toggle.title = `Switch to ${next} theme`;
+      const label = $("[data-theme-label]", toggle);
+      if (label) label.textContent = `${next[0].toUpperCase()}${next.slice(1)} theme`;
     }
   };
   applyTheme(root.dataset.theme === "light" ? "light" : "dark");
@@ -270,23 +272,262 @@
     requestAnimationFrame(tick);
   }
 
-  // ------------------------------------------------------------------ section highlight
-  const links = new Map($$(".nav-links a").map((a) => [a.getAttribute("href").slice(1), a]));
-  // Every top-level section is watched, so the mark clears in sections
-  // that have no nav link (the hero, the download area, ...).
-  const sections = $$("main > section[id]");
-  if (links.size && sections.length) {
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (!e.isIntersecting) continue;
-          links.forEach((a, id) => a.classList.toggle("on", id === e.target.id));
-        }
-      },
-      { rootMargin: "-45% 0px -50% 0px" },
-    );
-    sections.forEach((s) => io.observe(s));
+  // ------------------------------------------------------------------ screens
+  // Each .screen, and each carousel page (.slide), is one viewport tall.
+  // Content taller than the viewport is scaled down to fit (never below
+  // MIN_FIT; then it runs taller). Screens marked data-nofit (the FAQ) keep
+  // their size. Phones don't scale screens, only carousel pages, which are
+  // pinned and can't scroll on their own.
+  const screens = $$(".screen");
+  const slidesAll = $$(".slide");
+  const phoneMq = matchMedia("(max-width: 760px)");
+  const MIN_FIT = 0.6;
+  const MIN_FIT_PHONE_PAGE = 0.55;
+  const fitOne = (box) => {
+    const fit = box.querySelector(":scope > .fit");
+    if (!fit) return;
+    let s = 1;
+    const isPage = box.classList.contains("slide");
+    if (!box.hasAttribute("data-nofit") && (isPage || !phoneMq.matches)) {
+      const cs = getComputedStyle(box);
+      const avail = innerHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+      const h = fit.offsetHeight; // layout height: unaffected by the transform
+      if (h > avail) s = Math.max(isPage && phoneMq.matches ? MIN_FIT_PHONE_PAGE : MIN_FIT, avail / h);
+    }
+    fit.style.setProperty("--fit", s.toFixed(4));
+    fit.style.setProperty("--fit-gap", `${(fit.offsetHeight * (1 - s)).toFixed(1)}px`);
+  };
+  const fitAll = () => [...screens, ...slidesAll].forEach(fitOne);
+  let fitQueued = false;
+  const queueFit = () => {
+    if (fitQueued) return;
+    fitQueued = true;
+    requestAnimationFrame(() => {
+      fitQueued = false;
+      fitAll();
+    });
+  };
+  fitAll();
+  // Changes after the first layout (fonts, the demo's receipt) ease to the
+  // new scale instead of jumping.
+  requestAnimationFrame(() => requestAnimationFrame(() => root.classList.add("fit-live")));
+  const fitWatch = new ResizeObserver(queueFit);
+  [...screens, ...slidesAll].forEach((box) => {
+    const fit = box.querySelector(":scope > .fit");
+    if (fit) fitWatch.observe(fit);
+  });
+  addEventListener("resize", queueFit);
+  phoneMq.addEventListener?.("change", queueFit);
+
+  // Arrival: the parts of a screen rise in, in reading order, and its corner
+  // marks draw out. Only the outermost matching element of a group moves.
+  const RV =
+    ".lab, h1, h2, .lede, .section-lede, .cta-row, .fineprint, .panel, .feature-copy > *, .phones figure, .band-desktop, .band-phone, .demo, .demo-note, .device-link, .sec-list li, .faq-list details, .tiles li";
+  for (const box of [...screens, ...slidesAll]) {
+    let i = 0;
+    for (const el of box.querySelectorAll(RV)) {
+      const outer = el.parentElement.closest(RV);
+      if (outer && box.contains(outer)) continue;
+      el.classList.add("rv");
+      el.style.setProperty("--i", String(Math.min(i++, 10)));
+    }
   }
+  const arrive = new IntersectionObserver(
+    (entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting && e.intersectionRatio >= 0.15) e.target.classList.add("in");
+        // Reset once it is fully out of view, so it arrives again next time.
+        else if (!e.isIntersecting) e.target.classList.remove("in");
+      }
+    },
+    { threshold: [0, 0.15] },
+  );
+  screens.forEach((sc) => arrive.observe(sc));
+
+  // FAQ: one answer open at a time. `details name="faq"` does this natively;
+  // this covers browsers without it.
+  const faqs = $$(".faq-list details");
+  for (const d of faqs) {
+    d.addEventListener("toggle", () => {
+      if (d.open) for (const o of faqs) if (o !== d && o.open) o.open = false;
+    });
+  }
+
+  // ------------------------------------------------------------------ features carousel
+  // The section is one screen tall per page, with a snap stop per page, and
+  // its view is pinned (position: sticky). Scrolling through it moves the
+  // strip sideways, so every scroll step brings the next page in from the side.
+  const car = $("[data-carousel]");
+  if (car) {
+    const strip = $("[data-car-strip]", car);
+    const pages = $$(".slide", car);
+    const dashes = $$("[data-car-dash]", car);
+    const nameEl = $("[data-car-name]", car);
+    const idxEl = $("[data-car-i]", car);
+    const n = pages.length;
+    let lastK = -1;
+    let queued = false;
+    const progress = () => {
+      const r = car.getBoundingClientRect();
+      const step = car.offsetHeight / n;
+      return { r, step, p: Math.min(n - 1, Math.max(0, -r.top / step)) };
+    };
+    const update = () => {
+      queued = false;
+      const { r, p } = progress();
+      strip.style.setProperty("--p", p.toFixed(4));
+      const inView = r.bottom > 1 && r.top < innerHeight - 1;
+      pages.forEach((pg, k) => {
+        const dist = Math.abs(k - p);
+        const d = Math.min(1, dist);
+        pg.style.setProperty("--o", (1 - d * 0.7).toFixed(3));
+        pg.style.setProperty("--s", (1 - d * 0.06).toFixed(4));
+        if (inView && dist < 0.7) pg.classList.add("in");
+        else if (!inView || dist >= 1) pg.classList.remove("in");
+        // Pages off to the side can't be reached by Tab.
+        const away = dist > 0.5;
+        if (pg.inert !== away) pg.inert = away;
+      });
+      dashes.forEach((b, k) => b.style.setProperty("--fill", Math.min(1, Math.max(0, p - k + 1)).toFixed(3)));
+      const k = Math.round(p);
+      if (k !== lastK) {
+        lastK = k;
+        dashes.forEach((b, j) => {
+          b.classList.toggle("on", j === k);
+          if (j === k) b.setAttribute("aria-current", "step");
+          else b.removeAttribute("aria-current");
+        });
+        if (idxEl) idxEl.textContent = String(k + 1).padStart(2, "0");
+        if (nameEl) nameEl.textContent = dashes[k]?.getAttribute("aria-label") ?? "";
+      }
+    };
+    const queue = () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(update);
+    };
+    const goTo = (k) => {
+      const { r, step } = progress();
+      const kk = Math.min(n - 1, Math.max(0, k));
+      scrollTo({ top: scrollY + r.top + kk * step, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    };
+    dashes.forEach((b, k) => b.addEventListener("click", () => goTo(k)));
+    $("[data-car-prev]", car)?.addEventListener("click", () => goTo(Math.round(progress().p) - 1));
+    $("[data-car-next]", car)?.addEventListener("click", () => goTo(Math.round(progress().p) + 1));
+    // Left and right arrows page through it while it fills the screen.
+    addEventListener("keydown", (e) => {
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      if (e.target.closest?.("input, textarea, select")) return;
+      const { r, p } = progress();
+      if (r.top > 1 || r.bottom < innerHeight - 1) return;
+      e.preventDefault();
+      goTo(Math.round(p) + (e.key === "ArrowRight" ? 1 : -1));
+    });
+    addEventListener("scroll", queue, { passive: true });
+    addEventListener("resize", queue);
+    update();
+  }
+
+  // ------------------------------------------------------------------ rail
+  // The item for the section under the middle of the viewport is marked; the
+  // mark slides between items.
+  const railList = $("[data-rail-list]");
+  const railMark = $("[data-rail-mark]");
+  const railItems = $$(".rail-item[data-nav]");
+  let current = null;
+  const navOf = (el) => el.dataset.nav || (el.matches("section[id]") ? el.id : el.closest("section[id]")?.id) || null;
+  const placeMark = () => {
+    const a = railItems.find((x) => x.dataset.nav === current);
+    if (!railMark) return;
+    if (!a) {
+      railMark.classList.remove("on");
+      return;
+    }
+    railMark.style.height = `${a.offsetHeight}px`;
+    railMark.style.transform = `translate(${a.offsetLeft}px, ${a.offsetTop}px)`;
+    railMark.classList.add("on");
+  };
+  const setCurrent = (id) => {
+    if (!id || id === current) return;
+    current = id;
+    for (const a of railItems) {
+      const on = a.dataset.nav === id;
+      a.classList.toggle("on", on);
+      if (on) a.setAttribute("aria-current", "location");
+      else a.removeAttribute("aria-current");
+    }
+    placeMark();
+    // Phone dock: keep the marked icon in view.
+    const a = railItems.find((x) => x.dataset.nav === id);
+    if (a && railList && railList.scrollWidth > railList.clientWidth + 1) {
+      railList.scrollTo({ left: a.offsetLeft - (railList.clientWidth - a.offsetWidth) / 2, behavior: "smooth" });
+    }
+  };
+  const middle = new IntersectionObserver(
+    (entries) => {
+      for (const e of entries) if (e.isIntersecting) setCurrent(navOf(e.target));
+    },
+    { rootMargin: "-50% 0px -50% 0px" },
+  );
+  [...screens, ...(car ? [car] : [])].forEach((el) => middle.observe(el));
+  // The mark jumps into place the first time, then slides.
+  requestAnimationFrame(() => requestAnimationFrame(() => railMark?.classList.add("slide")));
+  addEventListener("resize", placeMark);
+  phoneMq.addEventListener?.("change", placeMark);
+
+  // ------------------------------------------------------------------ wheel paging
+  // Mandatory snapping picks the stop nearest to where a scroll would end, so
+  // a short wheel or trackpad flick springs back to the same section. Here
+  // one wheel gesture moves exactly one stop (a screen, a carousel page or
+  // the footer). Inside a section taller than the screen the wheel scrolls
+  // normally until its edge. Keyboard, scrollbar and touch stay native.
+  const stopsY = () => {
+    const ys = $$(".screen, .car-stop").map((e) => Math.round(e.getBoundingClientRect().top + scrollY));
+    ys.push(Math.max(0, document.documentElement.scrollHeight - innerHeight));
+    return [...new Set(ys)].sort((a, b) => a - b);
+  };
+  let paging = false;
+  let lastWheel = 0;
+  const settle = () =>
+    new Promise((res) => {
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        removeEventListener("scrollend", finish);
+        res();
+      };
+      addEventListener("scrollend", finish);
+      setTimeout(finish, 1000);
+    });
+  addEventListener(
+    "wheel",
+    (e) => {
+      if (e.ctrlKey || Math.abs(e.deltaY) < Math.abs(e.deltaX) || e.deltaY === 0) return;
+      lastWheel = performance.now();
+      if (paging) {
+        e.preventDefault();
+        return;
+      }
+      const y = scrollY;
+      const vh = innerHeight;
+      const ys = stopsY();
+      const down = e.deltaY > 0;
+      const target = down ? ys.find((s) => s > y + 2) : [...ys].reverse().find((s) => s < y - 2);
+      if (target === undefined) return;
+      // More of a tall section to see before its edge: scroll it normally.
+      if (Math.abs(target - y) > vh + 2) return;
+      e.preventDefault();
+      paging = true;
+      scrollTo({ top: target, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+      settle().then(function wait() {
+        // Swallow the rest of the gesture (trackpad momentum) before the next step.
+        if (performance.now() - lastWheel < 180) setTimeout(wait, 60);
+        else paging = false;
+      });
+    },
+    { passive: false },
+  );
 
   // ------------------------------------------------------------------ platform
   const ua = navigator.userAgent;

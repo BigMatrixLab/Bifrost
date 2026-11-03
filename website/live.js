@@ -551,42 +551,46 @@
   // ------------------------------------------------------------------ wiring
   for (const fig of document.querySelectorAll("[data-live]")) lives.push(new Live(fig));
 
-  // Load a frame shortly before it scrolls into view and drop it once it is
-  // far away, so only a few run at a time.
-  const near = new IntersectionObserver(
-    (entries) => {
-      for (const e of entries) {
-        const live = lives.find((l) => l.fig === e.target);
-        if (e.isIntersecting) live.mount();
+  // Load a frame shortly before it comes into view and drop it once it is far
+  // away, so only a few run at a time; play it while it is mostly on screen.
+  // This works from each frame's own position rather than visibility, because
+  // carousel pages waiting off to the side are clipped and would never count
+  // as visible, but the next one should already be loaded when it slides in.
+  const check = () => {
+    const vw = innerWidth;
+    const vh = innerHeight;
+    for (const l of lives) {
+      const r = l.fig.getBoundingClientRect();
+      // Distance from the viewport, in screens, along each axis.
+      const dy = r.bottom < 0 ? -r.bottom / vh : r.top > vh ? (r.top - vh) / vh : 0;
+      const dx = r.right < 0 ? -r.right / vw : r.left > vw ? (r.left - vw) / vw : 0;
+      const d = Math.max(dy, dx);
+      if (d < 0.5) l.mount();
+      else if (d > 1.5) l.unmount();
+      const w = Math.max(0, Math.min(r.right, vw) - Math.max(r.left, 0));
+      const h = Math.max(0, Math.min(r.bottom, vh) - Math.max(r.top, 0));
+      const shown = r.width * r.height > 0 && (w * h) / (r.width * r.height) >= 0.35;
+      if (shown !== l.visible) {
+        l.visible = shown;
+        if (shown) l.play();
+        else l.stop();
       }
-    },
-    { rootMargin: "50% 0px" },
-  );
-  const far = new IntersectionObserver(
-    (entries) => {
-      for (const e of entries) {
-        const live = lives.find((l) => l.fig === e.target);
-        if (!e.isIntersecting) live.unmount();
-      }
-    },
-    { rootMargin: "150% 0px" },
-  );
-  const seen = new IntersectionObserver(
-    (entries) => {
-      for (const e of entries) {
-        const live = lives.find((l) => l.fig === e.target);
-        live.visible = e.isIntersecting;
-        if (live.visible) live.play();
-        else live.stop();
-      }
-    },
-    { threshold: 0.35 },
-  );
-  for (const l of lives) {
-    near.observe(l.fig);
-    far.observe(l.fig);
-    seen.observe(l.fig);
-  }
+    }
+  };
+  let checkQueued = false;
+  const queueCheck = () => {
+    if (checkQueued) return;
+    checkQueued = true;
+    requestAnimationFrame(() => {
+      checkQueued = false;
+      check();
+    });
+  };
+  addEventListener("scroll", queueCheck, { passive: true });
+  addEventListener("resize", queueCheck);
+  // Catches movement that isn't scrolling (the fit easing, layout changes).
+  setInterval(queueCheck, 500);
+  check();
 
   document.addEventListener("visibilitychange", () => {
     for (const l of lives) document.hidden ? l.stop() : l.play();
