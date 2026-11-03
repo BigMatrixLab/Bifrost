@@ -958,10 +958,32 @@ h1 {
   position: relative;
   padding-right: 13%;
 }
-.band-desktop {
+.band-desktop,
+.feature-shot {
   margin: 0;
-  padding: 8px;
+  padding: 0;
+  /* Marks live on the overlay below; the panel copy would sit 1px out. */
+  background-image: none;
+}
+.band-desktop {
   box-shadow: var(--shadow);
+}
+/* Flush screens cover panel marks, so redraw one set on the border box. */
+.band-desktop::before,
+.feature-shot::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: 5;
+  pointer-events: none;
+  background-image: var(--cm), var(--cm), var(--cm), var(--cm), var(--cm), var(--cm), var(--cm), var(--cm);
+  background-size:
+    var(--ml) var(--mark-w), var(--mark-w) var(--ml),
+    var(--ml) var(--mark-w), var(--mark-w) var(--ml),
+    var(--ml) var(--mark-w), var(--mark-w) var(--ml),
+    var(--ml) var(--mark-w), var(--mark-w) var(--ml);
+  background-position: top left, top left, top right, top right, bottom left, bottom left, bottom right, bottom right;
+  background-repeat: no-repeat;
 }
 .band-phone,
 .live.band-phone {
@@ -1029,12 +1051,18 @@ h1 {
   opacity: 1;
 }
 /* The frames are for watching: this layer keeps clicks, scrolling and
-   focus on the page. */
+   focus on the page. Interactive frames (the hero Overview) take clicks. */
 .live-screen::after {
   content: "";
   position: absolute;
   inset: 0;
   z-index: 3;
+}
+.live[data-interactive].live-on .live-screen > iframe {
+  pointer-events: auto;
+}
+.live[data-interactive].live-on .live-screen::after {
+  display: none;
 }
 
 .live-cursor {
@@ -1362,10 +1390,6 @@ h3 {
   margin-top: 8px;
   transform: rotate(45deg);
   border: 1.5px solid var(--accent);
-}
-.feature-shot {
-  margin: 0;
-  padding: 8px;
 }
 .phones {
   display: flex;

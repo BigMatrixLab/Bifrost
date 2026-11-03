@@ -364,6 +364,8 @@
     const dashes = $$("[data-car-dash]", car);
     const nameEl = $("[data-car-name]", car);
     const idxEl = $("[data-car-i]", car);
+    const prevBtn = $("[data-car-prev]", car);
+    const nextBtn = $("[data-car-next]", car);
     const n = pages.length;
     let lastK = -1;
     let queued = false;
@@ -399,6 +401,8 @@
         });
         if (idxEl) idxEl.textContent = String(k + 1).padStart(2, "0");
         if (nameEl) nameEl.textContent = dashes[k]?.getAttribute("aria-label") ?? "";
+        prevBtn?.setAttribute("aria-label", k === 0 ? "Previous section" : "Previous feature");
+        nextBtn?.setAttribute("aria-label", k === n - 1 ? "Next section" : "Next feature");
       }
     };
     const queue = () => {
@@ -406,15 +410,26 @@
       queued = true;
       requestAnimationFrame(update);
     };
+    const motion = () => (matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth");
     const goTo = (k) => {
       const { r, step } = progress();
-      const kk = Math.min(n - 1, Math.max(0, k));
-      scrollTo({ top: scrollY + r.top + kk * step, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+      if (k < 0) {
+        const prev = car.previousElementSibling;
+        if (prev) scrollTo({ top: scrollY + prev.getBoundingClientRect().top, behavior: motion() });
+        return;
+      }
+      if (k >= n) {
+        const next = car.nextElementSibling;
+        if (next) scrollTo({ top: scrollY + next.getBoundingClientRect().top, behavior: motion() });
+        return;
+      }
+      scrollTo({ top: scrollY + r.top + k * step, behavior: motion() });
     };
     dashes.forEach((b, k) => b.addEventListener("click", () => goTo(k)));
-    $("[data-car-prev]", car)?.addEventListener("click", () => goTo(Math.round(progress().p) - 1));
-    $("[data-car-next]", car)?.addEventListener("click", () => goTo(Math.round(progress().p) + 1));
+    prevBtn?.addEventListener("click", () => goTo(Math.round(progress().p) - 1));
+    nextBtn?.addEventListener("click", () => goTo(Math.round(progress().p) + 1));
     // Left and right arrows page through it while it fills the screen.
+    // Past the first/last slide they leave the carousel for the neighbouring section.
     addEventListener("keydown", (e) => {
       if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
       if (e.target.closest?.("input, textarea, select")) return;
