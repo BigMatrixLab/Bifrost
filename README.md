@@ -176,6 +176,7 @@ npm ci
 
 npm run tauri dev                         # run the desktop app
 npm run dev:ui                            # UI only, with demo data, in a browser
+npm run build:demo                        # that demo, built into website/demo for the website
 cargo test -p relayless-core --release    # engine tests
 
 npx tauri build                           # macOS app and disk image (on a Mac)

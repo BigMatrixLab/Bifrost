@@ -232,6 +232,12 @@ export async function invoke<T>(cmd: string, _args?: any): Promise<T> {
     data.list_outgoing = data.list_outgoing.filter((x: any) => x.id !== _args?.id);
     return undefined as T;
   }
+  if (cmd === "join") {
+    // Like a real pairing: a moment to find the sender, then its folders and the safety words.
+    await new Promise((r) => setTimeout(r, 1600));
+    const r = data.list_remotes[0];
+    return JSON.parse(JSON.stringify({ peerId: r.peerId, senderName: r.name, shares: r.shares, safetyWords: r.safetyWords }));
+  }
   if (cmd in data) return JSON.parse(JSON.stringify(data[cmd]));
   return undefined as T;
 }

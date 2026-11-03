@@ -78,7 +78,7 @@ Bifrost looks like a quiet instrument panel: a black ground with a faint dot gri
 
 The screen stays calm at rest. Red appears only where something is happening right now or where the user can act. Hazard stripes appear only where the user is needed.
 
-The project website (`website/`) still uses the previous "Quiet Ledger" look (green on glass). It should be moved to this system separately.
+The project website (`website/`) uses this system at marketing scale: the same tokens for the dark and light themes (a toggle in the header, remembered in `localStorage` under `bifrost-site-theme`, following the system theme until the visitor picks one), Space Grotesk self-hosted from `website/assets/fonts`, square corner-marked panels and uppercase labels. Every product view on the page is the real interface: `npm run build:demo` builds `src/` with the demo backend in `mock/` into `website/demo/` (CI does this before publishing), and `website/live.js` runs it in scaled, non-interactive iframes that follow the page's theme. Scripts drive each frame with a visible cursor (clicking real buttons, typing an invitation code, hovering the calendar). The hero keeps its own interactive transfer simulation (`main.js`); the desktop and phone band under it is the first live frame. Frames load near the viewport and unload far from it, scripts run only while a frame is on screen, and under reduced motion the frames show the app without the scripted cursor. A screenshot in each theme (`*.webp` dark, `*-light.webp` light) sits under every frame as the poster and the fallback.
 
 **Key characteristics**
 - Black ground (`bg`) with a 24px dot grid; panels are opaque `surface` with a 1px hairline. No blur, no glass, no glows except one faint red wash behind the active transfer.

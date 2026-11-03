@@ -3,7 +3,17 @@ name: Website
 on:
   push:
     branches: [main]
-    paths: ["website/**", ".github/workflows/website.yml"]
+    # The live demos on the page are the app itself (src/ with the demo backend
+    # in mock/), so changes there republish the site too.
+    paths:
+      - "website/**"
+      - "src/**"
+      - "mock/**"
+      - "index.html"
+      - "vite.config.ts"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/website.yml"
   workflow_dispatch:
 
 permissions:
@@ -19,6 +29,17 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Build the live app demo (website/demo)
+        run: |
+          npm ci
+          npm run build:demo
+          test -f website/demo/index.html
 
       - name: Check links to local files
         shell: bash

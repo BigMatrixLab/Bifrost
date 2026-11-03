@@ -15,7 +15,8 @@
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
     "tauri": "tauri",
-    "dev:ui": "vite --mode mock"
+    "dev:ui": "vite --mode mock",
+    "build:demo": "vite build --mode mock --base ./ --outDir website/demo --emptyOutDir"
   },
   "dependencies": {
     "@fontsource-variable/space-grotesk": "^5.3.0",
