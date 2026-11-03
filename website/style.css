@@ -992,7 +992,8 @@ h1 {
   bottom: -36px;
   width: 22%;
   margin: 0;
-  z-index: 2;
+  /* Above the desktop flush-mark overlay (.band-desktop::before is z-index 5). */
+  z-index: 6;
 }
 .stat-strip {
   display: grid;
