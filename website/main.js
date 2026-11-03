@@ -322,7 +322,7 @@
   // Arrival: the parts of a screen rise in, in reading order, and its corner
   // marks draw out. Only the outermost matching element of a group moves.
   const RV =
-    ".lab, h1, h2, .lede, .section-lede, .cta-row, .fineprint, .panel, .feature-copy > *, .phones figure, .band-desktop, .band-phone, .demo, .demo-note, .device-link, .sec-list li, .faq-list details, .tiles li";
+    ".lab, h1, h2, .lede, .section-lede, .cta-row, .fineprint, .panel, .feature-copy > *, .phones figure, .band-desktop, .band-phone, .hero-hint, .device-link, .sec-list li, .faq-list details, .tiles li";
   for (const box of [...screens, ...slidesAll]) {
     let i = 0;
     for (const el of box.querySelectorAll(RV)) {
@@ -528,6 +528,74 @@
     },
     { passive: false },
   );
+
+  // ------------------------------------------------------------------ overlay scrollbar
+  // Native bar is hidden. A thin thumb (no track) shows while you scroll and fades out after.
+  const sb = document.createElement("div");
+  sb.className = "sb";
+  sb.setAttribute("aria-hidden", "true");
+  const sbThumb = document.createElement("i");
+  sb.append(sbThumb);
+  document.body.append(sb);
+  let sbHide = 0;
+  let sbDrag = false;
+  const sbMetrics = () => {
+    const h = document.documentElement.scrollHeight;
+    const vh = innerHeight;
+    const max = Math.max(1, h - vh);
+    const th = Math.max(40, (vh / h) * vh);
+    return { max, th, range: Math.max(1, vh - 16 - th) };
+  };
+  const sbSync = () => {
+    const h = document.documentElement.scrollHeight;
+    const vh = innerHeight;
+    if (h <= vh + 1) {
+      sb.hidden = true;
+      return;
+    }
+    sb.hidden = false;
+    const { max, th, range } = sbMetrics();
+    sbThumb.style.height = `${th}px`;
+    sbThumb.style.transform = `translateY(${(scrollY / max) * range}px)`;
+  };
+  const sbShow = () => {
+    sbSync();
+    if (sb.hidden) return;
+    sb.classList.add("on");
+    clearTimeout(sbHide);
+    if (!sbDrag) sbHide = setTimeout(() => {
+      if (!sbDrag && !sb.matches(":hover")) sb.classList.remove("on");
+    }, 900);
+  };
+  addEventListener("scroll", sbShow, { passive: true });
+  addEventListener("resize", sbSync);
+  sb.addEventListener("pointerenter", () => clearTimeout(sbHide));
+  sb.addEventListener("pointerleave", () => {
+    if (!sbDrag) sbHide = setTimeout(() => sb.classList.remove("on"), 500);
+  });
+  sbThumb.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    sbDrag = true;
+    sb.classList.add("on", "drag");
+    sbThumb.setPointerCapture(e.pointerId);
+    const startY = e.clientY;
+    const startScroll = scrollY;
+    const { max, range } = sbMetrics();
+    const move = (ev) => scrollTo({ top: startScroll + ((ev.clientY - startY) / range) * max });
+    const up = () => {
+      sbDrag = false;
+      sb.classList.remove("drag");
+      sbThumb.removeEventListener("pointermove", move);
+      sbThumb.removeEventListener("pointerup", up);
+      sbThumb.removeEventListener("pointercancel", up);
+      sbShow();
+    };
+    sbThumb.addEventListener("pointermove", move);
+    sbThumb.addEventListener("pointerup", up);
+    sbThumb.addEventListener("pointercancel", up);
+  });
+  sbSync();
 
   // ------------------------------------------------------------------ platform
   const ua = navigator.userAgent;

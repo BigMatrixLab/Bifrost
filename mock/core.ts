@@ -11,6 +11,14 @@ const job = (o: any) => ({
 });
 const NEVER = 253_402_300_799_000;
 const inv = (o: any) => ({ state: "active", hasShortCode: !!o.shortCode, permission: "download", ...o });
+let emitEvent: ((name: string, payload: unknown) => void) | null = null;
+export function bindEmit(fn: (name: string, payload: unknown) => void) {
+  emitEvent = fn;
+}
+function notify(name: string, payload: unknown) {
+  emitEvent?.(name, payload);
+}
+
 export const data: Record<string, any> = {
   bootstrap: {
     settings: { deviceName: "Berlin-Studio", downloadDir: "C:\\Users\\Lena\\Downloads\\Bifrost", parallelStreams: 12, maxConcurrentJobs: 2, maxConnections: 8, downloadLimitKbps: 0, uploadLimitKbps: 0, connectionMode: "allow_relay", congestion: "cubic", chunkSizeMib: 16, lowPriority: true, notifications: true, closeToTray: true, onboarded: (window as any).__onboarded ?? true, historyRetention: "365", historyNames: true, relayUrls: "", defaultSharePermission: "download" },
@@ -158,6 +166,18 @@ export async function invoke<T>(cmd: string, _args?: any): Promise<T> {
         const share = { id: `s${Date.now()}`, name, rootPath: path, active: true, createdAt: Date.now(), deviceCount: 0, invitations: [] };
     data.list_shares = [share, ...data.list_shares];
     return JSON.parse(JSON.stringify(share));
+  }
+  const jobStatus: Record<string, string> = { pause_job: "paused", resume_job: "downloading" };
+  if (cmd in jobStatus) {
+    const j = data.list_jobs.find((x: any) => x.id === _args?.id);
+    if (j) {
+      j.status = jobStatus[cmd];
+      j.speedBps = j.status === "downloading" ? j.speedBps : 0;
+      j.etaSecs = j.status === "downloading" ? j.etaSecs : null;
+      j.updatedAt = Date.now();
+      notify("job-updated", { ...j });
+    }
+    return undefined as T;
   }
   const sendStatus: Record<string, string> = { pause_outgoing: "paused", resume_outgoing: "sending", cancel_outgoing: "canceled" };
   if (cmd in sendStatus) {

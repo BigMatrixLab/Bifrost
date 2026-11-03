@@ -96,6 +96,45 @@
 html {
   scroll-behavior: smooth;
   scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+}
+html::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+/* Overlay thumb: no track, no arrows. Visible while scrolling, then gone. */
+.sb {
+  position: fixed;
+  top: 8px;
+  right: 6px;
+  bottom: 8px;
+  z-index: 70;
+  width: 12px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.28s ease;
+}
+.sb.on,
+.sb.drag {
+  opacity: 1;
+}
+.sb i {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 4px;
+  background: rgba(var(--ink-rgb), 0.45);
+  pointer-events: none;
+}
+.sb.on i,
+.sb.drag i {
+  pointer-events: auto;
+  cursor: grab;
+}
+.sb.drag i {
+  cursor: grabbing;
+  background: rgba(var(--ink-rgb), 0.62);
 }
 
 body {
@@ -2025,77 +2064,18 @@ main,
   margin-top: 14px;
   font-size: 13.5px;
 }
-.hero-stage {
-  display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
-  gap: 40px;
-  align-items: center;
-}
 .hero-stage .band-phone {
   bottom: -28px;
 }
-/* The simulated transfer, compact beside the live app. */
-.hero-stage .demo-card {
-  padding: 14px 18px 16px;
-}
-.hero-stage .focus-head {
-  padding-bottom: 10px;
-}
-.hero-stage .focus-body {
-  gap: 18px;
-  padding: 14px 0 2px;
-}
-.hero-stage .ring {
-  width: 156px;
-  height: 156px;
-}
-.hero-stage .ring-pct {
-  font-size: 27px;
-}
-.hero-stage .ring-pct small {
-  font-size: 12px;
-}
-.hero-stage .ring-bytes {
-  font-size: 11px;
-}
-.hero-stage .focus-name {
-  font-size: 16px;
-}
-.hero-stage .facts {
-  gap: 10px 14px;
-  margin-top: 12px;
-}
-.hero-stage .facts dd {
-  font-size: 14.5px;
-  white-space: normal;
-}
-.hero-stage .link-line {
-  margin-top: 10px;
-}
-.hero-stage .demo-actions {
-  margin-top: 12px;
-}
-.hero-stage .demo-log {
-  margin-top: 12px;
-  padding-top: 10px;
-  min-height: 74px;
-  font-size: 12.5px;
-}
-.hero-stage .demo-log li:nth-child(n + 4) {
-  display: none;
-}
-.hero-stage .demo-note {
-  margin-top: 8px;
-  font-size: 12.5px;
+.hero-hint {
+  margin: 12px 0 0;
+  color: var(--text-3);
+  font-size: 13.5px;
 }
 @media (max-width: 1080px) {
-  .hero-head,
-  .hero-stage {
+  .hero-head {
     grid-template-columns: minmax(0, 1fr);
     gap: 28px;
-  }
-  .hero-stage .demo {
-    max-width: 560px;
   }
 }
 

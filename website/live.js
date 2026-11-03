@@ -415,15 +415,6 @@
     },
   };
 
-  // The large frame under the hero walks through the main flows one after another.
-  scripts.showcase = async (d) => {
-    for (const s of [scripts.overview, scripts.invite, scripts.connect, scripts.transfers, scripts.history]) {
-      await d.reset();
-      await s(d);
-      await d.wait(1200);
-    }
-  };
-
   // ------------------------------------------------------------------ live frame
   const lives = [];
 
@@ -435,6 +426,7 @@
       this.narrowPage = fig.dataset.narrow || null;
       this.phoneOnly = fig.hasAttribute("data-phone");
       this.script = scripts[fig.dataset.script] || null;
+      this.interactive = fig.hasAttribute("data-interactive");
       this.frame = null;
       this.ready = false;
       this.visible = false;
@@ -462,10 +454,14 @@
       saveAppTheme();
       const f = document.createElement("iframe");
       f.src = `${DEMO}#${page}`;
-      f.title = "";
-      f.tabIndex = -1;
-      f.setAttribute("aria-hidden", "true");
-      f.inert = true;
+      if (this.interactive) {
+        f.title = "Bifrost demo";
+      } else {
+        f.title = "";
+        f.tabIndex = -1;
+        f.setAttribute("aria-hidden", "true");
+        f.inert = true;
+      }
       f.style.width = `${this.size[0]}px`;
       f.style.height = `${this.size[1]}px`;
       f.addEventListener("load", () => this.onLoad(f), { once: true });

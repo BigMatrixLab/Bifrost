@@ -147,7 +147,7 @@
 
             <div class="hero-stage">
               <div class="band">
-                <figure class="band-desktop panel live" data-live="overview" data-narrow="overview" data-script="showcase">
+                <figure class="band-desktop panel live" data-live="overview" data-narrow="overview" data-interactive>
                   <div class="live-screen">
                     <img class="poster t-dark w-only" src="assets/screens/desktop-overview.webp" width="2560" height="1600" loading="lazy" alt="Bifrost Overview: the active transfer with its chunk ring, the network globe and a live throughput graph" />
                     <img class="poster t-light w-only" src="assets/screens/desktop-overview-light.webp" width="2560" height="1600" loading="lazy" alt="Bifrost Overview in the light theme: the active transfer with its chunk ring, the network globe and a live throughput graph" />
@@ -162,64 +162,7 @@
                   </div>
                 </figure>
               </div>
-
-              <div class="demo" aria-label="Interactive transfer demo">
-                <div class="panel focus demo-card" data-state="running">
-                  <div class="focus-head">
-                    <span class="lab">Active transfer</span>
-                    <span class="tag">Simulation</span>
-                  </div>
-
-                  <div class="focus-body">
-                    <div class="ring" aria-hidden="true">
-                      <svg viewBox="0 0 200 200" width="200" height="200">
-                        <circle class="ring-outer" cx="100" cy="100" r="97" />
-                        <g class="ring-segs" data-segs></g>
-                        <g class="ring-ticks" data-ticks></g>
-                        <path class="ring-cursor" d="M100 2 l-4 -6 h8z" />
-                      </svg>
-                      <div class="ring-center">
-                        <span class="ring-pct num"><b data-pct>38.6</b><small>%</small></span>
-                        <span class="lab" data-ring-label>Verified</span>
-                        <span class="ring-bytes num" data-saved-text>1.62 GB / 4.20 GB</span>
-                      </div>
-                    </div>
-
-                    <div class="focus-info">
-                      <p class="lab accent focus-status" data-status>Receiving · from Dhaka-Edit-Bay</p>
-                      <p class="focus-name">season-2-raw-footage.zip</p>
-                      <dl class="facts">
-                        <div><dt class="lab">Speed</dt><dd class="num" data-speed>0 MB/s</dd></div>
-                        <div><dt class="lab">Time left</dt><dd class="num" data-eta>–</dd></div>
-                        <div><dt class="lab">Blocks verified</dt><dd class="num" data-blocks>0</dd></div>
-                        <div><dt class="lab">Route</dt><dd data-route>Direct · 176 ms</dd></div>
-                      </dl>
-                    </div>
-                  </div>
-
-                  <div class="link-line" data-link>
-                    <span class="ll-node rx" aria-hidden="true"></span>
-                    <span class="ll-wire" aria-hidden="true"><i></i><i></i><i></i></span>
-                    <span class="ll-node tx" aria-hidden="true"></span>
-                    <span class="ll-end"><b class="ll-tag">RX</b>Berlin-Studio</span>
-                    <span class="ll-end right">Dhaka-Edit-Bay<b class="ll-tag">TX</b></span>
-                  </div>
-
-                  <div class="demo-actions">
-                    <button class="btn btn-secondary btn-md" type="button" data-toggle>Pause</button>
-                    <button class="btn btn-ghost btn-md" type="button" data-drop>Drop the connection</button>
-                  </div>
-
-                  <ol class="demo-log" data-log aria-live="polite"></ol>
-
-                  <dl class="demo-receipt" data-receipt hidden>
-                    <div><dt class="lab">Route</dt><dd>Direct, device to device (100%)</dd></div>
-                    <div><dt class="lab">Verified</dt><dd class="num">4,301 blocks of 1 MiB, then the whole file</dd></div>
-                    <div><dt class="lab">Stored on servers</dt><dd class="accent">0 bytes</dd></div>
-                  </dl>
-                </div>
-                <p class="demo-note">Simulation. Try Pause, or drop the connection.</p>
-              </div>
+              <p class="hero-hint">This is the live app. Try Pause on the transfer, or click around.</p>
             </div>
           </div>
         </div>
