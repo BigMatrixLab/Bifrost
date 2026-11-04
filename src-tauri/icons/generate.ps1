@@ -1,7 +1,8 @@
-# Regenerates every app icon from the SVG sources in this folder:
-#   app-icon.svg            the Bifrost mark on the dark plate (large sizes)
-#   app-icon-small.svg      a simplified, bolder mark for 16 to 48 px
-#   android-foreground.svg  the mark alone, for Android's adaptive icon
+# Regenerates every app icon from the SVG sources in this folder (written by
+# bifrost-mark.py, which draws the cube mark):
+#   app-icon.svg            the Bifrost cube mark on a transparent background
+#   app-icon-small.svg      the same mark with thicker strokes, for 16 to 48 px
+#   android-foreground.svg  the mark inside the safe zone, for Android's adaptive icon
 # Run from the repository root:  powershell -File src-tauri/icons/generate.ps1
 # Then rebuild the app (build.rs re-embeds icon.ico when this folder changes).
 $ErrorActionPreference = "Stop"
@@ -25,7 +26,7 @@ foreach ($f in "128x128.png", "128x128@2x.png", "icon.icns", "icon.png") {
 Copy-Item "$tmp\small\32x32.png" (Join-Path $icons "32x32.png") -Force
 
 # Android launcher icons. The adaptive icon keeps its existing XML, whose
-# background is the #121212 colour resource.
+# background colour resource is transparent (#00000000).
 $res = Join-Path $root "src-tauri\gen\android\app\src\main\res"
 if (Test-Path $res) {
   foreach ($d in "mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi") {
