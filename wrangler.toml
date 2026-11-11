@@ -3,7 +3,7 @@
 # CI deploys it with `wrangler pages deploy` (.github/workflows/website.yml)
 # and fills the bucket from each release (.github/scripts/publish-downloads.sh).
 # The repository variables CF_PAGES_PROJECT and R2_BUCKET override both names.
-name = "bifrost-app"
+name = "getbifrost"
 pages_build_output_dir = "website"
 compatibility_date = "2026-10-01"
 

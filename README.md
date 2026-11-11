@@ -14,10 +14,10 @@ No account, no cloud copy, no size limit, and every transfer picks up from the l
 [![Build](https://img.shields.io/github/actions/workflow/status/MisbahKhan0009/Bifrost/build.yml?branch=main&style=flat-square&labelColor=181818&label=build)](https://github.com/MisbahKhan0009/Bifrost/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-1ed760?style=flat-square&labelColor=181818)](LICENSE)
 [![Platforms](https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Android-ffffff?style=flat-square&labelColor=181818)](#download)
-[![Website](https://img.shields.io/badge/website-bifrost-1ed760?style=flat-square&labelColor=181818)](https://bifrost-app.pages.dev/)
+[![Website](https://img.shields.io/badge/website-bifrost-1ed760?style=flat-square&labelColor=181818)](https://getbifrost.pages.dev/)
 
-[**Download**](https://bifrost-app.pages.dev/#download) &nbsp;|&nbsp;
-[Website](https://bifrost-app.pages.dev/) &nbsp;|&nbsp;
+[**Download**](https://getbifrost.pages.dev/#download) &nbsp;|&nbsp;
+[Website](https://getbifrost.pages.dev/) &nbsp;|&nbsp;
 [Privacy](#privacy-you-can-check) &nbsp;|&nbsp;
 [How it works](#how-it-works) &nbsp;|&nbsp;
 [Architecture](docs/ARCHITECTURE.md) &nbsp;|&nbsp;
@@ -95,7 +95,7 @@ Sending a 64 GB file across continents usually means uploading it to someone els
 | **Windows** | `Bifrost-Setup-<version>-x64.exe` | Windows 10 or 11, 64-bit. No administrator rights needed. |
 | **Android** | `Bifrost-<version>-android.apk` | Android 7.0 or newer. One universal APK for every phone and tablet. |
 
-Download them from the **[website](https://bifrost-app.pages.dev/#download)**; each button starts the download straight away. Direct links that always point at the newest build: [Windows](https://bifrost-app.pages.dev/download/windows), [macOS](https://bifrost-app.pages.dev/download/macos), [Android](https://bifrost-app.pages.dev/download/android). An Intel Mac can still build its own app from source.
+Download them from the **[website](https://getbifrost.pages.dev/#download)**; each button starts the download straight away. Direct links that always point at the newest build: [Windows](https://getbifrost.pages.dev/download/windows), [macOS](https://getbifrost.pages.dev/download/macos), [Android](https://getbifrost.pages.dev/download/android). An Intel Mac can still build its own app from source.
 
 > [!NOTE]
 > The builds aren't code-signed by a certificate authority yet. On macOS, the first launch may say the app is from an unidentified developer: right-click Bifrost, choose **Open**, then **Open** again. On Windows, SmartScreen may show *Windows protected your PC*: choose **More info → Run anyway**. On Android, allow your browser or file manager to install apps; if Play Protect warns, choose **More details → Install anyway**.
@@ -204,7 +204,7 @@ src/                         Interface (React + TypeScript): pages, live speed
                              graph (flow.tsx), History calendar and receipts,
                              sidebar speed readout and mini calendar
 mock/                        Demo backend for `npm run dev:ui`
-website/                     Project website, published to GitHub Pages
+website/                     Project website, on Cloudflare Pages (getbifrost.pages.dev)
 docs/                        Architecture and protocol notes
 PRODUCT.md                   Who Bifrost is for and the principles it keeps
 DESIGN.md                    Visual system: colours, type, chart and calendar rules

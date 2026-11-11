@@ -19,7 +19,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: website
@@ -58,7 +58,7 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          PROJECT: ${{ vars.CF_PAGES_PROJECT || 'bifrost-app' }}
+          PROJECT: ${{ vars.CF_PAGES_PROJECT || 'getbifrost' }}
           R2_BUCKET: ${{ vars.R2_BUCKET || 'bifrost-downloads' }}
           WRANGLER_SEND_METRICS: "false"
         shell: bash
@@ -77,16 +77,3 @@ jobs:
             --commit-hash "$GITHUB_SHA" --commit-message "Website from ${GITHUB_SHA::7}" | tee deploy.log
           url=$(grep -oE 'https://[a-z0-9.-]+\.pages\.dev' deploy.log | tail -1)
           echo "::notice title=Website on Cloudflare::https://$PROJECT.pages.dev (this deployment: $url)"
-
-      - name: Publish website/ to the gh-pages branch
-        shell: bash
-        run: |
-          cd website
-          touch .nojekyll
-          git init -q
-          git checkout -q -b gh-pages
-          git add -A
-          git -c user.name="bifrost-ci" -c user.email="bifrost-ci@users.noreply.github.com" \
-            commit -qm "Website from ${GITHUB_SHA::7}"
-          git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" gh-pages
-          echo "::notice title=Website published::https://${GITHUB_REPOSITORY_OWNER,,}.github.io/${GITHUB_REPOSITORY#*/}/"

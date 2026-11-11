@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "description": "Send huge files directly between macOS, Windows and Android: end-to-end encrypted, resumable, no cloud upload.",
   "license": "MIT",
-  "homepage": "https://bifrost-app.pages.dev/",
+  "homepage": "https://getbifrost.pages.dev/",
   "repository": {
     "type": "git",
     "url": "https://github.com/MisbahKhan0009/Bifrost.git"

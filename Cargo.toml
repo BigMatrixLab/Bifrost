@@ -8,7 +8,7 @@ edition = "2021"
 license = "MIT"
 authors = ["Misbah Khan"]
 repository = "https://github.com/MisbahKhan0009/Bifrost"
-homepage = "https://bifrost-app.pages.dev/"
+homepage = "https://getbifrost.pages.dev/"
 
 [profile.release]
 opt-level = 3

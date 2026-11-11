@@ -19,8 +19,8 @@ Downloads support HTTP range requests, so a browser or download manager can resu
   - Then it rewrites `latest.json`. Until that last step, the website keeps serving the previous build, so a half-finished upload is never served.
   - It creates the bucket on first use.
 - **`functions/download/[[path]].js`** is the Pages Function. It reads `latest.json` from the bucket (bound as `DOWNLOADS`) and streams the file as an attachment.
-- **`wrangler.toml`** sets the Pages project name (`bifrost-app`), the site folder (`website/`) and the R2 binding (`bifrost-downloads`).
-- **`.github/workflows/website.yml`** deploys the site and the function with `wrangler pages deploy`. It creates the Pages project on first use. It also keeps publishing the `gh-pages` branch as before.
+- **`wrangler.toml`** sets the Pages project name (`getbifrost`), the site folder (`website/`) and the R2 binding (`bifrost-downloads`).
+- **`.github/workflows/website.yml`** deploys the site and the function with `wrangler pages deploy`. It creates the Pages project on first use. The site lives at https://getbifrost.pages.dev.
 
 Both workflows skip the Cloudflare steps, with a warning, until the secrets below exist, so nothing fails in the meantime.
 
@@ -36,15 +36,15 @@ Both workflows skip the Cloudflare steps, with a warning, until the secrets belo
    - `CLOUDFLARE_API_TOKEN`: the token from step 1
    - `CLOUDFLARE_ACCOUNT_ID`: the ID from step 2
 4. **Run both workflows once**: Actions → *Website* → Run workflow, then Actions → *Build* → Run workflow.
-   - The Website run creates the `bifrost-app` Pages project and prints its address.
+   - The Website run creates the `getbifrost` Pages project and prints its address.
    - The Build run fills the bucket. After it, the download buttons work.
 
 To use different names, set the repository **variables** `CF_PAGES_PROJECT` and `R2_BUCKET` (Settings → Secrets and variables → Actions → Variables). The bucket stays private; files are only reachable through the website.
 
 ## Moving from the old Cloudflare project
 
-Cloudflare can't rename a Pages project, so the site moves to the new `bifrost-app` project, which CI deploys directly. Once it works, delete the old Git-connected project (Workers & Pages → the old project → Settings → Delete project). If you had a custom domain on the old project, add it to the new one under Custom domains.
+Cloudflare can't rename a Pages project, so the site moves to the new `getbifrost` project, which CI deploys directly. Once it works, delete the old Git-connected project (Workers & Pages → the old project → Settings → Delete project). If you had a custom domain on the old project, add it to the new one under Custom domains.
 
-## Without Cloudflare
+## No GitHub Pages
 
-The `gh-pages` branch is still published, but the download buttons only work on the Cloudflare site. GitHub Pages can't run the download function. If the repository is made public later, the GitHub Release links work for everyone too.
+The site is no longer published to GitHub Pages: GitHub Pages can't run the download function, so the Cloudflare site is the only one. If the repository is made public later, the GitHub Release links work for everyone too.

@@ -45,7 +45,7 @@ No account, no cloud copy, no upload step. Files go device to device over QUIC w
 ## Evidence on Hand
 
 - Real app screenshots via the mock preview mode (`npm run dev:ui`), demo data clearly fictional.
-- Website at `website/`, live on GitHub Pages.
+- Website at `website/`, live at https://getbifrost.pages.dev (Cloudflare Pages).
 - No customers, testimonials, benchmarks or download counts exist; never invent them.
 
 ## Product Principles
