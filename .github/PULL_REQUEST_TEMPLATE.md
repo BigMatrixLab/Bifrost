@@ -6,7 +6,7 @@
 
 <!-- Commands you ran, devices you tried, screenshots for UI changes. -->
 
-- [ ] `cargo test -p relayless-core --release`
+- [ ] `cargo test -p bifrost-core --release`
 - [ ] `npm run typecheck`
 - [ ] Tried it on: <!-- Windows / Android / both -->
 

@@ -6,11 +6,11 @@
 //! stops reading from the sender's TCP connection when its per-client token
 //! bucket is empty, so packets queue behind it.
 //!
-//!   cargo test -p relayless-core --release --test relay -- --ignored --nocapture relay_throughput
+//!   cargo test -p bifrost-core --release --test relay -- --ignored --nocapture relay_throughput
 //!
 //! Environment: RELAY_KIBS (relay rate, KiB/s, 1024), RELAY_BURST_KIB (512),
-//! RELAY_SIZE_MIB (48), RELAY_RUNS (1), RELAYLESS_TEST_CONGESTION (bbr|cubic),
-//! RELAYLESS_ADAPTIVE_WINDOW (1|0).
+//! RELAY_SIZE_MIB (48), RELAY_RUNS (1), BIFROST_TEST_CONGESTION (bbr|cubic),
+//! BIFROST_ADAPTIVE_WINDOW (1|0).
 
 use std::io::Write;
 use std::num::NonZeroU32;
@@ -19,8 +19,8 @@ use std::time::{Duration, Instant};
 
 use iroh_relay::server::{ClientRateLimit, Limits, RelayConfig, Server, ServerConfig};
 use iroh_relay::tls::CaTlsConfig;
-use relayless_core::diag::read_summaries;
-use relayless_core::*;
+use bifrost_core::diag::read_summaries;
+use bifrost_core::*;
 use serde_json::Value;
 
 fn env_u64(name: &str, default: u64) -> u64 {
@@ -119,7 +119,7 @@ fn steadiness(samples: &[Value], key: &str) -> (f64, f64, f64) {
 #[ignore]
 async fn relay_throughput() {
     let _ = tracing_subscriber::fmt()
-        .with_env_filter(std::env::var("TLOG").unwrap_or("relayless_core=warn,relayless_core::diag=info".into()))
+        .with_env_filter(std::env::var("TLOG").unwrap_or("bifrost_core=warn,bifrost_core::diag=info".into()))
         .try_init();
     let rate = env_u64("RELAY_KIBS", 1024) as u32 * 1024;
     let burst = env_u64("RELAY_BURST_KIB", 512) as u32 * 1024;
@@ -187,7 +187,7 @@ async fn relay_throughput() {
         println!(
             "relay_throughput run={run} congestion={} adaptive={} relay_kib_s={} done={done} secs={secs:.1} avg_mib_s={:.3} interval_mean_mib_s={mean:.3} interval_cv={cv:.2} zero_intervals={zero} sender_rtt_p50_ms={rtt_p50:.0} sender_rtt_p95_ms={rtt_p95:.0} sender_lost={lost} sender_sent={sent} stalls={} reconnects={} window={}",
             r.pointer("/configuration/transport/congestion_control_active").and_then(|v| v.as_str()).unwrap_or("?"),
-            std::env::var("RELAYLESS_ADAPTIVE_WINDOW").unwrap_or("1".into()),
+            std::env::var("BIFROST_ADAPTIVE_WINDOW").unwrap_or("1".into()),
             rate / 1024,
             r["transfer"]["bytes_transferred"].as_f64().unwrap_or(0.0) / 1048576.0 / secs,
             r["errors"]["stall_timeout"].as_u64().unwrap_or(0),

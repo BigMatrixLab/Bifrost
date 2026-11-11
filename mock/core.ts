@@ -154,8 +154,8 @@ data.list_incoming = [
   { id: "in1", peerId: "77aa88bb99", deviceName: "Lena's laptop", shareId: "s1", shareName: "Client deliveries", name: "review-notes.pdf", path: ["feedback", "review-notes.pdf"], savedAs: null, size: 48 * 1024 * 1024, receivedBytes: 21 * 1024 * 1024, bps: 2.1 * 1024 * 1024, status: "receiving", error: null, startedAt: now - 30e3, updatedAt: now, route: "direct" },
   { id: "in2", peerId: "55cc66dd77", deviceName: "Studio-iMac", shareId: "s1", shareName: "Client deliveries", name: "logo-final.png", path: ["logo-final.png"], savedAs: "logo-final (1).png", size: 3.2 * 1024 * 1024, receivedBytes: 3.2 * 1024 * 1024, bps: 0, status: "completed", error: null, startedAt: now - 700e3, updatedAt: now - 690e3, route: "relay" },
 ];
-data["plugin:relayless-android|has_all_files_access"] = { granted: false };
-data["plugin:relayless-android|battery_status"] = { unrestricted: false };
+data["plugin:bifrost-android|has_all_files_access"] = { granted: false };
+data["plugin:bifrost-android|battery_status"] = { unrestricted: false };
 data["list_local_dir"] = { path: "/storage/emulated/0", parent: null, root: "/storage/emulated/0", dirs: ["Alarms", "DCIM", "Documents", "Download", "Movies", "Music", "Pictures"], files: [{ name: "notes.txt", size: 2200 }, { name: "trip.mp4", size: 412 * 1024 * 1024 }] };
 export async function invoke<T>(cmd: string, _args?: any): Promise<T> {
   await new Promise((r) => setTimeout(r, 30));

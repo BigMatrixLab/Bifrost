@@ -9,7 +9,7 @@ param(
 )
 
 if (-not (Test-Path $Path)) {
-    Write-Error "No summaries at $Path. Is diagnostics on (RELAYLESS_DIAG not 0) and has a transfer finished?"
+    Write-Error "No summaries at $Path. Is diagnostics on (BIFROST_DIAG not 0) and has a transfer finished?"
     exit 1
 }
 

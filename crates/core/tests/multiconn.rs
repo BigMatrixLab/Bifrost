@@ -3,8 +3,8 @@
 //! rate cap and a drop-tail queue. IP and relay transports are off, so all
 //! traffic takes this path.
 //!
-//!   cargo test -p relayless-core --release --test multiconn -- --nocapture
-//!   cargo test -p relayless-core --release --test multiconn -- --ignored --nocapture compare_lanes
+//!   cargo test -p bifrost-core --release --test multiconn -- --nocapture
+//!   cargo test -p bifrost-core --release --test multiconn -- --ignored --nocapture compare_lanes
 //!
 //! `compare_lanes` environment: LOSSY_RTT_MS (100), LOSSY_LOSS (0.01),
 //! LOSSY_MBIT (100), LOSSY_SIZE_MIB (48), LOSSY_LANES ("1,8").
@@ -21,8 +21,8 @@ use iroh::endpoint::transports::{CustomEndpoint, CustomSender, CustomTransport, 
 use iroh::{EndpointAddr, EndpointId, SecretKey, TransportAddr};
 use iroh_base::CustomAddr;
 use parking_lot::Mutex;
-use relayless_core::diag::read_summaries;
-use relayless_core::*;
+use bifrost_core::diag::read_summaries;
+use bifrost_core::*;
 use serde_json::Value;
 use tokio::sync::mpsc;
 
@@ -288,9 +288,9 @@ async fn transfer(cfg: LinkCfg, size: usize, max_connections: u32) -> Run {
 
 fn set_fast() {
     // Short controller timings so tests see several decisions.
-    std::env::set_var("RELAYLESS_MMC_FAST", "1");
+    std::env::set_var("BIFROST_MMC_FAST", "1");
     let _ = tracing_subscriber::fmt()
-        .with_env_filter(std::env::var("TLOG").unwrap_or("relayless_core=warn,relayless_core::diag=info".into()))
+        .with_env_filter(std::env::var("TLOG").unwrap_or("bifrost_core=warn,bifrost_core::diag=info".into()))
         .try_init();
 }
 
@@ -391,7 +391,7 @@ async fn run_for(cfg: LinkCfg, size: usize, max_connections: u32, secs: u64) -> 
 #[ignore]
 async fn compare_lanes() {
     let _ = tracing_subscriber::fmt()
-        .with_env_filter(std::env::var("TLOG").unwrap_or("relayless_core=warn,relayless_core::diag=info".into()))
+        .with_env_filter(std::env::var("TLOG").unwrap_or("bifrost_core=warn,bifrost_core::diag=info".into()))
         .try_init();
     let env = |k: &str, d: f64| std::env::var(k).ok().and_then(|v| v.parse().ok()).unwrap_or(d);
     let cfg = LinkCfg {

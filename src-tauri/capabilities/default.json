@@ -9,6 +9,6 @@
     "core:default",
     "dialog:allow-open",
     "notification:default",
-    "relayless-android:default"
+    "bifrost-android:default"
   ]
 }

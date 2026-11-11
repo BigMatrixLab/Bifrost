@@ -35,7 +35,7 @@ export function useShareFolder() {
       setPage("shares");
       toast(`Sharing “${share.name}”. Create an invitation to let someone in.`, "ok");
       pendingInvite = share.id;
-      window.dispatchEvent(new Event("relayless:invite"));
+      window.dispatchEvent(new Event("bifrost:invite"));
     } catch (e) {
       toast(errorText(e), "err");
     }
@@ -373,8 +373,8 @@ export default function Shares() {
       });
     };
     check();
-    window.addEventListener("relayless:invite", check);
-    return () => window.removeEventListener("relayless:invite", check);
+    window.addEventListener("bifrost:invite", check);
+    return () => window.removeEventListener("bifrost:invite", check);
   }, []);
 
   const active = shares.filter((s) => s.active).length;

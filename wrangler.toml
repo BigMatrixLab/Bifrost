@@ -1,0 +1,12 @@
+# Cloudflare Pages: the website (website/) plus the download function
+# (functions/download/), which streams installers from the R2 bucket below.
+# CI deploys it with `wrangler pages deploy` (.github/workflows/website.yml)
+# and fills the bucket from each release (.github/scripts/publish-downloads.sh).
+# The repository variables CF_PAGES_PROJECT and R2_BUCKET override both names.
+name = "bifrost-app"
+pages_build_output_dir = "website"
+compatibility_date = "2026-10-01"
+
+[[r2_buckets]]
+binding = "DOWNLOADS"
+bucket_name = "bifrost-downloads"

@@ -264,14 +264,14 @@ async fn flow_loop(pc: Arc<PeerConn>, lane: Arc<mmc::Lane>) {
             if path.is_some() {
                 fc.reset_path(now);
                 conn.set_receive_window(vi(fc.window()));
-                debug!(target: "relayless_core::diag", "flow_window path changed to {:?}; window reset to {}", key, fc.window());
+                debug!(target: "bifrost_core::diag", "flow_window path changed to {:?}; window reset to {}", key, fc.window());
             }
             path = key;
         }
         if let Some(w) = fc.tick(now, lane.rx.load(Ordering::Relaxed), srtt) {
             conn.set_receive_window(vi(w));
             debug!(
-                target: "relayless_core::diag",
+                target: "bifrost_core::diag",
                 "flow_window lane={} window={} base_rtt_ms={:?} srtt_ms={:?} rate_max={:?}",
                 lane.id, w, fc.snap.base_rtt_ms, fc.snap.srtt_ms, fc.snap.rate_max_bytes_per_sec
             );
@@ -325,11 +325,11 @@ async fn mmc_loop(inner: Arc<Inner>, pc: Arc<PeerConn>, primary: Connection) {
                     }
                     Ok(Err(e)) => {
                         pc.pool.snap.lock().add_failures += 1;
-                        debug!(target: "relayless_core::diag", "mmc: extra connection failed: {e}");
+                        debug!(target: "bifrost_core::diag", "mmc: extra connection failed: {e}");
                     }
                     Err(_) => {
                         pc.pool.snap.lock().add_failures += 1;
-                        debug!(target: "relayless_core::diag", "mmc: extra connection timed out");
+                        debug!(target: "bifrost_core::diag", "mmc: extra connection timed out");
                     }
                 }
             }
@@ -349,7 +349,7 @@ async fn mmc_loop(inner: Arc<Inner>, pc: Arc<PeerConn>, primary: Connection) {
         if ctl.last_decision != last_decision {
             last_decision = ctl.last_decision.clone();
             if let Some(d) = &last_decision {
-                info!(target: "relayless_core::diag", "mmc_decision peer={} lanes_now={} {}", short_peer(&peer.to_string()), pc.pool.count(), d);
+                info!(target: "bifrost_core::diag", "mmc_decision peer={} lanes_now={} {}", short_peer(&peer.to_string()), pc.pool.count(), d);
             }
         }
     }
@@ -826,7 +826,7 @@ async fn sample_loop(inner: Arc<Inner>, h: Arc<JobHandle>) {
                 let from = d.route_current();
                 if d.observe_route(to, ri.rtt_ms) {
                     info!(
-                        target: "relayless_core::diag",
+                        target: "bifrost_core::diag",
                         "route_change role=receiver id={} from={} to={} at_s={:.1} rtt_ms={:?}",
                         d.id, from.unwrap_or(diag::Route::Unknown).as_str(), to.as_str(), d.at_ms() / 1000.0, ri.rtt_ms
                     );
@@ -872,7 +872,7 @@ async fn sample_loop(inner: Arc<Inner>, h: Arc<JobHandle>) {
         }
         let s = d.sample(&mut base, extra);
         info!(
-            target: "relayless_core::diag",
+            target: "bifrost_core::diag",
             "transfer_interval role=receiver id={} t_s={:.1} bytes={} interval_mib_s={} route={} streams={} conn_streams={} lanes={} rtt_ms={} cwnd={} pacing_bytes_s={} lost_delta={} limiter_wait_ms={} read_wait_ms={}",
             d.id,
             s["t_ms"].as_f64().unwrap_or(0.0) / 1000.0,

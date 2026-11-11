@@ -49,7 +49,7 @@ jobs:
           shared-key: core-linux
       - name: Unit and end-to-end transfer tests
         shell: bash
-        run: .github/scripts/run.sh cargo test -p relayless-core --release -- --test-threads=1
+        run: .github/scripts/run.sh cargo test -p bifrost-core --release -- --test-threads=1
 
   windows:
     name: Windows installer
@@ -73,7 +73,7 @@ jobs:
 
       - name: Core tests on Windows (file I/O, locking, transfers)
         shell: bash
-        run: .github/scripts/run.sh cargo test -p relayless-core --release -- --test-threads=1
+        run: .github/scripts/run.sh cargo test -p bifrost-core --release -- --test-threads=1
 
       - name: Build installer
         shell: bash
@@ -105,7 +105,7 @@ jobs:
           Write-Host "Installed at $($exe.FullName)"
           $app = Start-Process -FilePath $exe.FullName -PassThru
           Start-Sleep -Seconds 25
-          $log = Join-Path $env:APPDATA "app.relayless.desktop\logs\relayless.log"
+          $log = Join-Path $env:APPDATA "app.relayless.desktop\logs\bifrost.log"
           $text = if (Test-Path $log) { Get-Content $log -Raw } else { "" }
           Write-Host "---- app log ----"; Write-Host $text
           $alive = -not $app.HasExited
@@ -390,3 +390,48 @@ jobs:
           body_path: .github/release-notes.md
           files: out/*
           make_latest: true
+
+  downloads:
+    name: Publish downloads (Cloudflare R2)
+    # After all three installers are on the GitHub release, copy them to R2 so
+    # the website's download buttons work for people outside the (private) repo.
+    needs: [windows, macos, android]
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      R2_BUCKET: ${{ vars.R2_BUCKET || 'bifrost-downloads' }}
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - name: Check for Cloudflare credentials
+        id: cf
+        shell: bash
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning title=Downloads not published::Add the CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID repository secrets to publish installers to Cloudflare R2 (see docs/DOWNLOADS.md)."
+          fi
+
+      - uses: actions/checkout@v5
+        if: steps.cf.outputs.ok == 'true'
+
+      - uses: actions/setup-node@v5
+        if: steps.cf.outputs.ok == 'true'
+        with:
+          node-version: 22
+
+      - uses: actions/download-artifact@v4
+        if: steps.cf.outputs.ok == 'true'
+        with:
+          pattern: Bifrost-*
+          path: release
+          merge-multiple: true
+
+      - name: Upload to R2 and switch the website to this build
+        if: steps.cf.outputs.ok == 'true'
+        shell: bash
+        run: |
+          ls -la release
+          bash .github/scripts/publish-downloads.sh release "v0.1.0-build${{ github.run_number }}"

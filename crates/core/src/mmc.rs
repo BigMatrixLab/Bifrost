@@ -60,7 +60,7 @@ pub const KEEP_FEWER: f64 = 0.05;
 /// How often the controller runs.
 pub const TICK: Duration = Duration::from_millis(500);
 
-/// Controller timings; shortened in tests through `RELAYLESS_MMC_FAST=1`.
+/// Controller timings; shortened in tests through `BIFROST_MMC_FAST=1`.
 #[derive(Debug, Clone, Copy)]
 pub struct Timings {
     /// Wait after a lane change before measuring (new congestion windows ramp up).
@@ -75,7 +75,7 @@ pub struct Timings {
 
 impl Timings {
     pub fn get() -> Self {
-        if std::env::var("RELAYLESS_MMC_FAST").ok().as_deref() == Some("1") {
+        if crate::util::env("BIFROST_MMC_FAST").ok().as_deref() == Some("1") {
             Timings {
                 settle: Duration::from_millis(1500),
                 measure: Duration::from_secs(3),

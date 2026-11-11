@@ -69,7 +69,7 @@ if __name__ == "__main__":
     # Android status-bar icon for the transfer notification: white on transparent,
     # as Android requires (the system tints it).
     d = "".join(x.split('d="')[1].split('"')[0] for x in paths(cube(w=27, g=13)).split("<path")[1:])
-    res = os.path.join(root, "plugins/relayless-android/android/src/main/res/drawable")
+    res = os.path.join(root, "plugins/bifrost-android/android/src/main/res/drawable")
     os.makedirs(res, exist_ok=True)
     open(os.path.join(res, "ic_stat_bifrost.xml"), "w", newline="\n").write(
         '<?xml version="1.0" encoding="utf-8"?>\n'

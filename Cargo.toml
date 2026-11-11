@@ -1,14 +1,14 @@
 [workspace]
 resolver = "2"
-members = ["crates/core", "src-tauri", "plugins/relayless-android"]
+members = ["crates/core", "src-tauri", "plugins/bifrost-android"]
 
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
 authors = ["Misbah Khan"]
-repository = "https://github.com/MisbahKhan0009/Relayless"
-homepage = "https://misbahkhan0009.github.io/Relayless/"
+repository = "https://github.com/MisbahKhan0009/Bifrost"
+homepage = "https://bifrost-app.pages.dev/"
 
 [profile.release]
 opt-level = 3

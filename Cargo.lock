@@ -443,6 +443,59 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2af50177e190e07a26ab74f8b1efbfe2ef87da2116221318cb1c2e82baf7de06"
 
 [[package]]
+name = "bifrost"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bifrost-core",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-autostart",
+ "tauri-plugin-bifrost-android",
+ "tauri-plugin-dialog",
+ "tauri-plugin-notification",
+ "tauri-plugin-single-instance",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "bifrost-core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "argon2",
+ "blake3",
+ "bytes",
+ "chacha20poly1305",
+ "data-encoding",
+ "fs4",
+ "iroh",
+ "iroh-base",
+ "iroh-relay",
+ "n0-future",
+ "n0-watcher",
+ "noq-proto",
+ "noq-udp",
+ "parking_lot",
+ "qrcode",
+ "rand 0.10.3",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+ "tokio-util",
+ "tracing",
+ "tracing-subscriber",
+ "windows-sys 0.59.0",
+]
+
+[[package]]
 name = "bit-set"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4668,59 +4721,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 
 [[package]]
-name = "relayless"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "relayless-core",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-autostart",
- "tauri-plugin-dialog",
- "tauri-plugin-notification",
- "tauri-plugin-relayless-android",
- "tauri-plugin-single-instance",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "relayless-core"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "argon2",
- "blake3",
- "bytes",
- "chacha20poly1305",
- "data-encoding",
- "fs4",
- "iroh",
- "iroh-base",
- "iroh-relay",
- "n0-future",
- "n0-watcher",
- "noq-proto",
- "noq-udp",
- "parking_lot",
- "qrcode",
- "rand 0.10.3",
- "rusqlite",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.21",
- "tokio",
- "tokio-util",
- "tracing",
- "tracing-subscriber",
- "windows-sys 0.59.0",
-]
-
-[[package]]
 name = "reloadable-core"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5925,6 +5925,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "tauri-plugin-bifrost-android"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "tauri",
+ "tauri-plugin",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "tauri-plugin-dialog"
 version = "2.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5984,16 +5994,6 @@ dependencies = [
  "time",
  "url",
  "zbus",
-]
-
-[[package]]
-name = "tauri-plugin-relayless-android"
-version = "0.1.0"
-dependencies = [
- "serde",
- "tauri",
- "tauri-plugin",
- "thiserror 2.0.21",
 ]
 
 [[package]]

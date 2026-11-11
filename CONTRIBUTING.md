@@ -4,7 +4,7 @@ Thanks for helping. Bug reports, ideas, translations, documentation and code are
 
 ## Reporting bugs
 
-Open a [bug report](https://github.com/MisbahKhan0009/Relayless/issues/new?template=bug_report.yml) and include:
+Open a [bug report](https://github.com/MisbahKhan0009/Bifrost/issues/new?template=bug_report.yml) and include:
 
 - the Bifrost version on both devices (Settings → About)
 - Windows or Android version, and device model for Android
@@ -20,8 +20,8 @@ Security issues: please follow [SECURITY.md](SECURITY.md) instead of filing a pu
 You need Rust (stable) and Node.js 22. Windows needs the WebView2 runtime (preinstalled on 10 and 11). Android builds also need JDK 21 and the Android SDK and NDK.
 
 ```sh
-git clone https://github.com/MisbahKhan0009/Relayless
-cd Relayless
+git clone https://github.com/MisbahKhan0009/Bifrost
+cd Bifrost
 npm ci
 npm run tauri dev        # desktop app with hot reload
 npm run dev:ui           # interface only, with demo data, in a browser
@@ -40,7 +40,7 @@ npm run dev:ui           # interface only, with demo data, in a browser
 ### Checks
 
 ```sh
-cargo test -p relayless-core --release   # engine unit and end-to-end tests
+cargo test -p bifrost-core --release   # engine unit and end-to-end tests
 cargo clippy --workspace                 # lints
 npm run typecheck                        # TypeScript
 npm run build                            # interface build

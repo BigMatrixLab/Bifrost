@@ -458,3 +458,12 @@ mod tests {
         assert_eq!(max_recorded, max);
     }
 }
+
+/// Reads a `BIFROST_*` environment variable, falling back to the name it had
+/// before the rename (`RELAYLESS_*`) so existing setups keep working.
+pub fn env(key: &str) -> Result<String, std::env::VarError> {
+    std::env::var(key).or_else(|e| match key.strip_prefix("BIFROST_") {
+        Some(rest) => std::env::var(format!("RELAYLESS_{rest}")),
+        None => Err(e),
+    })
+}

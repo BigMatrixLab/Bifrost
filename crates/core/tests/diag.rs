@@ -1,16 +1,16 @@
 //! Diagnostics: end-to-end checks of the per-transfer summaries, plus
 //! opt-in benchmarks (`--ignored`) for repeatable measurements.
 //!
-//!   cargo test -p relayless-core --release --test diag
-//!   cargo test -p relayless-core --release --test diag -- --ignored --nocapture bench_loopback
-//!   cargo test -p relayless-core --release --test diag -- --ignored --nocapture bench_disk_hash
+//!   cargo test -p bifrost-core --release --test diag
+//!   cargo test -p bifrost-core --release --test diag -- --ignored --nocapture bench_loopback
+//!   cargo test -p bifrost-core --release --test diag -- --ignored --nocapture bench_disk_hash
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use relayless_core::diag::read_summaries;
-use relayless_core::*;
+use bifrost_core::diag::read_summaries;
+use bifrost_core::*;
 use serde_json::Value;
 
 fn opts(dir: &Path, name: &str, diagnostics: bool) -> CoreOptions {
@@ -168,7 +168,7 @@ async fn summaries_describe_a_complete_transfer() {
     assert_eq!(r["configuration"]["parallel_streams_setting"], 3);
     assert_eq!(r["configuration"]["workers_first_pass"], 3);
     assert_eq!(r["configuration"]["transport"]["stream_window_bytes"], 1_000_000);
-    let expected_cc = if std::env::var("RELAYLESS_TEST_CONGESTION").as_deref() == Ok("bbr") { "bbr3" } else { "cubic" };
+    let expected_cc = if std::env::var("BIFROST_TEST_CONGESTION").as_deref() == Ok("bbr") { "bbr3" } else { "cubic" };
     assert_eq!(r["configuration"]["transport"]["congestion_control_active"], expected_cc);
     assert_eq!(r["configuration"]["transport"]["adaptive_flow_window"], true);
     assert_eq!(r["transfer"]["flow_window"]["enabled"], true);
@@ -357,7 +357,7 @@ async fn sender_summary_closes_after_idle() {
 /// the pass and drop the connection. Stall timeouts now count bytes from the
 /// sender on any connection (`receiver::wait_live`), so the transfer keeps going.
 /// Takes ~2.5 minutes:
-///   cargo test -p relayless-core --release --test diag -- --ignored --nocapture low_upload_limit_does_not_stall
+///   cargo test -p bifrost-core --release --test diag -- --ignored --nocapture low_upload_limit_does_not_stall
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore]
 async fn low_upload_limit_does_not_stall() {
@@ -499,7 +499,7 @@ async fn limited_then_unlimited(congestion: &str, label: String) -> (bool, f64, 
 /// parallel and a resumed transfer sometimes crawls at ~40 KB/s while the
 /// sender's cwnd sits at 4 packets with no loss).
 /// Environment: REPRO_CONGESTION=bbr|cubic (bbr), REPRO_PAIRS (4), REPRO_ROUNDS (3).
-///   cargo test -p relayless-core --release --test diag -- --ignored --nocapture repro_throughput_after_limited_phase
+///   cargo test -p bifrost-core --release --test diag -- --ignored --nocapture repro_throughput_after_limited_phase
 #[tokio::test(flavor = "multi_thread", worker_threads = 8)]
 #[ignore]
 async fn repro_throughput_after_limited_phase() {
@@ -643,7 +643,7 @@ async fn bench_loopback() {
 #[test]
 #[ignore]
 fn bench_disk_hash() {
-    use relayless_core::util::{read_exact_at, write_all_at};
+    use bifrost_core::util::{read_exact_at, write_all_at};
     const BLOCK: usize = 1024 * 1024;
     let size = env_u64("BENCH_SIZE_MIB", 512) as usize * 1024 * 1024;
     let tmp = tempfile::tempdir_in(std::env::var("BENCH_DIR").unwrap_or_else(|_| std::env::temp_dir().to_string_lossy().to_string())).unwrap();

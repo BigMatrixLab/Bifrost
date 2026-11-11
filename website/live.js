@@ -7,7 +7,7 @@
 // JavaScript or when the demo build is missing.
 (() => {
   const DEMO = "demo/index.html";
-  const APP_THEME_KEY = "relayless-theme"; // the app's own key (src/theme.ts)
+  const APP_THEME_KEY = "bifrost-theme"; // the app's own key (src/theme.ts)
   const root = document.documentElement;
   const reduce = matchMedia("(prefers-reduced-motion: reduce)");
   const narrowMq = matchMedia("(max-width: 640px)");

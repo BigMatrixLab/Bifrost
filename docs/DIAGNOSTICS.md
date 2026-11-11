@@ -9,9 +9,9 @@ Diagnostics never change the wire protocol (`relayless/1`, protocol version 2) o
 | Where | How |
 |---|---|
 | Desktop and Android app | On by default (`CoreOptions::diagnostics = true` in `src-tauri/src/lib.rs`) |
-| Any build | Environment variable `RELAYLESS_DIAG=0` (or `off`, `false`, `no`) turns it off; `1`/`on` forces it on |
+| Any build | Environment variable `BIFROST_DIAG=0` (or `off`, `false`, `no`) turns it off; `1`/`on` forces it on |
 | Tests | `CoreOptions { diagnostics: true/false, .. }` |
-| Adaptive flow window (not diagnostics, but useful for A/B tests) | `RELAYLESS_ADAPTIVE_WINDOW=0` restores the old static 48 MiB connection window on the receiver |
+| Adaptive flow window (not diagnostics, but useful for A/B tests) | `BIFROST_ADAPTIVE_WINDOW=0` restores the old static 48 MiB connection window on the receiver |
 
 "Off" stops the per-job sampler task, interval and summary log lines, and the JSON file. The counters themselves stay on: they are a few `Instant::now()` calls and atomic adds per 1 MiB block. On loopback, 4 runs each of the 160 MB e2e transfer gave 173–215 MB/s before the change, 188–210 MB/s with diagnostics on and 202–216 MB/s with them off, so the overhead is below the noise.
 
@@ -20,8 +20,8 @@ Diagnostics never change the wire protocol (`relayless/1`, protocol version 2) o
 | Output | Location |
 |---|---|
 | JSON summaries, one per line | `<app data>/diagnostics/transfers.jsonl` (rotated to `transfers.old.jsonl` at 16 MiB). Windows: `%APPDATA%\app.relayless.desktop\diagnostics\` |
-| Readable lines | The normal log, `<app data>/logs/relayless.log`, target `relayless_core::diag` |
-| Per-chunk lines | Same log at debug level: `RELAYLESS_LOG=relayless_core::diag=debug` |
+| Readable lines | The normal log, `<app data>/logs/bifrost.log`, target `bifrost_core::diag` |
+| Per-chunk lines | Same log at debug level: `BIFROST_LOG=bifrost_core::diag=debug` |
 
 Log line kinds:
 
@@ -134,9 +134,9 @@ From `bench_loopback` with a 64 MiB file, default settings (16 MiB chunks, so 4 
 Keep the two computers, the test file, the destination disk and the direction fixed while changing one setting at a time. Repeat each configuration at least three times. Use a file of at least 1 GiB for real networks so start-up time doesn't dominate. Make one with:
 
 ```powershell
-$f = [IO.File]::Create("D:\relayless-test\test-1g.bin"); $f.SetLength(1GB); $f.Close()   # sparse zeros, fine for network tests
+$f = [IO.File]::Create("D:\bifrost-test\test-1g.bin"); $f.SetLength(1GB); $f.Close()   # sparse zeros, fine for network tests
 # Random content (slower to create, avoids any compression or caching effects):
-$b = New-Object byte[] (1MB); $r = [Random]::new(1); $s = [IO.File]::OpenWrite("D:\relayless-test\test-1g-rand.bin"); 1..1024 | % { $r.NextBytes($b); $s.Write($b,0,$b.Length) }; $s.Close()
+$b = New-Object byte[] (1MB); $r = [Random]::new(1); $s = [IO.File]::OpenWrite("D:\bifrost-test\test-1g-rand.bin"); 1..1024 | % { $r.NextBytes($b); $s.Write($b,0,$b.Length) }; $s.Close()
 ```
 
 Before each series, note the app version and both devices' Settings (streams, files at once, piece size, both limits, connection mode, relay servers). After each run, collect `transfers.jsonl` from **both** devices and match lines by `file_key`. `scripts/diag-report.ps1` prints a table:
@@ -172,10 +172,10 @@ Settings → Connection → congestion control Cubic (the default), then BBR. Th
 On loopback, the same comparison runs with the unchanged e2e suite:
 
 ```powershell
-$env:RELAYLESS_TEST_CONGESTION="cubic"; cargo test -p relayless-core --release --test e2e; Remove-Item Env:RELAYLESS_TEST_CONGESTION
+$env:BIFROST_TEST_CONGESTION="cubic"; cargo test -p bifrost-core --release --test e2e; Remove-Item Env:BIFROST_TEST_CONGESTION
 ```
 
-`RELAYLESS_TEST_CONGESTION` only applies to loopback test endpoints (`local_only`).
+`BIFROST_TEST_CONGESTION` only applies to loopback test endpoints (`local_only`).
 
 ### Test F: disk and hashing alone
 
@@ -183,7 +183,7 @@ On each machine, against the source folder's disk (sender) and the download fold
 
 ```powershell
 $env:BENCH_DIR="D:\Downloads"; $env:BENCH_SIZE_MIB="2048"
-cargo test -p relayless-core --release --test diag -- --ignored --nocapture bench_disk_hash
+cargo test -p bifrost-core --release --test diag -- --ignored --nocapture bench_disk_hash
 ```
 
 It prints positioned-write, fsync, read (likely served from cache; use a file larger than RAM for a cold number) and BLAKE3 MiB/s with the engine's 1 MiB blocks. Compare with `stage_mib_per_sec` of `disk_write`, `disk_read`, `hash_verify` and `final_verification` in the summaries.
@@ -200,16 +200,16 @@ Measures the engine without a network, with configurable settings:
 $env:BENCH_SIZE_MIB="512"; $env:BENCH_STREAMS="12"; $env:BENCH_CHUNK_MIB="16"; $env:BENCH_RUNS="3"
 $env:BENCH_DOWN_KIBS="0"; $env:BENCH_UP_KIBS="0"     # optional limits in KiB/s
 $env:BENCH_JSON="1"                                   # also print each full summary
-cargo test -p relayless-core --release --test diag -- --ignored --nocapture bench_loopback
+cargo test -p bifrost-core --release --test diag -- --ignored --nocapture bench_loopback
 ```
 
 ### Reproductions
 
 | Command | Shows |
 |---|---|
-| `cargo test -p relayless-core --release --test diag -- --ignored --nocapture low_upload_limit_does_not_stall` | A 100 KiB/s sender upload limit with 12 streams runs 150 s without a stall timeout or reconnect (it used to reconnect after 90 s) |
-| `cargo test -p relayless-core --release --test relay -- --ignored --nocapture relay_throughput` | A transfer through a local relay with a per-client rate limit and no direct path, like n0's public relays. `RELAY_KIBS`, `RELAY_BURST_KIB`, `RELAY_SIZE_MIB`, `RELAY_RUNS`, `RELAYLESS_TEST_CONGESTION`, and `RELAYLESS_ADAPTIVE_WINDOW=0` to compare against the old static window. Prints average rate, interval CV, sender RTT p50/p95, loss and the per-interval series |
-| `cargo test -p relayless-core --release --test diag -- --ignored --nocapture repro_throughput_after_limited_phase` | Pause and resume after a rate-limited phase, several pairs at once (`REPRO_PAIRS`, `REPRO_ROUNDS`, `REPRO_CONGESTION`) |
+| `cargo test -p bifrost-core --release --test diag -- --ignored --nocapture low_upload_limit_does_not_stall` | A 100 KiB/s sender upload limit with 12 streams runs 150 s without a stall timeout or reconnect (it used to reconnect after 90 s) |
+| `cargo test -p bifrost-core --release --test relay -- --ignored --nocapture relay_throughput` | A transfer through a local relay with a per-client rate limit and no direct path, like n0's public relays. `RELAY_KIBS`, `RELAY_BURST_KIB`, `RELAY_SIZE_MIB`, `RELAY_RUNS`, `BIFROST_TEST_CONGESTION`, and `BIFROST_ADAPTIVE_WINDOW=0` to compare against the old static window. Prints average rate, interval CV, sender RTT p50/p95, loss and the per-interval series |
+| `cargo test -p bifrost-core --release --test diag -- --ignored --nocapture repro_throughput_after_limited_phase` | Pause and resume after a rate-limited phase, several pairs at once (`REPRO_PAIRS`, `REPRO_ROUNDS`, `REPRO_CONGESTION`) |
 
 ### Optional network checks
 

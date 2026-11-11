@@ -14,3 +14,7 @@
 .impeccable/questions/
 .impeccable/mocks/
 .impeccable/build/
+
+# Build caches that should never be committed
+**/.gradle/
+__pycache__/

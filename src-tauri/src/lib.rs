@@ -4,7 +4,7 @@
 use std::path::PathBuf;
 use std::sync::Mutex;
 
-use relayless_core::{
+use bifrost_core::{
     AccessRequest, ActivityDto, Core, CoreEvent, CoreOptions, CreatedInvitation, DownloadItem, GrantDto, HistoryDto, IncomingDto, OutgoingDto,
     JobSnapshot, JoinResult, ListResult, NetworkStatus, PeerStatus, PushDto, RemoteDto, Settings, ShareDto, SyncDto,
 };
@@ -18,7 +18,7 @@ use tauri::{WebviewUrl, WebviewWindowBuilder};
 use tauri::{AppHandle, Emitter, Manager, RunEvent, State};
 use tauri_plugin_notification::NotificationExt;
 #[cfg(target_os = "android")]
-use tauri_plugin_relayless_android::RelaylessAndroidExt;
+use tauri_plugin_bifrost_android::BifrostAndroidExt;
 
 struct AppState {
     core: Core,
@@ -106,15 +106,16 @@ fn prettify_device_name(name: String) -> String {
 
 fn init_logging(dir: &std::path::Path) {
     let _ = std::fs::create_dir_all(dir);
-    let path = dir.join("relayless.log");
+    let path = dir.join("bifrost.log");
     if std::fs::metadata(&path).map(|m| m.len() > 5 * 1024 * 1024).unwrap_or(false) {
-        let _ = std::fs::rename(&path, dir.join("relayless.old.log"));
+        let _ = std::fs::rename(&path, dir.join("bifrost.old.log"));
     }
     if let Ok(file) = std::fs::OpenOptions::new().create(true).append(true).open(&path) {
         let _ = tracing_subscriber::fmt()
             .with_env_filter(
-                tracing_subscriber::EnvFilter::try_from_env("RELAYLESS_LOG")
-                    .unwrap_or_else(|_| "relayless=info,relayless_core=info,iroh=warn".into()),
+                tracing_subscriber::EnvFilter::try_from_env("BIFROST_LOG")
+                    .or_else(|_| tracing_subscriber::EnvFilter::try_from_env("RELAYLESS_LOG"))
+                    .unwrap_or_else(|_| "bifrost_lib=info,bifrost_core=info,iroh=warn".into()),
             )
             .with_ansi(false)
             .with_writer(Mutex::new(file))
@@ -153,7 +154,7 @@ fn network_status(s: State<AppState>) -> NetworkStatus {
 #[tauri::command]
 fn update_settings(s: State<AppState>, settings: Settings) -> CmdResult<Settings> {
     let out = s.core.update_settings(settings).map_err(err)?;
-    relayless_core::set_low_priority(out.low_priority);
+    bifrost_core::set_low_priority(out.low_priority);
     Ok(out)
 }
 
@@ -536,7 +537,7 @@ fn list_local_dir(path: Option<String>) -> CmdResult<LocalDir> {
 
 #[tauri::command]
 fn make_dir(parent: String, name: String) -> CmdResult<String> {
-    let name = relayless_core::util::sanitize_filename(name.trim());
+    let name = bifrost_core::util::sanitize_filename(name.trim());
     let p = PathBuf::from(parent).join(name);
     std::fs::create_dir_all(&p).map_err(|e| format!("Couldn't create the folder: {e}"))?;
     Ok(p.to_string_lossy().to_string())
@@ -565,7 +566,7 @@ fn logcat(msg: &str) {
 #[cfg(target_os = "android")]
 fn spawn_service_controller(app: AppHandle, core: Core) {
     use std::time::{Duration, Instant};
-    use relayless_core::{util::human_bytes, UploadDto};
+    use bifrost_core::{util::human_bytes, UploadDto};
 
     tauri::async_runtime::spawn(async move {
         let mut rx = core.subscribe();
@@ -624,7 +625,7 @@ fn spawn_service_controller(app: AppHandle, core: Core) {
                         let app2 = app.clone();
                         let w = want.clone();
                         let _ = tauri::async_runtime::spawn_blocking(move || {
-                            let plugin = app2.relayless_android();
+                            let plugin = app2.bifrost_android();
                             match w {
                                 Some((t, x)) => plugin.set_service(t, x),
                                 None => plugin.stop_service(),
@@ -654,14 +655,14 @@ pub fn run() {
     let app = builder
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_relayless_android::init())
+        .plugin(tauri_plugin_bifrost_android::init())
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             init_logging(&data_dir.join("logs"));
 
             #[cfg(target_os = "android")]
             let (downloads, name) = {
-                let model = app.relayless_android().device_info().map(|d| d.model).unwrap_or_default();
+                let model = app.bifrost_android().device_info().map(|d| d.model).unwrap_or_default();
                 (
                     PathBuf::from("/storage/emulated/0/Download/Bifrost"),
                     if model.trim().is_empty() { "Android phone".to_string() } else { model },
@@ -681,12 +682,12 @@ pub fn run() {
                 default_device_name: name,
                 default_download_dir: downloads,
                 local_only: false,
-                // Per-transfer summaries in <app data>/diagnostics; RELAYLESS_DIAG=0 turns them off.
+                // Per-transfer summaries in <app data>/diagnostics; BIFROST_DIAG=0 turns them off.
                 diagnostics: true,
                 endpoint_hook: None,
             }))
             .map_err(|e| -> Box<dyn std::error::Error> { e.to_string().into() })?;
-            relayless_core::set_low_priority(core.settings().low_priority);
+            bifrost_core::set_low_priority(core.settings().low_priority);
             tracing::info!("Bifrost {} started as {}", env!("CARGO_PKG_VERSION"), core.endpoint_id());
             #[cfg(target_os = "android")]
             logcat(&format!("Bifrost engine started as {}", core.endpoint_id()));

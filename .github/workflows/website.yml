@@ -10,6 +10,8 @@ on:
       - "src/**"
       - "mock/**"
       - "index.html"
+      - "functions/**"
+      - "wrangler.toml"
       - "vite.config.ts"
       - "package.json"
       - "package-lock.json"
@@ -25,7 +27,7 @@ concurrency:
 
 jobs:
   publish:
-    name: Publish to GitHub Pages
+    name: Publish the website
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
@@ -46,10 +48,35 @@ jobs:
         run: |
           cd website
           missing=0
-          for ref in $(grep -oE '(src|href)="[^"#:]+"' index.html | sed -E 's/^(src|href)="//; s/"$//' | sort -u); do
+          # download/... is served by the Cloudflare function, not a file.
+          for ref in $(grep -oE '(src|href)="[^"#:]+"' index.html | sed -E 's/^(src|href)="//; s/"$//' | grep -v '^download/' | sort -u); do
             [ -e "$ref" ] || { echo "::error title=Missing file::website/$ref"; missing=1; }
           done
           exit $missing
+
+      - name: Deploy to Cloudflare Pages (site and download function)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          PROJECT: ${{ vars.CF_PAGES_PROJECT || 'bifrost-app' }}
+          R2_BUCKET: ${{ vars.R2_BUCKET || 'bifrost-downloads' }}
+          WRANGLER_SEND_METRICS: "false"
+        shell: bash
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::warning title=Cloudflare not deployed::Add the CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID repository secrets (see docs/DOWNLOADS.md)."
+            exit 0
+          fi
+          wrangler() { npx --yes wrangler@4.153.0 "$@"; }
+          sed -i "s/^name = .*/name = \"$PROJECT\"/; s/^bucket_name = .*/bucket_name = \"$R2_BUCKET\"/" wrangler.toml
+          wrangler r2 bucket info "$R2_BUCKET" >/dev/null 2>&1 || wrangler r2 bucket create "$R2_BUCKET"
+          if ! wrangler pages project list --json 2>/dev/null | grep -q "\"$PROJECT\""; then
+            wrangler pages project create "$PROJECT" --production-branch main
+          fi
+          wrangler pages deploy --project-name "$PROJECT" --branch main \
+            --commit-hash "$GITHUB_SHA" --commit-message "Website from ${GITHUB_SHA::7}" | tee deploy.log
+          url=$(grep -oE 'https://[a-z0-9.-]+\.pages\.dev' deploy.log | tail -1)
+          echo "::notice title=Website on Cloudflare::https://$PROJECT.pages.dev (this deployment: $url)"
 
       - name: Publish website/ to the gh-pages branch
         shell: bash
@@ -59,7 +86,7 @@ jobs:
           git init -q
           git checkout -q -b gh-pages
           git add -A
-          git -c user.name="relayless-ci" -c user.email="relayless-ci@users.noreply.github.com" \
+          git -c user.name="bifrost-ci" -c user.email="bifrost-ci@users.noreply.github.com" \
             commit -qm "Website from ${GITHUB_SHA::7}"
           git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" gh-pages
           echo "::notice title=Website published::https://${GITHUB_REPOSITORY_OWNER,,}.github.io/${GITHUB_REPOSITORY#*/}/"

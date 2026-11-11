@@ -1,0 +1,15 @@
+[package]
+name = "tauri-plugin-bifrost-android"
+version = "0.1.0"
+authors = ["Bifrost"]
+description = "Android integration for Bifrost: storage access, background transfer service, device info"
+edition = "2021"
+links = "tauri-plugin-bifrost-android"
+
+[dependencies]
+tauri = "2"
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+
+[build-dependencies]
+tauri-plugin = { version = "2", features = ["build"] }

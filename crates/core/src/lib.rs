@@ -54,7 +54,7 @@ pub struct CoreOptions {
     /// Loopback-only endpoint without relays or lookup (tests).
     pub local_only: bool,
     /// Write per-transfer diagnostic summaries to `<data_dir>/diagnostics/`
-    /// and log interval/summary lines. The `RELAYLESS_DIAG` environment
+    /// and log interval/summary lines. The `BIFROST_DIAG` environment
     /// variable (0/1) overrides this.
     pub diagnostics: bool,
     /// Test-only: builds the endpoint from `presets::Minimal` (with this
@@ -137,7 +137,7 @@ impl Core {
         // Test-only: A/B congestion control on loopback without editing tests.
         // Applied to the endpoint only, never saved.
         let test_endpoint = opts.local_only || opts.endpoint_hook.is_some();
-        let bind_congestion = match (test_endpoint, std::env::var("RELAYLESS_TEST_CONGESTION")) {
+        let bind_congestion = match (test_endpoint, crate::util::env("BIFROST_TEST_CONGESTION")) {
             (true, Ok(c)) => c,
             _ => settings.congestion.clone(),
         };
@@ -152,11 +152,11 @@ impl Core {
         let congestion_active = net::congestion_name(&bind_congestion);
         let diag = diag::DiagConfig::resolve(
             opts.diagnostics,
-            std::env::var(diag::ENV_VAR).ok().as_deref(),
+            crate::util::env(diag::ENV_VAR).ok().as_deref(),
             &opts.data_dir,
         );
         tracing::info!(
-            target: "relayless_core::diag",
+            target: "bifrost_core::diag",
             "engine_config diagnostics={} congestion_active={} congestion_setting={} parallel_streams={} max_concurrent_jobs={} chunk_size_mib={} download_limit_kib_s={} upload_limit_kib_s={} connection_mode={} stream_window={} conn_window={} send_window={} max_bidi_streams={}",
             diag.enabled,
             congestion_active,
@@ -294,7 +294,7 @@ impl Core {
             || s.connection_mode != old.connection_mode
         {
             tracing::info!(
-                target: "relayless_core::diag",
+                target: "bifrost_core::diag",
                 "settings_changed download_limit_kib_s={} upload_limit_kib_s={} effective_download_bytes_s={} effective_upload_bytes_s={} parallel_streams={} connection_mode={} congestion_setting={} congestion_active={} (congestion applies after restart)",
                 s.download_limit_kbps,
                 s.upload_limit_kbps,

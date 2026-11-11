@@ -3,7 +3,6 @@
 // platform-aware download links from the latest GitHub release. The live app
 // frames that replace the screenshots are in live.js.
 (() => {
-  const REPO = "MisbahKhan0009/Relayless";
   const THEME_KEY = "bifrost-site-theme";
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
@@ -629,26 +628,27 @@
   const primaryLabel = $("[data-primary-label]");
   if (platform) {
     primaryLabel.textContent = `Download for ${NAMES[platform]}`;
+    // Straight to the installer: the download starts on click.
+    primary.href = `download/${platform}`;
+    primary.setAttribute("download", "");
     const rec = document.querySelector(`[data-dl="${platform}"]`);
     rec?.classList.add("recommended");
     const tag = rec && $("[data-rec]", rec);
     if (tag) tag.hidden = false;
   }
 
-  // ------------------------------------------------------------------ release links
-  fetch(`https://api.github.com/repos/${REPO}/releases/latest`, { headers: { Accept: "application/vnd.github+json" } })
+  // ------------------------------------------------------------------ release info
+  // The buttons already point at download/<platform>, which the Cloudflare
+  // function (functions/download/) streams from R2. latest.json only adds the
+  // version, date and file sizes to the page.
+  fetch("download/latest.json", { cache: "no-cache" })
     .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
     .then((rel) => {
-      const find = (re) => (rel.assets || []).find((a) => re.test(a.name));
-      const assets = {
-        macos: find(/\.dmg$/i),
-        windows: find(/x64\.exe$/i),
-        android: find(/android\.apk$/i),
-      };
-      const date = rel.published_at
-        ? new Date(rel.published_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })
+      const files = rel.files || {};
+      const date = rel.published
+        ? new Date(rel.published).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })
         : "";
-      const ver = (rel.name || rel.tag_name || "").replace(/^(Bifrost|Quanta|Relayless)\s*/i, "");
+      const ver = (rel.name || rel.version || "").replace(/^(Bifrost|Quanta|Relayless)\s*/i, "");
       const v = $("[data-version]");
       if (v && ver) v.textContent = `Version ${ver}${date ? `, released ${date}` : ""}`;
       const labels = {
@@ -656,28 +656,14 @@
         windows: "Windows 10 and 11, 64-bit, no admin rights needed",
         android: "Android 7.0 and newer, one APK for every phone and tablet",
       };
-      for (const key of Object.keys(assets)) {
-        const asset = assets[key];
-        if (!asset) continue;
-        const dl = document.querySelector(`[data-dl="${key}"]`);
-        if (dl) dl.href = asset.browser_download_url;
+      for (const key of Object.keys(labels)) {
+        const file = files[key];
+        if (!file) continue;
         const meta = $(`[data-meta="${key}"]`);
-        if (meta) meta.textContent = `${labels[key]}. ${fmtSize(asset.size)}`;
+        if (meta) meta.textContent = `${labels[key]}. ${fmtSize(file.size)}`;
       }
-      if (platform && assets[platform]) primary.href = assets[platform].browser_download_url;
     })
     .catch(() => {
-      /* Links fall back to the releases page. */
+      /* No release info yet: the buttons still work once a build is published. */
     });
-
-  fetch(`https://api.github.com/repos/${REPO}`)
-    .then((r) => (r.ok ? r.json() : Promise.reject()))
-    .then((repo) => {
-      const s = $("[data-stars]");
-      if (s && repo.stargazers_count > 0) {
-        s.textContent = repo.stargazers_count.toLocaleString();
-        s.hidden = false;
-      }
-    })
-    .catch(() => {});
 })();

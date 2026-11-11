@@ -5,7 +5,7 @@ Bifrost has three layers:
 | Layer | Location | Responsibility |
 |---|---|---|
 | Transfer engine | `crates/core` | Networking, sharing and permissions, invitations, the resumable download engine, durable state. Plain Rust library with no UI dependencies. |
-| App shell | `src-tauri`, `plugins/relayless-android` | Starts the engine, exposes it to the interface as typed commands and events, and integrates with the platform (Windows tray and autostart; Android storage access, foreground service, notifications). |
+| App shell | `src-tauri`, `plugins/bifrost-android` | Starts the engine, exposes it to the interface as typed commands and events, and integrates with the platform (Windows tray and autostart; Android storage access, foreground service, notifications). |
 | Interface | `src` | React + TypeScript. Holds no transfer logic: it calls commands and renders events. |
 
 ## Connectivity
@@ -108,7 +108,7 @@ Switching keys means existing users must uninstall once before updating.
 
 ## Testing
 
-`cargo test -p relayless-core --release` runs unit tests and end-to-end tests with two in-process peers on loopback:
+`cargo test -p bifrost-core --release` runs unit tests and end-to-end tests with two in-process peers on loopback:
 
 - full transfer of large files and folders, including empty files
 - path traversal and symlink escapes, single-use invitations, device revocation

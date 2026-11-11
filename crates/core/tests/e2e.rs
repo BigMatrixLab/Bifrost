@@ -2,7 +2,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use relayless_core::*;
+use bifrost_core::*;
 
 fn opts(dir: &Path, name: &str) -> CoreOptions {
     CoreOptions {
@@ -94,7 +94,7 @@ fn set_limit(core: &Core, kbps: u64) {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn full_transfer_folder_and_security() {
-    let _ = tracing_subscriber::fmt().with_env_filter(std::env::var("TLOG").unwrap_or("relayless_core=info".into())).try_init();
+    let _ = tracing_subscriber::fmt().with_env_filter(std::env::var("TLOG").unwrap_or("bifrost_core=info".into())).try_init();
     let tmp = tempfile::tempdir().unwrap();
     let shared = tmp.path().join("shared");
     make_file(&shared.join("big.bin"), 150 * 1024 * 1024 + 12345, 1);
@@ -221,7 +221,7 @@ fn peer_id_of(c: &Core) -> String {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn sender_pause_resume_and_cancel() {
-    let _ = tracing_subscriber::fmt().with_env_filter(std::env::var("TLOG").unwrap_or("relayless_core=info".into())).try_init();
+    let _ = tracing_subscriber::fmt().with_env_filter(std::env::var("TLOG").unwrap_or("bifrost_core=info".into())).try_init();
     let tmp = tempfile::tempdir().unwrap();
     let shared = tmp.path().join("shared");
     let size = 80 * 1024 * 1024 + 321;
@@ -281,7 +281,7 @@ async fn sender_pause_resume_and_cancel() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn pause_resume_and_crash_recovery() {
-    let _ = tracing_subscriber::fmt().with_env_filter(std::env::var("TLOG").unwrap_or("relayless_core=info".into())).try_init();
+    let _ = tracing_subscriber::fmt().with_env_filter(std::env::var("TLOG").unwrap_or("bifrost_core=info".into())).try_init();
     let tmp = tempfile::tempdir().unwrap();
     let shared = tmp.path().join("shared");
     let size = 120 * 1024 * 1024 + 777;
@@ -363,7 +363,7 @@ async fn pause_resume_and_crash_recovery() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn source_change_and_sender_offline() {
-    let _ = tracing_subscriber::fmt().with_env_filter(std::env::var("TLOG").unwrap_or("relayless_core=info".into())).try_init();
+    let _ = tracing_subscriber::fmt().with_env_filter(std::env::var("TLOG").unwrap_or("bifrost_core=info".into())).try_init();
     let tmp = tempfile::tempdir().unwrap();
     let shared = tmp.path().join("shared");
     make_file(&shared.join("data.bin"), 80 * 1024 * 1024, 9);
@@ -485,7 +485,7 @@ async fn big_transfer_memory() {
 /// (the case of a slow phone link with many large chunks in flight).
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn pause_mid_chunk_keeps_progress() {
-    let _ = tracing_subscriber::fmt().with_env_filter(std::env::var("TLOG").unwrap_or("relayless_core=info".into())).try_init();
+    let _ = tracing_subscriber::fmt().with_env_filter(std::env::var("TLOG").unwrap_or("bifrost_core=info".into())).try_init();
     let tmp = tempfile::tempdir().unwrap();
     let shared = tmp.path().join("shared");
     let size = 100 * 1024 * 1024 + 4321;

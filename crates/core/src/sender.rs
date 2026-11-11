@@ -90,7 +90,7 @@ async fn handle_conn(inner: Arc<Inner>, conn: Connection) {
     if inner.diag.enabled {
         let s = in_flight.snapshot();
         tracing::info!(
-            target: "relayless_core::diag",
+            target: "bifrost_core::diag",
             "connection_closed role=sender peer={} requests_in_flight_peak={} limit={} close_reason={:?}",
             short_peer(&peer.to_string()),
             s.peak,
@@ -346,7 +346,7 @@ pub fn sample_send_diags(inner: &Inner) {
         }
         let s = d.sample_now(extra);
         tracing::info!(
-            target: "relayless_core::diag",
+            target: "bifrost_core::diag",
             "transfer_interval role=sender id={} file={} peer={} t_s={:.1} bytes={} interval_mib_s={} route={} streams={} paths={} path={} rtt_ms={} cwnd={} bw_est_bps={} pacing_bytes_s={} cong_events={} path_sent={} path_lost={} lost_total={} limiter_wait_ms={} quic_write_ms={}",
             d.id,
             d.file_key,

@@ -430,12 +430,12 @@ export const api = {
 
 /** Android integration (no-ops on desktop). */
 export const android = {
-  hasAllFilesAccess: () => invoke<{ granted: boolean }>("plugin:relayless-android|has_all_files_access"),
-  requestAllFilesAccess: () => invoke<{ granted: boolean }>("plugin:relayless-android|request_all_files_access"),
-  requestNotificationPermission: () => invoke<{ granted: boolean }>("plugin:relayless-android|request_notification_permission"),
-  batteryStatus: () => invoke<{ unrestricted: boolean }>("plugin:relayless-android|battery_status"),
-  requestIgnoreBatteryOptimizations: () => invoke<{ unrestricted: boolean }>("plugin:relayless-android|request_ignore_battery_optimizations"),
-  openFile: (path: string) => invoke<void>("plugin:relayless-android|open_file", { path }),
+  hasAllFilesAccess: () => invoke<{ granted: boolean }>("plugin:bifrost-android|has_all_files_access"),
+  requestAllFilesAccess: () => invoke<{ granted: boolean }>("plugin:bifrost-android|request_all_files_access"),
+  requestNotificationPermission: () => invoke<{ granted: boolean }>("plugin:bifrost-android|request_notification_permission"),
+  batteryStatus: () => invoke<{ unrestricted: boolean }>("plugin:bifrost-android|battery_status"),
+  requestIgnoreBatteryOptimizations: () => invoke<{ unrestricted: boolean }>("plugin:bifrost-android|request_ignore_battery_optimizations"),
+  openFile: (path: string) => invoke<void>("plugin:bifrost-android|open_file", { path }),
 };
 
 export function on<T>(event: string, cb: (payload: T) => void): Promise<UnlistenFn> {

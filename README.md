@@ -10,14 +10,14 @@ Direct, end-to-end encrypted transfers and shared folders between macOS, Windows
 No account, no cloud copy, no size limit, and every transfer picks up from the last verified megabyte.<br />
 <sub>Formerly Quanta, and before that Relayless.</sub>
 
-[![Latest release](https://img.shields.io/github/v/release/MisbahKhan0009/Relayless?display_name=release&style=flat-square&color=1ed760&labelColor=181818&label=release)](https://github.com/MisbahKhan0009/Relayless/releases/latest)
-[![Build](https://img.shields.io/github/actions/workflow/status/MisbahKhan0009/Relayless/build.yml?branch=main&style=flat-square&labelColor=181818&label=build)](https://github.com/MisbahKhan0009/Relayless/actions/workflows/build.yml)
+[![Latest release](https://img.shields.io/github/v/release/MisbahKhan0009/Bifrost?display_name=release&style=flat-square&color=1ed760&labelColor=181818&label=release)](https://github.com/MisbahKhan0009/Bifrost/releases/latest)
+[![Build](https://img.shields.io/github/actions/workflow/status/MisbahKhan0009/Bifrost/build.yml?branch=main&style=flat-square&labelColor=181818&label=build)](https://github.com/MisbahKhan0009/Bifrost/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-1ed760?style=flat-square&labelColor=181818)](LICENSE)
 [![Platforms](https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Android-ffffff?style=flat-square&labelColor=181818)](#download)
-[![Website](https://img.shields.io/badge/website-relayless-1ed760?style=flat-square&labelColor=181818)](https://misbahkhan0009.github.io/Relayless/)
+[![Website](https://img.shields.io/badge/website-bifrost-1ed760?style=flat-square&labelColor=181818)](https://bifrost-app.pages.dev/)
 
-[**Download**](https://github.com/MisbahKhan0009/Relayless/releases/latest) &nbsp;|&nbsp;
-[Website](https://misbahkhan0009.github.io/Relayless/) &nbsp;|&nbsp;
+[**Download**](https://bifrost-app.pages.dev/#download) &nbsp;|&nbsp;
+[Website](https://bifrost-app.pages.dev/) &nbsp;|&nbsp;
 [Privacy](#privacy-you-can-check) &nbsp;|&nbsp;
 [How it works](#how-it-works) &nbsp;|&nbsp;
 [Architecture](docs/ARCHITECTURE.md) &nbsp;|&nbsp;
@@ -95,7 +95,7 @@ Sending a 64 GB file across continents usually means uploading it to someone els
 | **Windows** | `Bifrost-Setup-<version>-x64.exe` | Windows 10 or 11, 64-bit. No administrator rights needed. |
 | **Android** | `Bifrost-<version>-android.apk` | Android 7.0 or newer. One universal APK for every phone and tablet. |
 
-Get them from the **[latest release](https://github.com/MisbahKhan0009/Relayless/releases/latest)**. An Intel Mac can still build its own app from source.
+Download them from the **[website](https://bifrost-app.pages.dev/#download)**; each button starts the download straight away. Direct links that always point at the newest build: [Windows](https://bifrost-app.pages.dev/download/windows), [macOS](https://bifrost-app.pages.dev/download/macos), [Android](https://bifrost-app.pages.dev/download/android). An Intel Mac can still build its own app from source.
 
 > [!NOTE]
 > The builds aren't code-signed by a certificate authority yet. On macOS, the first launch may say the app is from an unidentified developer: right-click Bifrost, choose **Open**, then **Open** again. On Windows, SmartScreen may show *Windows protected your PC*: choose **More info → Run anyway**. On Android, allow your browser or file manager to install apps; if Play Protect warns, choose **More details → Install anyway**.
@@ -170,14 +170,14 @@ Found a vulnerability? Please follow [SECURITY.md](SECURITY.md) instead of openi
 **Requirements:** Rust (stable), Node.js 22. On macOS, Xcode's command-line tools. On Windows, the WebView2 runtime (preinstalled on Windows 10 and 11). For Android: JDK 21, Android SDK and NDK.
 
 ```sh
-git clone https://github.com/MisbahKhan0009/Relayless
-cd Relayless
+git clone https://github.com/MisbahKhan0009/Bifrost
+cd Bifrost
 npm ci
 
 npm run tauri dev                         # run the desktop app
 npm run dev:ui                            # UI only, with demo data, in a browser
 npm run build:demo                        # that demo, built into website/demo for the website
-cargo test -p relayless-core --release    # engine tests
+cargo test -p bifrost-core --release    # engine tests
 
 npx tauri build                           # macOS app and disk image (on a Mac)
 npx tauri build --bundles nsis            # Windows installer
@@ -188,7 +188,7 @@ The engine tests run real transfers between in-process peers and cover pause and
 
 ### Continuous integration
 
-Every push to `main` runs the engine tests on Linux and Windows, builds the macOS disk image, the Windows installer and the Android APK, launches each one (on a Mac runner, a clean Windows runner and an Android 13 emulator), and publishes a GitHub Release with the files attached. Android builds are signed with one key across releases so updates install in place; see [Android signing](docs/ARCHITECTURE.md#android-signing).
+Every push to `main` runs the engine tests on Linux and Windows, builds the macOS disk image, the Windows installer and the Android APK, launches each one (on a Mac runner, a clean Windows runner and an Android 13 emulator), and publishes a GitHub Release with the files attached. It then copies the installers to Cloudflare R2, where the website serves them to everyone ([how downloads are hosted](docs/DOWNLOADS.md)). Android builds are signed with one key across releases so updates install in place; see [Android signing](docs/ARCHITECTURE.md#android-signing).
 
 ## Project structure
 
@@ -198,7 +198,7 @@ crates/core/                 Transfer engine (Rust): protocol, sharing, invitati
                              auto-sync, SQLite state, end-to-end tests
 src-tauri/                   App shell (Tauri 2): commands, events, Windows tray,
                              Android project in gen/android
-plugins/relayless-android/   Android integration (Kotlin): storage access,
+plugins/bifrost-android/   Android integration (Kotlin): storage access,
                              foreground transfer service, battery settings
 src/                         Interface (React + TypeScript): pages, live speed
                              graph (flow.tsx), History calendar and receipts,
@@ -225,7 +225,7 @@ DESIGN.md                    Visual system: colours, type, chart and calendar ru
 - [ ] Self-hostable lookup server (your own relays already work: [docs/RELAY.md](docs/RELAY.md))
 - [ ] Send from the phone's share sheet
 
-Ideas and votes are welcome in [Issues](https://github.com/MisbahKhan0009/Relayless/issues).
+Ideas and votes are welcome in [Issues](https://github.com/MisbahKhan0009/Bifrost/issues).
 
 ## Contributing
 

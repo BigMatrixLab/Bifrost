@@ -1,23 +1,23 @@
 [package]
-name = "relayless"
+name = "bifrost"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "Bifrost: direct, resumable, verified large-file transfer"
 
 [lib]
-name = "relayless_lib"
+name = "bifrost_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-relayless-core = { path = "../crates/core" }
+bifrost-core = { path = "../crates/core" }
 tauri = { version = "2", features = ["image-png"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-notification = "2"
-tauri-plugin-relayless-android = { path = "../plugins/relayless-android" }
+tauri-plugin-bifrost-android = { path = "../plugins/bifrost-android" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 anyhow = "1"

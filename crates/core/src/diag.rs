@@ -41,7 +41,7 @@ const MAX_CONN_ATTEMPTS: usize = 50;
 pub const SLOW_STREAM_OPEN: Duration = Duration::from_millis(100);
 
 /// Environment variable that overrides `CoreOptions::diagnostics`.
-pub const ENV_VAR: &str = "RELAYLESS_DIAG";
+pub const ENV_VAR: &str = "BIFROST_DIAG";
 
 // ====================================================================== config
 
@@ -52,7 +52,7 @@ pub struct DiagConfig {
 }
 
 impl DiagConfig {
-    /// `RELAYLESS_DIAG=0|off|false|no` disables, `1|on|true|yes` enables;
+    /// `BIFROST_DIAG=0|off|false|no` disables, `1|on|true|yes` enables;
     /// anything else (or unset) keeps the option passed by the app.
     pub fn resolve(option: bool, env: Option<&str>, data_dir: &Path) -> Self {
         DiagConfig { enabled: env_override(env).unwrap_or(option), dir: data_dir.join("diagnostics") }
@@ -899,7 +899,7 @@ impl TransferDiag {
 
     pub fn finish_chunk(&self, rec: ChunkRecord) {
         tracing::debug!(
-            target: "relayless_core::diag",
+            target: "bifrost_core::diag",
             "chunk role={} id={} index={} outcome={} bytes={} blocks={} total_ms={:.1} header_ms={:?} limiter_ms={:.1} read_wait_ms={:?} disk_read_ms={:?} hash_ms={:.1} disk_write_ms={:?} quic_write_ms={:?} error={:?}",
             self.role, self.id, rec.index, rec.outcome, rec.bytes, rec.blocks, rec.total_ms, rec.header_wait_ms,
             rec.limiter_wait_ms, rec.read_wait_ms, rec.disk_read_ms, rec.hash_ms, rec.disk_write_ms, rec.quic_write_ms,
@@ -1335,11 +1335,11 @@ fn emit(cfg: &DiagConfig, d: &TransferDiag, summary: &Value, sync: bool) {
     if !cfg.enabled {
         return;
     }
-    tracing::info!(target: "relayless_core::diag", "{}", d.log_line(summary));
+    tracing::info!(target: "bifrost_core::diag", "{}", d.log_line(summary));
     let dir = cfg.dir.clone();
     let write = move |v: &Value| {
         if let Err(e) = append_jsonl(&dir, v) {
-            tracing::warn!(target: "relayless_core::diag", "could not write diagnostics summary: {e}");
+            tracing::warn!(target: "bifrost_core::diag", "could not write diagnostics summary: {e}");
         }
     };
     match tokio::runtime::Handle::try_current() {

@@ -38,7 +38,7 @@ Bifrost runs on [iroh](https://github.com/n0-computer/iroh), which gives QUIC (T
 | Setting | Value | Meaning |
 |---|---|---|
 | `stream_receive_window` | `STREAM_WINDOW = 1_000_000` bytes | Max unacknowledged data in flight per stream |
-| `receive_window` | 4 MiB initially, then adaptive between 128 KiB and `CONN_WINDOW = 48 MiB` (see section 8) | Max unacknowledged data per connection, all streams together. `RELAYLESS_ADAPTIVE_WINDOW=0` restores the static 48 MiB |
+| `receive_window` | 4 MiB initially, then adaptive between 128 KiB and `CONN_WINDOW = 48 MiB` (see section 8) | Max unacknowledged data per connection, all streams together. `BIFROST_ADAPTIVE_WINDOW=0` restores the static 48 MiB |
 | `send_window` | `SEND_WINDOW = 48 MiB` | Max data buffered for sending per connection |
 | `max_concurrent_bidi_streams` | 64 | How many streams the *peer* may have open to us at once |
 | `keep_alive_interval` | 5 s | Keeps NAT bindings and relay paths alive |

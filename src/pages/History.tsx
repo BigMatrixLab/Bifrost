@@ -455,7 +455,7 @@ function MonthCalendar({
 let pendingDay: number | null = null;
 export function openHistoryOn(ms: number) {
   pendingDay = ms;
-  window.dispatchEvent(new Event("relayless:history-day"));
+  window.dispatchEvent(new Event("bifrost:history-day"));
 }
 
 export default function History() {
@@ -495,8 +495,8 @@ export default function History() {
       setMonth(m);
       setSelected(dayKey(ms));
     };
-    window.addEventListener("relayless:history-day", go);
-    return () => window.removeEventListener("relayless:history-day", go);
+    window.addEventListener("bifrost:history-day", go);
+    return () => window.removeEventListener("bifrost:history-day", go);
   }, [dir]);
 
   const filtered = useMemo(() => (dir === "both" ? history : history.filter((e) => e.direction === dir)), [history, dir]);

@@ -63,10 +63,10 @@ const PROBE_INTERVAL: Duration = Duration::from_secs(30);
 const PROBE_MAX_INTERVAL: Duration = Duration::from_secs(60);
 const PROBE_MAX_DURATION: Duration = Duration::from_secs(8);
 
-/// `RELAYLESS_ADAPTIVE_WINDOW=0` turns the controller off (static 48 MiB
+/// `BIFROST_ADAPTIVE_WINDOW=0` turns the controller off (static 48 MiB
 /// connection window, the old behaviour) for A/B measurements.
 pub fn enabled() -> bool {
-    !matches!(std::env::var("RELAYLESS_ADAPTIVE_WINDOW").ok().as_deref().map(str::trim), Some("0" | "off" | "false" | "no"))
+    !matches!(crate::util::env("BIFROST_ADAPTIVE_WINDOW").ok().as_deref().map(str::trim), Some("0" | "off" | "false" | "no"))
 }
 
 #[derive(Debug, Clone, Default, serde::Serialize)]

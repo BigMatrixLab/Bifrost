@@ -1,13 +1,13 @@
 {
-  "name": "relayless",
+  "name": "bifrost",
   "private": true,
   "version": "0.1.0",
   "description": "Send huge files directly between macOS, Windows and Android: end-to-end encrypted, resumable, no cloud upload.",
   "license": "MIT",
-  "homepage": "https://misbahkhan0009.github.io/Relayless/",
+  "homepage": "https://bifrost-app.pages.dev/",
   "repository": {
     "type": "git",
-    "url": "https://github.com/MisbahKhan0009/Relayless.git"
+    "url": "https://github.com/MisbahKhan0009/Bifrost.git"
   },
   "type": "module",
   "scripts": {

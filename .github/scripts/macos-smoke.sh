@@ -4,7 +4,7 @@
 set -u
 app="${1:?path to Bifrost.app}"
 bin="$app/Contents/MacOS/Bifrost"
-log="$HOME/Library/Application Support/app.relayless.desktop/logs/relayless.log"
+log="$HOME/Library/Application Support/app.relayless.desktop/logs/bifrost.log"
 stdout="$(mktemp)"
 
 xattr -cr "$app" 2>/dev/null || true

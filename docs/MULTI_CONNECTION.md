@@ -41,7 +41,7 @@ Hill climbing on goodput measured at the receiver (MMCFTP adjusts on RTT and los
 
 Goodput counts only bytes on lanes that take new work (`Pool::active_rx`). A removed lane keeps draining its streams, and on a slow lane a 1 MiB block can take a minute; counting it would make "one lane fewer" look as fast as before.
 
-`RELAYLESS_MMC_FAST=1` shortens the timings (1.5 s / 3 s / 10 s) for tests.
+`BIFROST_MMC_FAST=1` shortens the timings (1.5 s / 3 s / 10 s) for tests.
 
 ## Setting and diagnostics
 
@@ -76,7 +76,7 @@ The first benchmark run exposed an older bug: on the lossy path the connection d
 Run it yourself:
 
 ```
-cargo test -p relayless-core --release --test multiconn -- --ignored --nocapture compare_lanes
+cargo test -p bifrost-core --release --test multiconn -- --ignored --nocapture compare_lanes
 ```
 
 Environment: `LOSSY_RTT_MS` (100), `LOSSY_LOSS` (0.01), `LOSSY_MBIT` (100), `LOSSY_SIZE_MIB` (512), `LOSSY_SECS` (240), `LOSSY_LANES` ("1,8"). The non-ignored tests in the same file check that lanes are added on a lossy path (fast timings) and that the 1-connection setting is respected.

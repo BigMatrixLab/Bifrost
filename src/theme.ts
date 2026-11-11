@@ -2,11 +2,13 @@ import { useCallback, useState } from "react";
 
 export type Theme = "dark" | "light";
 
-const KEY = "relayless-theme";
+const KEY = "bifrost-theme";
+/** The key used before the rename; read once so the choice carries over. */
+const OLD_KEY = "relayless-theme";
 
 export function storedTheme(): Theme {
   try {
-    return localStorage.getItem(KEY) === "light" ? "light" : "dark";
+    return (localStorage.getItem(KEY) ?? localStorage.getItem(OLD_KEY)) === "light" ? "light" : "dark";
   } catch {
     return "dark";
   }

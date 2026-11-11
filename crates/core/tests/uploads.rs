@@ -5,7 +5,7 @@ use std::io::Write;
 use std::path::Path;
 use std::time::{Duration, Instant};
 
-use relayless_core::*;
+use bifrost_core::*;
 
 fn opts(dir: &Path, name: &str) -> CoreOptions {
     CoreOptions {
