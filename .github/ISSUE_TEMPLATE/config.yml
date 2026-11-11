@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Report a security vulnerability
-    url: https://github.com/MisbahKhan0009/Bifrost/security/advisories/new
+    url: https://github.com/BigMatrixLab/Bifrost/security/advisories/new
     about: Please report security issues privately.
   - name: Download Bifrost
-    url: https://github.com/MisbahKhan0009/Bifrost/releases/latest
+    url: https://getbifrost.pages.dev/#download
     about: Latest macOS disk image, Windows installer and Android APK.

@@ -554,12 +554,6 @@ p a,
   padding-top: 6px;
   border-top: 1px solid var(--border);
 }
-.stars {
-  border: 1px solid var(--border-strong);
-  padding: 0 5px;
-  font-size: 10.5px;
-  letter-spacing: 0.04em;
-}
 .brand {
   display: inline-flex;
   align-items: center;
@@ -1587,6 +1581,10 @@ thead .us {
 .dl .btn {
   margin-top: 18px;
 }
+.dl.unavailable {
+  opacity: 0.55;
+  pointer-events: none;
+}
 .dl.recommended {
   --mark: var(--accent);
   --mark-len: 16px;
@@ -1734,6 +1732,98 @@ thead .us {
 }
 .footer a:hover {
   color: var(--text);
+}
+
+/* doc pages (changelog/, security/, relay/), built by build-docs.mjs */
+html.doc-root {
+  scroll-snap-type: none;
+  scrollbar-width: thin;
+}
+html.doc-root::-webkit-scrollbar {
+  width: 10px;
+}
+html.doc-root::-webkit-scrollbar-thumb {
+  background: rgba(var(--ink-rgb), 0.3);
+}
+.doc-top {
+  border-bottom: 1px solid var(--border);
+}
+.doc-top-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 0;
+}
+.doc {
+  max-width: 760px;
+  padding: 56px 0 80px;
+}
+.doc h1 {
+  font-size: clamp(32px, 6vw, 48px);
+  line-height: 1.1;
+  margin: 0 0 28px;
+}
+.doc h2 {
+  font-size: 24px;
+  line-height: 1.25;
+  margin: 48px 0 14px;
+}
+.doc h3 {
+  font-size: 18px;
+  margin: 32px 0 10px;
+}
+.doc p,
+.doc li {
+  color: var(--text-2);
+}
+.doc strong {
+  color: var(--text);
+}
+.doc ul,
+.doc ol {
+  padding-left: 22px;
+}
+.doc li + li {
+  margin-top: 8px;
+}
+.doc a {
+  color: var(--accent);
+  text-underline-offset: 3px;
+}
+.doc code {
+  font: 0.9em ui-monospace, "Cascadia Mono", Consolas, monospace;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  padding: 1px 5px;
+  overflow-wrap: anywhere;
+}
+.doc pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  padding: 18px 20px;
+  overflow-x: auto;
+}
+.doc pre code {
+  border: 0;
+  padding: 0;
+  background: none;
+  font-size: 13.5px;
+  line-height: 1.7;
+  overflow-wrap: normal;
+}
+.doc table {
+  width: 100%;
+  border-collapse: collapse;
+  display: block;
+  overflow-x: auto;
+}
+.doc th,
+.doc td {
+  border-bottom: 1px solid var(--border);
+  padding: 10px 12px 10px 0;
+  text-align: left;
+  vertical-align: top;
 }
 
 /* ------------------------------------------------------------ responsive */

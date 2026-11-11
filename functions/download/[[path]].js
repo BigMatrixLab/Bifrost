@@ -26,6 +26,13 @@ function text(status, body, extra = {}) {
   });
 }
 
+// A browser following a download button for a build that isn't in the bucket
+// goes back to the page, which greys that button out, instead of saving this
+// error message as a file.
+function notPublished(request, platform) {
+  return Response.redirect(new URL(`/?unavailable=${platform}#download`, request.url).toString(), 302);
+}
+
 async function manifest(env) {
   const obj = await env.DOWNLOADS.get("latest.json");
   if (!obj) return null;
@@ -36,11 +43,13 @@ export async function onRequest({ request, env, params }) {
   if (request.method !== "GET" && request.method !== "HEAD") {
     return text(405, "Method not allowed\n", { allow: "GET, HEAD" });
   }
+  const path = [].concat(params.path || []).join("/");
+  const m = /^(windows|macos|android)(\.sha256)?$/.exec(path);
+
   if (!env.DOWNLOADS) {
+    if (m && !m[2]) return notPublished(request, m[1]);
     return text(503, "Downloads are not set up yet: the DOWNLOADS R2 binding is missing.\n");
   }
-
-  const path = [].concat(params.path || []).join("/");
 
   if (path === "latest.json") {
     const obj = await env.DOWNLOADS.get("latest.json");
@@ -55,7 +64,6 @@ export async function onRequest({ request, env, params }) {
     });
   }
 
-  const m = /^(windows|macos|android)(\.sha256)?$/.exec(path);
   if (!m) {
     return text(404, `Unknown download. Try one of: ${PLATFORMS.map((p) => `/download/${p}`).join(", ")}\n`);
   }
@@ -63,13 +71,16 @@ export async function onRequest({ request, env, params }) {
 
   const latest = await manifest(env);
   const file = latest?.files?.[platform];
-  if (!file) return text(404, `No ${platform} build has been published yet.\n`);
+  if (!file) {
+    if (!checksum) return notPublished(request, platform);
+    return text(404, `No ${platform} build has been published yet.\n`);
+  }
 
   const key = checksum ? `${file.key}.sha256` : file.key;
   const name = checksum ? `${file.name}.sha256` : file.name;
 
   const obj = await env.DOWNLOADS.get(key, { range: request.headers, onlyIf: request.headers });
-  if (obj === null) return text(404, "File not found.\n");
+  if (obj === null) return checksum ? text(404, "File not found.\n") : notPublished(request, platform);
 
   const headers = new Headers();
   obj.writeHttpMetadata(headers);

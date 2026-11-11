@@ -6,7 +6,7 @@ Bifrost moves people's files between their devices, so security reports are take
 
 Please **don't** open a public issue. Report privately through GitHub:
 
-**[Report a vulnerability](https://github.com/MisbahKhan0009/Bifrost/security/advisories/new)**
+**[Report a vulnerability](https://github.com/BigMatrixLab/Bifrost/security/advisories/new)**
 
 Include what you found, the affected version, steps to reproduce, and the impact you expect. A proof of concept helps.
 

@@ -7,7 +7,7 @@
   "homepage": "https://getbifrost.pages.dev/",
   "repository": {
     "type": "git",
-    "url": "https://github.com/MisbahKhan0009/Bifrost.git"
+    "url": "https://github.com/BigMatrixLab/Bifrost.git"
   },
   "type": "module",
   "scripts": {
@@ -16,7 +16,8 @@
     "typecheck": "tsc --noEmit",
     "tauri": "tauri",
     "dev:ui": "vite --mode mock",
-    "build:demo": "vite build --mode mock --base ./ --outDir website/demo --emptyOutDir"
+    "build:demo": "vite build --mode mock --base ./ --outDir website/demo --emptyOutDir",
+    "build:docs": "node .github/scripts/build-docs.mjs"
   },
   "dependencies": {
     "@fontsource-variable/space-grotesk": "^5.3.0",
@@ -35,6 +36,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.1.2",
+    "marked": "18.1.2",
     "typescript": "~5.9.3",
     "vite": "^8.3.5"
   }

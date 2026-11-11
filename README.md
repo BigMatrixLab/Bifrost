@@ -10,8 +10,8 @@ Direct, end-to-end encrypted transfers and shared folders between macOS, Windows
 No account, no cloud copy, no size limit, and every transfer picks up from the last verified megabyte.<br />
 <sub>Formerly Quanta, and before that Relayless.</sub>
 
-[![Latest release](https://img.shields.io/github/v/release/MisbahKhan0009/Bifrost?display_name=release&style=flat-square&color=1ed760&labelColor=181818&label=release)](https://github.com/MisbahKhan0009/Bifrost/releases/latest)
-[![Build](https://img.shields.io/github/actions/workflow/status/MisbahKhan0009/Bifrost/build.yml?branch=main&style=flat-square&labelColor=181818&label=build)](https://github.com/MisbahKhan0009/Bifrost/actions/workflows/build.yml)
+[![Latest release](https://img.shields.io/github/v/release/BigMatrixLab/Bifrost?display_name=release&style=flat-square&color=1ed760&labelColor=181818&label=release)](https://github.com/BigMatrixLab/Bifrost/releases/latest)
+[![Build](https://img.shields.io/github/actions/workflow/status/BigMatrixLab/Bifrost/build.yml?branch=main&style=flat-square&labelColor=181818&label=build)](https://github.com/BigMatrixLab/Bifrost/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-1ed760?style=flat-square&labelColor=181818)](LICENSE)
 [![Platforms](https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Android-ffffff?style=flat-square&labelColor=181818)](#download)
 [![Website](https://img.shields.io/badge/website-bifrost-1ed760?style=flat-square&labelColor=181818)](https://getbifrost.pages.dev/)
@@ -170,7 +170,7 @@ Found a vulnerability? Please follow [SECURITY.md](SECURITY.md) instead of openi
 **Requirements:** Rust (stable), Node.js 22. On macOS, Xcode's command-line tools. On Windows, the WebView2 runtime (preinstalled on Windows 10 and 11). For Android: JDK 21, Android SDK and NDK.
 
 ```sh
-git clone https://github.com/MisbahKhan0009/Bifrost
+git clone https://github.com/BigMatrixLab/Bifrost
 cd Bifrost
 npm ci
 
@@ -225,7 +225,7 @@ DESIGN.md                    Visual system: colours, type, chart and calendar ru
 - [ ] Self-hostable lookup server (your own relays already work: [docs/RELAY.md](docs/RELAY.md))
 - [ ] Send from the phone's share sheet
 
-Ideas and votes are welcome in [Issues](https://github.com/MisbahKhan0009/Bifrost/issues).
+Ideas and votes are welcome in [Issues](https://github.com/BigMatrixLab/Bifrost/issues).
 
 ## Contributing
 

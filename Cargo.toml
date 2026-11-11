@@ -7,7 +7,7 @@ version = "0.1.0"
 edition = "2021"
 license = "MIT"
 authors = ["Misbah Khan"]
-repository = "https://github.com/MisbahKhan0009/Bifrost"
+repository = "https://github.com/BigMatrixLab/Bifrost"
 homepage = "https://getbifrost.pages.dev/"
 
 [profile.release]

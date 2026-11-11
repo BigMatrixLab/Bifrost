@@ -27,7 +27,7 @@ This code applies in all project spaces (issues, pull requests, discussions and 
 
 ## Enforcement
 
-Report unacceptable behavior privately to the maintainer through a [private security advisory](https://github.com/MisbahKhan0009/Bifrost/security/advisories/new) (it reaches the maintainer privately, even though the form is meant for security reports) or by contacting the maintainer via their GitHub profile. All reports will be reviewed promptly and handled confidentially.
+Report unacceptable behavior privately to the maintainer through a [private security advisory](https://github.com/BigMatrixLab/Bifrost/security/advisories/new) (it reaches the maintainer privately, even though the form is meant for security reports) or by contacting the maintainer via their GitHub profile. All reports will be reviewed promptly and handled confidentially.
 
 Maintainers may remove, edit or reject comments, commits, code, issues and other contributions that don't follow this code, and may temporarily or permanently ban anyone whose behavior is inappropriate, threatening, offensive or harmful.
 

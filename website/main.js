@@ -628,9 +628,10 @@
   const primaryLabel = $("[data-primary-label]");
   if (platform) {
     primaryLabel.textContent = `Download for ${NAMES[platform]}`;
-    // Straight to the installer: the download starts on click.
+    // Straight to the installer: the function answers with an attachment, so
+    // the download starts on click and the page stays put. No `download`
+    // attribute: with one, a "not published yet" redirect would be saved too.
     primary.href = `download/${platform}`;
-    primary.setAttribute("download", "");
     const rec = document.querySelector(`[data-dl="${platform}"]`);
     rec?.classList.add("recommended");
     const tag = rec && $("[data-rec]", rec);
@@ -640,7 +641,23 @@
   // ------------------------------------------------------------------ release info
   // The buttons already point at download/<platform>, which the Cloudflare
   // function (functions/download/) streams from R2. latest.json only adds the
-  // version, date and file sizes to the page.
+  // version, date and file sizes to the page, and greys out any platform that
+  // has no build in the bucket yet instead of linking to a missing file.
+  const ALL = ["macos", "windows", "android"];
+  const markMissing = (key) => {
+    const card = document.querySelector(`[data-dl="${key}"]`);
+    if (!card) return;
+    card.classList.add("unavailable");
+    card.removeAttribute("href");
+    card.setAttribute("aria-disabled", "true");
+    const btn = $(".btn", card);
+    if (btn) btn.textContent = "Not published yet";
+    if (key === platform) primary.href = "#download";
+  };
+  // The function sends ?unavailable=<platform> when it had nothing to serve.
+  if (new URLSearchParams(location.search).has("unavailable")) {
+    history.replaceState(null, "", location.pathname + location.hash);
+  }
   fetch("download/latest.json", { cache: "no-cache" })
     .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
     .then((rel) => {
@@ -658,12 +675,17 @@
       };
       for (const key of Object.keys(labels)) {
         const file = files[key];
-        if (!file) continue;
+        if (!file) {
+          markMissing(key);
+          continue;
+        }
         const meta = $(`[data-meta="${key}"]`);
         if (meta) meta.textContent = `${labels[key]}. ${fmtSize(file.size)}`;
       }
     })
-    .catch(() => {
-      /* No release info yet: the buttons still work once a build is published. */
+    .catch((status) => {
+      // 404: nothing published yet. Anything else (offline, a local preview
+      // without the function): leave the buttons as they are.
+      if (status === 404) ALL.forEach(markMissing);
     });
 })();

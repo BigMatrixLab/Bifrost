@@ -4,7 +4,7 @@ Thanks for helping. Bug reports, ideas, translations, documentation and code are
 
 ## Reporting bugs
 
-Open a [bug report](https://github.com/MisbahKhan0009/Bifrost/issues/new?template=bug_report.yml) and include:
+Open a [bug report](https://github.com/BigMatrixLab/Bifrost/issues/new?template=bug_report.yml) and include:
 
 - the Bifrost version on both devices (Settings → About)
 - Windows or Android version, and device model for Android
@@ -20,7 +20,7 @@ Security issues: please follow [SECURITY.md](SECURITY.md) instead of filing a pu
 You need Rust (stable) and Node.js 22. Windows needs the WebView2 runtime (preinstalled on 10 and 11). Android builds also need JDK 21 and the Android SDK and NDK.
 
 ```sh
-git clone https://github.com/MisbahKhan0009/Bifrost
+git clone https://github.com/BigMatrixLab/Bifrost
 cd Bifrost
 npm ci
 npm run tauri dev        # desktop app with hot reload

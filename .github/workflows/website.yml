@@ -7,6 +7,11 @@ on:
     # in mock/), so changes there republish the site too.
     paths:
       - "website/**"
+      # The changelog, security and relay pages are built from these.
+      - "CHANGELOG.md"
+      - "SECURITY.md"
+      - "docs/RELAY.md"
+      - ".github/scripts/build-docs.mjs"
       - "src/**"
       - "mock/**"
       - "index.html"
@@ -42,6 +47,9 @@ jobs:
           npm ci
           npm run build:demo
           test -f website/demo/index.html
+
+      - name: Build the doc pages (changelog, security, relay guide)
+        run: npm run build:docs
 
       - name: Check links to local files
         shell: bash
