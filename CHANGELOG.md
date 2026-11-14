@@ -28,6 +28,7 @@ Notable changes to Bifrost. Releases are published automatically from `main` as 
 - Phone layout: bottom-sheet dialogs, large two-line rows in the folder browser, tap to select, sort chips, a fixed download bar, and a save location you can pick without typing.
 - Project website, contribution guide, security policy and architecture notes.
 - **Multiple connections per sender** (MMCFTP-style): on long, lossy direct paths the receiver opens up to 8 QUIC connections to the same sender and keeps only as many as raise the speed. Settings → Connections per sender (1 = off). No change needed on the sender. Details: docs/MULTI_CONNECTION.md.
+- **Devices on the map where they are.** The Network globe places this device and connected devices at the city their public IP address points to, for direct and relayed connections, and lists the places under it. Over a relay, devices learn each other's public IP through a new `Addr` request (older versions ignore it). Lookups go to ipinfo.io (ipwho.is if that fails), are cached for a day, and only cover public addresses. Turn it off in Settings → Privacy → Show devices on the map; devices then get made-up spots again.
 
 ### Changed
 - The receiver now sends the sender a short receipt after a file is verified, so both keep a history entry. Older versions ignore it.
@@ -35,6 +36,7 @@ Notable changes to Bifrost. Releases are published automatically from `main` as 
 - Download progress is saved per verified megabyte, so pausing or losing the connection keeps everything already received. Downloads started on earlier versions keep their progress.
 
 ### Fixed
+- **Direct connections through stricter routers.** Bifrost used a new random UDP port on every start, so a router that gives each destination its own port (iroh logs "IPv4 address detected by QAD varies by destination") could only reach a direct path if the other side's router was lenient. It now keeps one UDP port per install, which lets hole punching try `<public address>:<that port>` and lets you forward the port on your router. See Settings → Connection → Direct connection port and docs/RELAY.md.
 - **Transfers between different networks no longer sit at 0.** Bifrost now tries a direct path first and, if routers block it (common on mobile data), continues through an end-to-end encrypted relay after about 15 seconds, switching back to direct when possible. Existing installs move to this mode once; Direct only is still in Settings.
 - Slow links no longer time out mid-block: a stream is only treated as stalled after 90 seconds with no data, and progress and speed now count bytes as they arrive.
 - Busy slow connections no longer drop about once a minute with "The sender stopped responding": a stream waiting behind its siblings now only times out if nothing at all arrives from the sender. This also fixes reconnects with low sender upload limits.

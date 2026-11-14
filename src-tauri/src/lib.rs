@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 use bifrost_core::{
-    AccessRequest, ActivityDto, Core, CoreEvent, CoreOptions, CreatedInvitation, DownloadItem, GrantDto, HistoryDto, IncomingDto, OutgoingDto,
+    AccessRequest, ActivityDto, Core, CoreEvent, CoreOptions, CreatedInvitation, DownloadItem, GeoLoc, GrantDto, HistoryDto, IncomingDto, OutgoingDto,
     JobSnapshot, JoinResult, ListResult, NetworkStatus, PeerStatus, PushDto, RemoteDto, Settings, ShareDto, SyncDto,
 };
 use serde::Serialize;
@@ -149,6 +149,12 @@ fn bootstrap(s: State<AppState>) -> Bootstrap {
 #[tauri::command]
 fn network_status(s: State<AppState>) -> NetworkStatus {
     s.core.network_status()
+}
+
+/// City-level location of a public IP for the Network globe (None if unknown).
+#[tauri::command]
+async fn locate_ip(s: State<'_, AppState>, ip: String) -> CmdResult<Option<GeoLoc>> {
+    Ok(s.core.locate_ip(&ip).await)
 }
 
 #[tauri::command]
@@ -772,6 +778,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             bootstrap,
             network_status,
+            locate_ip,
             update_settings,
             list_shares,
             create_share,

@@ -21,8 +21,8 @@ function notify(name: string, payload: unknown) {
 
 export const data: Record<string, any> = {
   bootstrap: {
-    settings: { deviceName: "Berlin-Studio", downloadDir: "C:\\Users\\Lena\\Downloads\\Bifrost", parallelStreams: 12, maxConcurrentJobs: 2, maxConnections: 8, downloadLimitKbps: 0, uploadLimitKbps: 0, connectionMode: "allow_relay", congestion: "cubic", chunkSizeMib: 16, lowPriority: true, notifications: true, closeToTray: true, onboarded: (window as any).__onboarded ?? true, historyRetention: "365", historyNames: true, relayUrls: "", defaultSharePermission: "download" },
-    network: { endpointId: "9f3c1e7a2b4d6f8091a3c5e7f9b1d3f5a7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7", endpointShort: "9f3c1e7a", online: true, relayUrl: "https://euc1-1.relay.n0.iroh-canary.iroh.link./", directAddrs: 3 },
+    settings: { deviceName: "Berlin-Studio", downloadDir: "C:\\Users\\Lena\\Downloads\\Bifrost", parallelStreams: 12, maxConcurrentJobs: 2, maxConnections: 8, downloadLimitKbps: 0, uploadLimitKbps: 0, connectionMode: "allow_relay", congestion: "cubic", chunkSizeMib: 16, lowPriority: true, notifications: true, closeToTray: true, onboarded: (window as any).__onboarded ?? true, historyRetention: "365", historyNames: true, relayUrls: "", udpPort: 41641, mapLocations: true, defaultSharePermission: "download" },
+    network: { endpointId: "9f3c1e7a2b4d6f8091a3c5e7f9b1d3f5a7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7", endpointShort: "9f3c1e7a", online: true, relayUrl: "https://euc1-1.relay.n0.iroh-canary.iroh.link./", directAddrs: 3, udpPort: 41641, publicIp: "203.0.113.10" },
     platform: (window as any).__platform ?? "windows",
     version: "0.1.0", dataDir: "C:\\Users\\Lena\\AppData\\Roaming\\app.relayless.desktop",
   },
@@ -41,13 +41,13 @@ export const data: Record<string, any> = {
     { id: "s2", name: "Video Archive", rootPath: "E:\\Archive\\Video", active: false, createdAt: now - 5 * 86400e3, deviceCount: 0, invitations: [] },
   ],
   list_grants: [
-    { peerId: "77aa88bb99", peerShort: "77aa88bb", deviceName: "Lena's laptop", shareId: "s1", shareName: "Client deliveries", createdAt: now - 86400e3, lastSeenAt: now, connected: true, route: st("direct", 184), safetyWords: ["harbor", "quill", "maple", "orbit", "tulip"], permission: "both" },
+    { peerId: "77aa88bb99", peerShort: "77aa88bb", deviceName: "Lena's laptop", shareId: "s1", shareName: "Client deliveries", createdAt: now - 86400e3, lastSeenAt: now, connected: true, publicIp: "203.0.113.40", route: st("direct", 184), safetyWords: ["harbor", "quill", "maple", "orbit", "tulip"], permission: "both" },
     { peerId: "55cc66dd77", peerShort: "55cc66dd", deviceName: "Studio-iMac", shareId: "s1", shareName: "Client deliveries", createdAt: now - 2 * 86400e3, lastSeenAt: now, connected: true, route: st("relay", 312), safetyWords: ["anchor", "fable", "ivory", "mango", "quest"], permission: "download" },
     { peerId: "99ee00ff11", peerShort: "99ee00ff", deviceName: "Old tablet", shareId: "s1", shareName: "Client deliveries", createdAt: now - 20 * 86400e3, lastSeenAt: now - 4 * 86400e3, connected: false, route: st("none", null), safetyWords: ["coral", "dune", "fern", "lotus", "raven"], permission: "upload" },
   ],
   list_remotes: [
-    { peerId: "a1b2c3d4e5", peerShort: "a1b2c3d4", name: "Dhaka-Edit-Bay", shares: [{ id: "s1", name: "Film masters", permission: "both" }, { id: "s2", name: "Archive", permission: "download" }], createdAt: now - 2 * 86400e3, lastSeenAt: now, status: { peerId: "a1b2c3d4e5", state: "connected", route: st("direct", 176), message: null }, safetyWords: ["cedar", "lantern", "otter", "quartz", "violet"] },
-    { peerId: "c0ffee1234", peerShort: "c0ffee12", name: "Office-NAS", shares: [{ id: "s7", name: "Projects", permission: "upload" }], createdAt: now - 6 * 86400e3, lastSeenAt: now, status: { peerId: "c0ffee1234", state: "connected", route: st("relay", 268), message: null }, safetyWords: ["delta", "garnet", "hazel", "nectar", "pixel"] },
+    { peerId: "a1b2c3d4e5", peerShort: "a1b2c3d4", name: "Dhaka-Edit-Bay", shares: [{ id: "s1", name: "Film masters", permission: "both" }, { id: "s2", name: "Archive", permission: "download" }], createdAt: now - 2 * 86400e3, lastSeenAt: now, status: { peerId: "a1b2c3d4e5", state: "connected", route: st("direct", 176), message: null, publicIp: "198.51.100.20" }, safetyWords: ["cedar", "lantern", "otter", "quartz", "violet"] },
+    { peerId: "c0ffee1234", peerShort: "c0ffee12", name: "Office-NAS", shares: [{ id: "s7", name: "Projects", permission: "upload" }], createdAt: now - 6 * 86400e3, lastSeenAt: now, status: { peerId: "c0ffee1234", state: "connected", route: st("relay", 268), message: null, publicIp: "198.51.100.30" }, safetyWords: ["delta", "garnet", "hazel", "nectar", "pixel"] },
     { peerId: "ffee", peerShort: "ffee0011", name: "Home server", shares: [{ id: "s9", name: "Shared", permission: "download" }], createdAt: now - 9 * 86400e3, lastSeenAt: now - 3 * 86400e3, status: { peerId: "ffee", state: "disconnected", route: st("none", null), message: null }, safetyWords: ["bison", "ember", "kettle", "plum", "summit"] },
   ],
   list_jobs: [
@@ -157,8 +157,16 @@ data.list_incoming = [
 data["plugin:bifrost-android|has_all_files_access"] = { granted: false };
 data["plugin:bifrost-android|battery_status"] = { unrestricted: false };
 data["list_local_dir"] = { path: "/storage/emulated/0", parent: null, root: "/storage/emulated/0", dirs: ["Alarms", "DCIM", "Documents", "Download", "Movies", "Music", "Pictures"], files: [{ name: "notes.txt", size: 2200 }, { name: "trip.mp4", size: 412 * 1024 * 1024 }] };
+// Made-up places for the documentation addresses above (map locations).
+const GEO: Record<string, any> = {
+  "203.0.113.10": { lat: 52.52, lon: 13.405, city: "Berlin", region: "Berlin", country: "DE" },
+  "198.51.100.20": { lat: 23.8103, lon: 90.4125, city: "Dhaka", region: "Dhaka Division", country: "BD" },
+  "198.51.100.30": { lat: 40.7128, lon: -74.006, city: "New York", region: "New York", country: "US" },
+  "203.0.113.40": { lat: 48.1351, lon: 11.582, city: "Munich", region: "Bavaria", country: "DE" },
+};
 export async function invoke<T>(cmd: string, _args?: any): Promise<T> {
   await new Promise((r) => setTimeout(r, 30));
+  if (cmd === "locate_ip") return (GEO[_args?.ip] ?? null) as T;
   if (cmd === "create_share") {
     // Like the engine: the share is named after the folder and listed first.
     const path = String(_args?.path ?? "");

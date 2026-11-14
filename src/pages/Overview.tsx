@@ -4,6 +4,7 @@ import { isActive, ago } from "../format";
 import { useStore } from "../store";
 import { Button, Empty, LinkReadout, SectionHeader, linkOf, usePhone, type Link } from "../ui";
 import { DotGlobe, relayRegion, type GlobeDevice } from "../hud";
+import { placeName, useLocations } from "../geo";
 import { FocusTransfer, useFocusJob } from "../focus";
 import { JobRow, SendRow } from "./Transfers";
 import { useShareFolder } from "./Shares";
@@ -26,20 +27,36 @@ function relayHost(url: string | null): string {
 
 /**
  * This device's network state. The globe marks the public relay regions and
- * which one is home. Paired devices are dots at made-up spots on the map
- * (offline ones grey), with a live wire while data moves; no device
- * locations are looked up.
+ * which one is home. Devices sit where their public IP is (city level, looked
+ * up online while Settings → Privacy → "Show devices on the map" is on); a
+ * device whose address isn't known gets a made-up spot. Offline ones are
+ * grey, and a live wire runs while data moves.
  */
 function NetworkPanel() {
   const { network, remotes, grants, settings, jobs, outgoing, pushes, incoming } = useStore();
   const online = !!network?.online;
   const home = relayRegion(network?.relayUrl);
+  const mapOn = settings?.mapLocations !== false;
+  // Public IPs: from a direct path, or the one each device reported for itself.
+  const ipOf = useMemo(() => {
+    const m = new Map<string, string>();
+    if (!mapOn) return m;
+    for (const r of remotes) if (r.status.state === "connected" && r.status.publicIp) m.set(r.peerId, r.status.publicIp);
+    for (const g of grants) if (g.connected && g.publicIp && !m.has(g.peerId)) m.set(g.peerId, g.publicIp);
+    return m;
+  }, [remotes, grants, mapOn]);
+  const selfIp = mapOn ? network?.publicIp : null;
+  const located = useLocations([selfIp, ...ipOf.values()]);
+  const selfGeo = selfIp ? located[selfIp] : undefined;
   const devices = useMemo<GlobeDevice[]>(() => {
     const m = new Map<string, GlobeDevice>();
     const add = (id: string, name: string, on: boolean) => {
       const d = m.get(id);
       if (d) d.online ||= on;
       else m.set(id, { id, name, online: on, rx: false, tx: false });
+      const ip = ipOf.get(id);
+      const g = ip ? located[ip] : undefined;
+      if (g) Object.assign(m.get(id)!, { loc: [g.lat, g.lon] as [number, number], place: placeName(g) });
     };
     // Devices that share folders with this one, and devices using this one's folders.
     for (const r of remotes) add(r.peerId, r.name, r.status.state === "connected");
@@ -58,7 +75,12 @@ function NetworkPanel() {
     for (const o of outgoing) if (o.status === "sending") mark(o.peerId, "tx");
     for (const p of pushes) if (p.status === "uploading") mark(p.peerId, "tx");
     return [...m.values()];
-  }, [remotes, grants, jobs, outgoing, pushes, incoming]);
+  }, [remotes, grants, jobs, outgoing, pushes, incoming, ipOf, located]);
+  // Named places for the list under the globe: this device, then connected devices.
+  const places = [
+    ...(selfGeo ? [{ id: "self", name: settings?.deviceName || "This device", place: placeName(selfGeo) }] : []),
+    ...devices.filter((d) => d.online && d.place).map((d) => ({ id: d.id, name: d.name, place: d.place! })),
+  ].slice(0, 4);
   const linked = new Set([
     ...remotes.filter((r) => r.status.state === "connected").map((r) => r.peerId),
     ...grants.filter((g) => g.connected).map((g) => g.peerId),
@@ -74,9 +96,23 @@ function NetworkPanel() {
         </span>
       </div>
       <div className="netp-globe">
-        <DotGlobe size={176} online={online} home={home} label={settings?.deviceName} devices={devices} />
+        <DotGlobe
+          size={176}
+          online={online}
+          home={home}
+          label={settings?.deviceName}
+          devices={devices}
+          selfLoc={selfGeo ? [selfGeo.lat, selfGeo.lon] : undefined}
+          selfPlace={placeName(selfGeo)}
+        />
       </div>
       <dl className="netp-kv">
+        {places.map((p) => (
+          <div key={p.id} title="Approximate, from the device's public IP address">
+            <dt className="lab truncate">{p.name}</dt>
+            <dd className="num truncate">{p.place}</dd>
+          </div>
+        ))}
         <div>
           <dt className="lab">Home relay</dt>
           <dd className="num">{relayHost(network?.relayUrl ?? null)}</dd>

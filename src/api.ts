@@ -196,6 +196,8 @@ export interface Grant {
   safetyWords: string[];
   /** What this device may do in this folder. */
   permission: SharePermission;
+  /** Its public IP for the map, while connected and map locations are on. */
+  publicIp?: string | null;
 }
 
 export interface PeerStatus {
@@ -203,6 +205,17 @@ export interface PeerStatus {
   state: "disconnected" | "connecting" | "connected" | "unreachable" | "denied" | string;
   route: RouteInfo;
   message: string | null;
+  /** Its public IP for the map, while connected and map locations are on. */
+  publicIp?: string | null;
+}
+
+/** Where an IP address is, at city level (from an online lookup). */
+export interface GeoLoc {
+  lat: number;
+  lon: number;
+  city: string;
+  region: string;
+  country: string;
 }
 
 export interface Remote {
@@ -260,6 +273,10 @@ export interface NetworkStatus {
   online: boolean;
   relayUrl: string | null;
   directAddrs: number;
+  /** UDP port actually listened on for direct connections. */
+  udpPort: number | null;
+  /** This device's public IP, for the map (null if unknown or map locations are off). */
+  publicIp: string | null;
 }
 
 export interface Upload {
@@ -307,6 +324,10 @@ export interface Settings {
   historyRetention: "forever" | "365" | "90" | "30" | "off";
   historyNames: boolean;
   relayUrls: string;
+  /** UDP port for direct connections; applies after a restart. */
+  udpPort: number;
+  /** Place devices on the globe by public IP (looked up at ipinfo.io). */
+  mapLocations: boolean;
   /** Permission new invitations start with. */
   defaultSharePermission: SharePermission;
 }
@@ -363,6 +384,7 @@ export interface DownloadItem {
 export const api = {
   bootstrap: () => invoke<Bootstrap>("bootstrap"),
   networkStatus: () => invoke<NetworkStatus>("network_status"),
+  locateIp: (ip: string) => invoke<GeoLoc | null>("locate_ip", { ip }),
   updateSettings: (settings: Settings) => invoke<Settings>("update_settings", { settings }),
   listShares: () => invoke<Share[]>("list_shares"),
   createShare: (path: string, name?: string) => invoke<Share>("create_share", { path, name: name ?? null }),

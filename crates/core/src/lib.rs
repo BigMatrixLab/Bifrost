@@ -3,6 +3,7 @@
 mod db;
 pub mod diag;
 pub mod flow;
+mod geo;
 mod inner;
 pub mod mmc;
 
@@ -45,6 +46,7 @@ use crate::proto::{HelloStatus, Request, Response};
 use crate::receiver::{get_conn, request, snapshot, spawn_job, JobError, StopReason};
 use crate::util::{now_ms, random_id, sanitize_filename, short_peer, RateLimiter};
 
+pub use crate::geo::GeoLoc;
 pub use crate::types::*;
 
 pub struct CoreOptions {
@@ -126,6 +128,11 @@ impl Core {
             settings.close_to_tray = true;
             settings.tray_v2 = true;
         }
+        if settings.udp_port == 0 {
+            // A random port each start made the router's mapping change every
+            // time and ruled out forwarding a port. Pick one and keep it.
+            settings.udp_port = net::pick_udp_port();
+        }
         if settings.device_name.trim().is_empty() {
             settings.device_name = opts.default_device_name.clone();
         }
@@ -147,8 +154,9 @@ impl Core {
         } else if opts.local_only {
             net::bind_local(secret, &bind_congestion).await?
         } else {
-            net::bind_main(secret, &settings.congestion, &settings.relay_urls).await?
+            net::bind_main(secret, &settings.congestion, &settings.relay_urls, settings.udp_port).await?
         };
+        tracing::info!(target: "bifrost_core::diag", "udp_port setting={} bound={:?}", settings.udp_port, net::bound_port(&endpoint));
         let congestion_active = net::congestion_name(&bind_congestion);
         let diag = diag::DiagConfig::resolve(
             opts.diagnostics,
@@ -206,6 +214,8 @@ impl Core {
             syncing: Mutex::new(Default::default()),
             sync_wake: tokio::sync::Notify::new(),
             peer_notices: Mutex::new(Default::default()),
+            peer_ips: Mutex::new(Default::default()),
+            geo: Default::default(),
         });
         prune_history(&inner);
         tokio::spawn(sender::accept_loop(inner.clone()));
@@ -252,6 +262,18 @@ impl Core {
 
     pub fn network_status(&self) -> NetworkStatus {
         network_status(&self.inner)
+    }
+
+    /// City-level location of a public IP address for the map (see `geo.rs`).
+    /// None for other addresses, on failure, or while map locations are off.
+    pub async fn locate_ip(&self, ip: &str) -> Option<GeoLoc> {
+        if !self.inner.settings.read().map_locations {
+            return None;
+        }
+        let ip = ip.trim().parse::<std::net::IpAddr>().ok()?.to_canonical();
+        let inner = self.inner.clone();
+        // On the engine's runtime: the HTTP client needs it.
+        self.inner.rt.spawn(async move { inner.geo.lookup(&inner.endpoint, ip).await }).await.ok().flatten()
     }
 
     pub fn data_dir(&self) -> PathBuf {
@@ -569,7 +591,12 @@ impl Core {
                     .ok()
                     .and_then(|id| incoming.get(&id).and_then(|v| v.last().map(|(_, c)| c.clone())));
                 let share_name = shares.iter().find(|s| s.id == g.share_id).map(|s| s.name.clone()).unwrap_or_default();
+                let public_ip = match (&conn, g.peer_id.parse::<EndpointId>()) {
+                    (Some(c), Ok(id)) => geo::peer_public_ip(&self.inner, &id, &route_of(c)),
+                    _ => None,
+                };
                 GrantDto {
+                    public_ip,
                     safety_words: self.words_with(&g.peer_id),
                     peer_short: short_peer(&g.peer_id),
                     peer_id: g.peer_id,
@@ -754,6 +781,7 @@ impl Core {
                         state: "disconnected".into(),
                         route: RouteInfo::none(),
                         message: None,
+                        public_ip: None,
                     });
                 RemoteDto {
                     safety_words: self.words_with(&r.peer_id),
@@ -1461,16 +1489,20 @@ fn network_status(inner: &Inner) -> NetworkStatus {
         online: relay.is_some() || (inner.local_mode && direct > 0),
         relay_url: relay,
         direct_addrs: direct,
+        udp_port: net::bound_port(&inner.endpoint),
+        public_ip: geo::own_shared_ip(inner),
     }
 }
 
 async fn network_watch(inner: Arc<Inner>) {
-    let mut last: Option<(bool, Option<String>, usize)> = None;
+    let mut last: Option<(bool, Option<String>, usize, Option<String>)> = None;
     loop {
         let st = network_status(&inner);
-        let key = (st.online, st.relay_url.clone(), st.direct_addrs);
+        let key = (st.online, st.relay_url.clone(), st.direct_addrs, st.public_ip.clone());
         if last.as_ref() != Some(&key) {
-            let changed = last.is_some();
+            // Only the public IP changing (it arrived, or map locations were
+            // turned on or off) updates the map; it isn't a network change.
+            let changed = last.as_ref().is_some_and(|l| (l.0, &l.1, l.2) != (key.0, &key.1, key.2));
             let online = st.online;
             last = Some(key);
             inner.emit(CoreEvent::Network(st));

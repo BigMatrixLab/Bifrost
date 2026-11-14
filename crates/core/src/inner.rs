@@ -210,6 +210,11 @@ pub struct Inner {
     pub sync_wake: Notify,
     /// Downloads and uploads by other devices, collected for one notice per batch.
     pub peer_notices: Mutex<HashMap<String, crate::notice::Pending>>,
+    /// Public IP each connected device reported for itself (`Request::Addr`),
+    /// so the map can place it even when the connection is relayed.
+    pub peer_ips: Mutex<HashMap<EndpointId, std::net::IpAddr>>,
+    /// City-level IP lookups for the map.
+    pub geo: crate::geo::GeoCache,
 }
 
 impl Inner {

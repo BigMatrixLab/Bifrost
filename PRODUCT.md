@@ -51,7 +51,7 @@ No account, no cloud copy, no upload step. Files go device to device over QUIC w
 ## Product Principles
 
 1. Prove privacy, don't claim it: every privacy statement maps to something the user can check.
-2. Nothing leaves the device unless the user moves a file.
+2. Nothing leaves the device unless the user moves a file. The one exception is the map: while "Show devices on the map" is on (Settings → Privacy, on by default), public IP addresses of this and connected devices are looked up at ipinfo.io for a city-level position, and the setting says so.
 3. Large files are the normal case: progress, resume and verification must stay legible at 100 GB.
 4. Calm under load: the app stays quiet and light while transfers run at full speed.
 5. Earn return visits through insight into one's own transfers, not through engagement tricks.

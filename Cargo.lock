@@ -483,6 +483,7 @@ dependencies = [
  "parking_lot",
  "qrcode",
  "rand 0.10.3",
+ "reqwest",
  "rusqlite",
  "serde",
  "serde_json",

@@ -53,6 +53,7 @@ export default function Settings() {
   const [autostart, setAutostart] = useState<boolean | null>(null);
   const [restartNote, setRestartNote] = useState(false);
   const [relayNote, setRelayNote] = useState(false);
+  const [portNote, setPortNote] = useState(false);
 
   const storage = useStorageAccess();
   const [battery, setBattery] = useState<boolean | null>(null);
@@ -299,11 +300,50 @@ export default function Settings() {
               }}
             />
           </Row>
+          <Row
+            label="Direct connection port"
+            hint={
+              <>
+                Bifrost receives direct connections on this UDP port. It stays the same, so routers can keep a direct path open. If transfers are
+                often relayed, forward UDP port {network?.udpPort ?? settings.udpPort} to this {isAndroid() ? "device" : "computer"} in your router,
+                or turn on UPnP there.
+                {network?.udpPort != null && settings.udpPort !== 0 && network.udpPort !== settings.udpPort && (
+                  <> Port {settings.udpPort} was taken, so Bifrost is using {network.udpPort} for now.</>
+                )}
+              </>
+            }
+          >
+            <input
+              className="input num mono"
+              inputMode="numeric"
+              aria-label="Direct connection UDP port"
+              defaultValue={settings.udpPort || ""}
+              onBlur={(e) => {
+                const text = e.target.value.trim();
+                const n = Number(text);
+                if (!/^\d+$/.test(text) || n < 1024 || n > 65535) {
+                  if (text !== "") toast("Use a port from 1024 to 65535.", "err");
+                  e.target.value = String(settings.udpPort || "");
+                  return;
+                }
+                if (n !== settings.udpPort) {
+                  save({ udpPort: n });
+                  setPortNote(true);
+                }
+              }}
+            />
+          </Row>
         </div>
         {relayNote && (
           <div className="notice" style={{ marginTop: 10 }}>
             <Info size={16} />
             <span>Quit Bifrost and open it again to use the new relay server. Set the same relay on the other device too.</span>
+          </div>
+        )}
+        {portNote && (
+          <div className="notice" style={{ marginTop: 10 }}>
+            <Info size={16} />
+            <span>Quit Bifrost and open it again to use the new port.</span>
           </div>
         )}
       </section>
@@ -316,8 +356,15 @@ export default function Settings() {
             <span>
               Bifrost has no account and sends no analytics. Transfer history, receipts and these settings are stored only in this device's
               database. The coordination service sees that two devices want to connect, never file names or contents.
+              {settings.mapLocations && " To show devices on the map, their public IP addresses are looked up at ipinfo.io."}
             </span>
           </div>
+          <Toggle
+            checked={settings.mapLocations}
+            label="Show devices on the map"
+            hint="Places this device and connected devices on the Network globe by public IP address (city level, looked up at ipinfo.io). This device's public IP is shared with paired devices for the same purpose. When off, devices get made-up spots and nothing is looked up."
+            onChange={(v) => save({ mapLocations: v })}
+          />
           <Row label="Keep history" hint="Finished transfers and their privacy receipts, for the History page. Older entries are deleted automatically.">
             <Segmented
               label="History retention"

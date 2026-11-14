@@ -190,6 +190,7 @@ impl PeerConn {
                 state: "disconnected".into(),
                 route: RouteInfo::none(),
                 message: None,
+                public_ip: None,
             }),
         }
     }
@@ -206,9 +207,25 @@ fn set_peer_state(inner: &Inner, pc: &PeerConn, state: &str, message: Option<Str
         s.state = state.into();
         s.message = message;
         s.route = pc.route.borrow().clone();
+        s.public_ip = match s.peer_id.parse::<EndpointId>() {
+            Ok(id) if state == "connected" => crate::geo::peer_public_ip(inner, &id, &s.route),
+            _ => None,
+        };
         s.clone()
     };
     inner.emit(CoreEvent::PeerStatus(st));
+}
+
+/// Re-sends a connected sender's status (its public IP became known).
+pub fn refresh_peer_status(inner: &Inner, peer: EndpointId) {
+    let pc = inner.peers.lock().get(&peer).cloned();
+    if let Some(pc) = pc {
+        let (state, message) = {
+            let s = pc.status.lock();
+            (s.state.clone(), s.message.clone())
+        };
+        set_peer_state(inner, &pc, &state, message);
+    }
 }
 
 pub fn peer_addr(inner: &Inner, peer: EndpointId) -> EndpointAddr {
@@ -360,6 +377,7 @@ async fn mmc_loop(inner: Arc<Inner>, pc: Arc<PeerConn>, primary: Connection) {
 fn install_conn(inner: &Arc<Inner>, pc: &Arc<PeerConn>, conn: &Connection) {
     pc.route.send_replace(route_of(conn));
     set_peer_state(inner, pc, "connected", None);
+    tokio::spawn(crate::geo::exchange_addr(inner.clone(), conn.clone()));
     let lane = pc.pool.set_primary(conn);
     tokio::spawn(flow_loop(pc.clone(), lane));
     tokio::spawn(mmc_loop(inner.clone(), pc.clone(), conn.clone()));

@@ -74,7 +74,7 @@ spacing:
 
 **Creative North Star: "Signal HUD"**
 
-Bifrost looks like a quiet instrument panel: a black ground with a faint dot grid, white at three strengths, one signal red, 1px lines and bright corner marks. It borrows the vocabulary of sci-fi HUD screens (segmented rings, tick scales, equalizer bars, node-and-wire diagrams, corner brackets, hazard stripes) and keeps the one rule those screens usually break: **every mark shows real data.** Bifrost exists to prove privacy, not claim it, so a gauge that moves for decoration would undercut the product. The Network globe's turning is the one decorative motion; its markers are the real public relay regions, and it never shows where any device is.
+Bifrost looks like a quiet instrument panel: a black ground with a faint dot grid, white at three strengths, one signal red, 1px lines and bright corner marks. It borrows the vocabulary of sci-fi HUD screens (segmented rings, tick scales, equalizer bars, node-and-wire diagrams, corner brackets, hazard stripes) and keeps the one rule those screens usually break: **every mark shows real data.** Bifrost exists to prove privacy, not claim it, so a gauge that moves for decoration would undercut the product. The Network globe's turning is the one decorative motion; its markers are the real public relay regions, and devices sit at the city their public IP points to (only while "Show devices on the map" is on, with the place named under the globe as approximate).
 
 The screen stays calm at rest. Red appears only where something is happening right now or where the user can act. Hazard stripes appear only where the user is needed.
 
@@ -207,6 +207,6 @@ Rows with a square icon tile, the file name and metadata, the size in mono, and 
 **Don't**
 - Add decorative gauges, fake readouts, scan lines or glitch effects.
 - Use hazard stripes for anything but "needs attention".
-- Show peer locations on the globe or anywhere else.
+- Show device locations more precisely than city level, or present them as exact; or look them up while "Show devices on the map" is off.
 - Round corners on controls or panels.
 - Put a series colour on text.

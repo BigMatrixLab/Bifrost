@@ -193,6 +193,19 @@ async fn handle_stream(
                 Err(r) => write_frame(&mut send, &r).await?,
             }
         }
+        Request::Addr { ip } => {
+            let peer_s = peer.to_string();
+            let granted = inner.db.list_grants().map(|g| g.iter().any(|g| g.peer_id == peer_s)).unwrap_or(false);
+            let resp = if granted {
+                if crate::geo::record_peer_ip(inner, peer, ip.as_deref()) {
+                    inner.emit(CoreEvent::GrantsChanged);
+                }
+                Response::Addr { ip: crate::geo::own_shared_ip(inner) }
+            } else {
+                Response::err(ErrCode::Denied, "This device has no access.")
+            };
+            write_frame(&mut send, &resp).await?;
+        }
         Request::Receipt { share, path, size, job, fingerprint, started_at, finished_at, active_ms, direct_bytes, relay_bytes, peak_bps, blocks } => {
             let resp = match authorize(inner, peer, &share) {
                 Ok(s) => {

@@ -4270,6 +4270,14 @@ html {
   margin: 0;
   font-size: 12px;
 }
+/* Device locations: long device or place names shorten instead of wrapping. */
+.netp-kv dt.truncate,
+.netp-kv dd.truncate {
+  min-width: 0;
+}
+.netp-kv dd.truncate {
+  text-align: right;
+}
 .red-text {
   color: var(--accent) !important;
 }

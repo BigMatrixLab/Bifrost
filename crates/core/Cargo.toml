@@ -7,6 +7,9 @@ description = "Bifrost transfer engine: direct encrypted peer-to-peer, resumable
 
 [dependencies]
 iroh = "1.4"
+# Already in the tree through iroh; used for the map's IP lookups (geo.rs),
+# with iroh's TLS configuration.
+reqwest = { version = "0.13", default-features = false, features = ["rustls-no-provider"] }
 noq-proto = "1.4"
 n0-future = "0.3"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "fs", "io-util"] }

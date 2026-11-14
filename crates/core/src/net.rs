@@ -12,11 +12,12 @@
 //! many chunk streams in parallel instead (12 by default: ~1 MB x 12 in flight
 //! sustains ~480 Mbit/s at 200 ms RTT, more with extra streams).
 
+use std::net::{Ipv4Addr, Ipv6Addr, SocketAddrV4, SocketAddrV6};
 use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::Result;
-use iroh::endpoint::{presets, Connection, IdleTimeout, QuicTransportConfig, VarInt};
+use iroh::endpoint::{presets, BindOpts, Connection, IdleTimeout, QuicTransportConfig, VarInt};
 use iroh::{Endpoint, RelayMap, RelayMode, RelayUrl, SecretKey, TransportAddr};
 use tracing::warn;
 
@@ -78,16 +79,51 @@ pub fn parse_relays(list: &str) -> Vec<RelayUrl> {
 
 /// Main endpoint: DNS/pkarr lookup, and either n0's public relays or the
 /// user's own relays for hole-punching coordination and fallback.
-pub async fn bind_main(secret: SecretKey, congestion: &str, relays: &str) -> Result<Endpoint> {
+///
+/// `port` is the UDP port for direct connections (IPv4 and IPv6; 0 = any).
+/// A fixed port keeps the router's mapping and UPnP lease stable across
+/// restarts, lets users forward it on their router, and makes iroh offer
+/// `<public IPv4>:<port>` as an extra candidate when the NAT maps each
+/// destination to a different port (many routers keep the source port).
+/// If the port is taken, the endpoint falls back to a random one.
+pub async fn bind_main(secret: SecretKey, congestion: &str, relays: &str, port: u16) -> Result<Endpoint> {
     let custom = parse_relays(relays);
-    let mut b = Endpoint::builder(presets::N0)
-        .secret_key(secret)
-        .alpns(vec![ALPN.to_vec()])
-        .transport_config(transport_config(congestion));
-    if !custom.is_empty() {
-        b = b.relay_mode(RelayMode::Custom(RelayMap::from_iter(custom)));
+    let build = |port: u16| -> Result<iroh::endpoint::Builder> {
+        let mut b = Endpoint::builder(presets::N0)
+            .secret_key(secret.clone())
+            .alpns(vec![ALPN.to_vec()])
+            .transport_config(transport_config(congestion));
+        if port != 0 {
+            b = b
+                .bind_addr(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, port))?
+                // IPv6 is optional, as with iroh's default socket.
+                .bind_addr_with_opts(SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, port, 0, 0), BindOpts::default().set_is_required(false))?;
+        }
+        if !custom.is_empty() {
+            b = b.relay_mode(RelayMode::Custom(RelayMap::from_iter(custom.clone())));
+        }
+        Ok(b)
+    };
+    match build(port)?.bind().await {
+        Ok(ep) => Ok(ep),
+        Err(e) if port != 0 => {
+            warn!("UDP port {port} is not available ({e}); using a random port for direct connections");
+            Ok(build(0)?.bind().await?)
+        }
+        Err(e) => Err(e.into()),
     }
-    Ok(b.bind().await?)
+}
+
+/// A port for `Settings::udp_port`, picked once per install. Random rather
+/// than fixed so two devices behind the same router don't compete for it.
+pub fn pick_udp_port() -> u16 {
+    20_000 + rand::random::<u16>() % 40_000
+}
+
+/// UDP port the endpoint listens on for direct connections (IPv4 first).
+pub fn bound_port(ep: &Endpoint) -> Option<u16> {
+    let socks = ep.bound_sockets();
+    socks.iter().find(|a| a.is_ipv4()).or(socks.first()).map(|a| a.port())
 }
 
 /// Test endpoint: minimal preset plus caller adjustments (see `CoreOptions::endpoint_hook`).
@@ -153,6 +189,22 @@ pub fn route_of(conn: &Connection) -> RouteInfo {
         }
         None => RouteInfo::none(),
     }
+}
+
+/// This device's public IP as the relays observed it (IPv4 preferred).
+pub fn own_public_ip(ep: &Endpoint) -> Option<std::net::IpAddr> {
+    let addr = ep.addr();
+    let public: Vec<_> = addr.ip_addrs().map(|a| a.ip().to_canonical()).filter(|ip| ip_scope(*ip) == "public").collect();
+    public.iter().find(|ip| ip.is_ipv4()).or(public.first()).copied()
+}
+
+/// The peer's public IP when the selected path is direct over a public address.
+pub fn route_public_ip(r: &RouteInfo) -> Option<std::net::IpAddr> {
+    if !r.is_direct() {
+        return None;
+    }
+    let ip = r.remote.as_deref()?.parse::<std::net::SocketAddr>().ok()?.ip().to_canonical();
+    (ip_scope(ip) == "public").then_some(ip)
 }
 
 /// Name of the congestion controller `transport_config` installs for a setting.

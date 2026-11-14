@@ -194,13 +194,17 @@ export interface GlobeDevice {
   rx: boolean;
   /** Data is going to it right now. */
   tx: boolean;
+  /** Where its public IP is (city level), if known; otherwise it gets a made-up spot. */
+  loc?: [number, number];
+  /** That place's name, e.g. "Dhaka, BD". */
+  place?: string;
 }
 
 /**
- * Spots on land, spread over the continents, that devices are pinned to: one
- * each, picked from a hash of the device's ID so a device keeps its spot.
- * Bifrost doesn't know where a device is, so these are not locations; they
- * only put each device somewhere on the map.
+ * Spots on land, spread over the continents, for devices whose public IP
+ * isn't known (offline, map locations off, or the lookup failed): one each,
+ * picked from a hash of the device's ID so a device keeps its spot. These
+ * are not locations; they only put each device somewhere on the map.
  */
 const DEVICE_SPOTS: [number, number][] = [
   [51.5, -0.1], [40.4, -3.7], [59.3, 18.1], [41.9, 12.5], [52.2, 21.0], [30.0, 31.2], [6.5, 3.4],
@@ -337,8 +341,18 @@ function placeDevices(devices: GlobeDevice[], avoid: (readonly [number, number])
   const out = new Map<string, { loc: [number, number]; color: number; marker: string }>();
   const taken = new Set<number>();
   const usedColors = new Set<number>();
+  // Devices with a real location keep it; made-up spots stay clear of them.
+  const located = devices.flatMap((d) => (d.loc ? [d.loc] : []));
+  avoid = [...avoid, ...located];
   for (const d of [...devices].sort((x, y) => (x.id < y.id ? -1 : 1))) {
     const h = hash(d.id);
+    if (d.loc) {
+      let color = (h >>> 8) % DEVICE_COLORS.length;
+      for (let k = 0; k < DEVICE_COLORS.length && usedColors.has(color); k++) color = (color + 1) % DEVICE_COLORS.length;
+      usedColors.add(color);
+      out.set(d.id, { loc: d.loc, color, marker: `rl-dev-${h.toString(36)}` });
+      continue;
+    }
     let spot = -1;
     for (let k = 0; k < DEVICE_SPOTS.length && spot < 0; k++) {
       const i = (h + k) % DEVICE_SPOTS.length;
@@ -359,10 +373,12 @@ function placeDevices(devices: GlobeDevice[], avoid: (readonly [number, number])
 /** Screen-reader summary of the devices on the globe. */
 function devicesText(devices: GlobeDevice[]) {
   if (!devices.length) return "";
-  const parts = devices.map((d) =>
-    !d.online ? `${d.name} (offline)` : d.rx && d.tx ? `${d.name} (sending and receiving)` : d.rx ? `${d.name} (sending to you)` : d.tx ? `${d.name} (receiving from you)` : `${d.name} (connected)`,
-  );
-  return ` Paired devices, shown at made-up places on the map: ${parts.join("; ")}.`;
+  const parts = devices.map((d) => {
+    const state = !d.online ? "offline" : d.rx && d.tx ? "sending and receiving" : d.rx ? "sending to you" : d.tx ? "receiving from you" : "connected";
+    const where = d.loc ? (d.place ? `near ${d.place}` : "at its approximate location") : "at a made-up place";
+    return `${d.name} (${state}), ${where}`;
+  });
+  return ` Paired devices: ${parts.join("; ")}.`;
 }
 
 // ------------------------------------------------------------------ dotted globe (cobe)
@@ -455,8 +471,10 @@ const SELF_SPOT: [number, number] = [38.7, -9.1];
  * path, forward encrypted packets.
  *
  * Paired devices are dots on the map too, each in its own colour (grey while
- * offline), and turn with it. Bifrost doesn't know where a device is, so each
- * one gets a made-up spot (see `DEVICE_SPOTS`). An online device has a faint
+ * offline), and turn with it. A device sits where its public IP is (city
+ * level, `GlobeDevice.loc`); one whose address isn't known gets a made-up
+ * spot (see `DEVICE_SPOTS`). This device does the same with `selfLoc`,
+ * else it sits on its home relay. An online device has a faint
  * wire to this device; while data moves, light runs along it toward the
  * receiver.
  *
@@ -470,13 +488,18 @@ export function DotGlobe({
   home,
   label,
   devices = [],
+  selfLoc,
+  selfPlace,
 }: {
   size?: number;
   online: boolean;
   home: string | null;
   label?: string;
-  /** Paired devices, drawn at made-up spots on the map. */
+  /** Paired devices: at their IP's location when known, else at made-up spots. */
   devices?: GlobeDevice[];
+  /** Where this device's public IP is (city level), if known. */
+  selfLoc?: [number, number];
+  selfPlace?: string;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const stage = useRef<HTMLDivElement>(null);
@@ -486,20 +509,21 @@ export function DotGlobe({
   // across re-creations.
   const phi = useRef(facing(RELAY_REGIONS.find((r) => r.code === home)?.location[1] ?? 8.68));
 
-  // This device sits on its home relay; without one (custom relays,
-  // offline) it gets a spot of its own.
+  // This device sits where its public IP is; without that, on its home
+  // relay; without one (custom relays, offline) on a spot of its own.
   const homeRelay = RELAY_REGIONS.find((r) => r.code === home);
-  const self: readonly [number, number] = homeRelay?.location ?? SELF_SPOT;
-  const idsKey = devices.map((d) => d.id).sort().join(",");
+  const onRelay = !selfLoc && !!homeRelay;
+  const self: readonly [number, number] = selfLoc ?? homeRelay?.location ?? SELF_SPOT;
+  const idsKey = devices.map((d) => `${d.id}@${d.loc ?? ""}`).sort().join(",");
   const places = useMemo(
     () => placeDevices(devices, [...RELAY_REGIONS.map((r) => r.location), self]),
-    // Spots depend only on which devices there are, not on their state.
+    // Spots depend only on which devices there are and where, not on their state.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [idsKey, self[0], self[1]],
   );
   // The animation loop reads the latest devices without restarting the globe.
-  const live = useRef({ devices, places, light, self, homeRelay: !!homeRelay });
-  live.current = { devices, places, light, self, homeRelay: !!homeRelay };
+  const live = useRef({ devices, places, light, self, homeRelay: onRelay });
+  live.current = { devices, places, light, self, homeRelay: onRelay };
   const draw = useRef<(() => void) | null>(null);
 
   useEffect(() => {
@@ -752,10 +776,10 @@ export function DotGlobe({
             style={{ opacity: 0 }}
             aria-hidden="true"
           >
-            <span className="dg-tag">{r.code === home && label ? label : r.code}</span>
+            <span className="dg-tag">{r.code === home && onRelay && label ? label : r.code}</span>
           </span>
         ))}
-        {!homeRelay && label && (
+        {!onRelay && label && (
           <span data-loc={loc(self)} data-rank={0} className="dg-relay home" style={{ opacity: 0 }} aria-hidden="true">
             <span className="dg-tag">{label}</span>
           </span>
@@ -772,7 +796,7 @@ export function DotGlobe({
               data-rank={busy ? 1 : d.online ? 2 : 3}
               className={`dg-relay dev ${d.online ? "on" : "off"} ${busy ? "busy" : ""}`}
               style={{ opacity: 0, ["--dc" as string]: light ? col.light : col.dark, ["--dc-ink" as string]: light ? "#fff" : "#0b0b0d" }}
-              title={`${d.name}: ${d.online ? (d.rx && d.tx ? "sending and receiving" : d.rx ? "sending to you" : d.tx ? "receiving from you" : "connected") : "offline"}`}
+              title={`${d.name}: ${d.online ? (d.rx && d.tx ? "sending and receiving" : d.rx ? "sending to you" : d.tx ? "receiving from you" : "connected") : "offline"}${d.loc ? (d.place ? ` · near ${d.place}` : "") : " · location unknown"}`}
               aria-hidden="true"
             >
               <span className="dg-tag">{d.name}</span>
@@ -781,7 +805,8 @@ export function DotGlobe({
         })}
       </div>
       <span className="sr-only">
-        Public relay regions: {RELAY_REGIONS.map((r) => `${r.name} (${r.code})${r.code === home ? `, your home relay${label ? ` (${label})` : ""}` : ""}`).join("; ")}.
+        Public relay regions: {RELAY_REGIONS.map((r) => `${r.name} (${r.code})${r.code === home ? `, your home relay${label && onRelay ? ` (${label})` : ""}` : ""}`).join("; ")}.
+        {selfLoc && ` ${label || "This device"} is ${selfPlace ? `near ${selfPlace}` : "at its approximate location"}.`}
         {devicesText(devices)}
       </span>
     </div>

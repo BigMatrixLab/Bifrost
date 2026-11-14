@@ -111,6 +111,11 @@ pub enum Request {
         share: String,
         path: Vec<String>,
     },
+    /// Sent by the receiver once per connection: its own public IP (None if
+    /// unknown or it doesn't share it). The owner answers `Addr` with its
+    /// own, so each side can place the other on the map even over a relay.
+    /// Only devices with access get an answer. Older owners drop the stream.
+    Addr { ip: Option<String> },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
@@ -202,6 +207,7 @@ pub enum Response {
         fingerprint: Option<String>,
     },
     Ack,
+    Addr { ip: Option<String> },
     Error { code: ErrCode, message: String },
 }
 

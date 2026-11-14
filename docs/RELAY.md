@@ -26,6 +26,12 @@ connection itself (usually the sender's upload speed). A relay won't help.
 - **Turn on UPnP or NAT-PMP** in both routers' settings. On a FRITZ!Box: *Internet
   → Permit Access → Port Sharing → allow independent port sharing for this
   device*. Bifrost then asks the router to open a port by itself.
+- **Forward Bifrost's UDP port** if your router has no UPnP, or a direct path
+  still doesn't open. Bifrost listens on one fixed UDP port, shown under
+  *Settings → Connection → Direct connection port*. In the router, forward that
+  UDP port to the computer's local address. One side with a forwarded port is
+  enough. This doesn't work behind carrier-grade NAT, where the router itself
+  has no public address.
 - **Use IPv6** if your ISP offers it. Two devices with IPv6 usually connect
   directly, with no NAT in the way.
 - Prefer home broadband over mobile data on at least one side.

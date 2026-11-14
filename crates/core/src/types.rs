@@ -186,6 +186,8 @@ pub struct GrantDto {
     pub safety_words: Vec<String>,
     /// What this device may do in this share: "download", "upload" or "both".
     pub permission: String,
+    /// The device's public IP for the map (see `PeerStatus::public_ip`).
+    pub public_ip: Option<String>,
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -218,6 +220,10 @@ pub struct PeerStatus {
     pub state: String,
     pub route: RouteInfo,
     pub message: Option<String>,
+    /// The device's public IP for the map: from a direct path, or the one it
+    /// reported for itself. None when unknown or map locations are off.
+    #[serde(default)]
+    pub public_ip: Option<String>,
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -275,6 +281,12 @@ pub struct NetworkStatus {
     pub online: bool,
     pub relay_url: Option<String>,
     pub direct_addrs: usize,
+    /// UDP port actually listened on for direct connections; differs from
+    /// `Settings::udp_port` when that port was taken.
+    pub udp_port: Option<u16>,
+    /// This device's public IP as the relays see it, for the map. None when
+    /// unknown or map locations are off.
+    pub public_ip: Option<String>,
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -353,6 +365,15 @@ pub struct Settings {
     /// The user's own relay servers (empty = n0's public relays, which are
     /// rate-limited). Applies after restarting Bifrost.
     pub relay_urls: String,
+    /// UDP port for direct connections (1024..=65535). 0 = not chosen yet:
+    /// the engine picks one on start and saves it, so it stays the same and
+    /// can be forwarded on the router. Applies after restarting Bifrost.
+    #[serde(default)]
+    pub udp_port: u16,
+    /// Place devices on the Network globe by their public IP address: the
+    /// address is looked up (city level) at ipinfo.io, and this device's
+    /// own public IP is shared with paired devices so they can do the same.
+    pub map_locations: bool,
     /// Permission new invitations start with: "download", "upload" or "both".
     /// (Named for when permission was per folder; kept so saved settings load.)
     pub default_share_permission: String,
@@ -387,6 +408,8 @@ impl Default for Settings {
             route_v2: true,
             congestion_v2: true,
             relay_urls: String::new(),
+            udp_port: 0,
+            map_locations: true,
             default_share_permission: "download".into(),
             autostart_v1: false,
             tray_v2: true,
@@ -411,6 +434,9 @@ impl Settings {
         }
         self.device_name = self.device_name.trim().chars().take(64).collect();
         self.relay_urls = self.relay_urls.trim().chars().take(1000).collect();
+        if self.udp_port < 1024 {
+            self.udp_port = 0;
+        }
         self.default_share_permission = normalize_permission(&self.default_share_permission).into();
         self
     }
