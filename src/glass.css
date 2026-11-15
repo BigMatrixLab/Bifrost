@@ -79,10 +79,15 @@ body {
   font-weight: 700;
   letter-spacing: 0.11em;
   gap: 9px;
-  padding: 0 10px 0 10px;
-  margin: 0 10px;
   height: 38px;
   border: 1px solid transparent;
+}
+@media (min-width: 761px) {
+  /* Inset 10px from both sidebar edges; the green bar sits in the left gap. */
+  .nav-item {
+    padding: 0 10px;
+    margin: 0 10px;
+  }
 }
 .nav-code {
   flex: none;
@@ -113,15 +118,31 @@ body {
 .nav-item.active .nav-code {
   color: var(--plate-ink);
 }
-.nav-item.active::after {
-  content: "";
-  position: absolute;
-  left: -10px;
-  top: 8px;
-  bottom: 8px;
-  width: 3px;
-  background: var(--accent);
-  box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.7);
+/* Desktop: the green bar rides with the selection, in the 10px gap left of
+   the plate and exactly as tall. It uses the sliding ::before (the hover
+   mark), so hover is a plain per-item tint instead. */
+@media (min-width: 761px) {
+  .nav.slides::before {
+    width: 3px;
+    height: var(--sel-h, 0px);
+    transform: translate(calc(var(--sel-x, 0px) - 10px), var(--sel-y, 0px));
+    background: var(--accent);
+    box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.7);
+    opacity: 0;
+  }
+  .nav.slides[data-sel="on"]::before {
+    opacity: 1;
+  }
+  .nav.slides[data-hov-snap]::before {
+    transition: transform var(--slide), width var(--slide), height var(--slide), opacity 0.15s;
+  }
+  .nav.slides[data-sel-snap]::before {
+    transition: opacity 0.15s;
+  }
+  .nav.slides .nav-item:not(.active):not(.alert):hover {
+    background: rgba(var(--ink-rgb), 0.06);
+    border-color: rgba(var(--ink-rgb), 0.1);
+  }
 }
 /* On the pale plate: dark numbers with no outline; the red count stays white. */
 .nav-item.active .nav-count {
@@ -135,12 +156,33 @@ body {
   border-color: rgba(var(--band-rgb), 0.5);
   background: repeating-linear-gradient(-48deg, rgba(var(--band-rgb), 0.16) 0 3px, transparent 3px 8px);
 }
-.nav-count {
+/* Every count sits in the same fixed box at the right edge, so plain, live
+   and red counts line up in one column, centred under each other. */
+@media (min-width: 761px) {
+.nav-count,
+.nav-count.hot,
+.nav-count.alert {
+  flex: none;
+  box-sizing: border-box;
+  width: 24px;
+  height: 18px;
+  margin-left: auto;
+  padding: 0;
+  border-radius: 0;
+  display: inline-grid;
+  place-items: center;
   font-family: var(--hud-mono);
   font-size: 11px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0;
+  text-align: center;
+}
 }
 /* Live counts are green text only, without the outlined box. */
 .nav-count.hot {
+  color: var(--accent);
+  background: transparent;
   box-shadow: none;
 }
 .nav-count.alert {
@@ -326,42 +368,123 @@ body {
   font-size: 12px;
 }
 
-/* Tabs (Transfers, Activity): grey keys, the chosen one a pale plate */
+/* Tabs (Transfers, Activity) */
+/* A strip of folder tabs on one baseline. Each tab has its top-right corner
+   cut and a 1px outline like the cards. Unselected tabs are muted; the
+   chosen one is the pale plate of the selected menu item, with the green
+   underline on the baseline. */
 .tabs {
-  gap: 4px;
+  --tab-cut: 10px;
+  position: relative;
+  gap: 2px;
+  align-items: flex-end;
   border-bottom: 0;
+  margin-bottom: 18px;
 }
-.tabs.slides::before,
+/* Layers, all in the .tabs stacking context (z-index -1, in tree order):
+   the baseline (.tabs::before), each tab's outline (.tab::before) and face
+   (.tab::after), then the selection plate (.tabs::after) over the faces.
+   The tabs themselves make no stacking context (no clip-path, no z-index),
+   so their text paints above the plate. The plate slides between tabs. */
+
+/* The baseline the tabs sit on: one continuous 1px line, like the card outline. */
+.tabs.slides::before {
+  content: "";
+  display: block;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: auto;
+  bottom: 0;
+  width: auto;
+  height: 1px;
+  transform: none;
+  opacity: 1;
+  z-index: -1;
+  background: rgba(255, 255, 255, 0.3);
+  pointer-events: none;
+}
+/* The selection: the pale plate of the selected menu item, in the tab's
+   shape, with a 4px green underline on the baseline. Slides from tab to tab. */
 .tabs.slides::after {
-  display: none;
+  display: block;
+  z-index: -1;
+  width: var(--sel-w, 0px);
+  height: var(--sel-h, 0px);
+  transform: translate(var(--sel-x, 0px), var(--sel-y, 0px));
+  background:
+    linear-gradient(var(--accent), var(--accent)) left bottom / 100% 4px no-repeat,
+    var(--plate);
+  box-shadow: none;
+  clip-path: polygon(0 0, calc(100% - var(--tab-cut)) 0, 100% var(--tab-cut), 100% 100%, 0 100%);
 }
 .tab {
-  height: 34px;
-  padding: 0 14px;
+  position: relative;
+  height: 36px;
+  padding: 0 22px 0 14px;
+  margin-bottom: 0;
+  gap: 10px;
   font-family: var(--hud-font);
   font-size: 13.5px;
   font-weight: 700;
   letter-spacing: 0.14em;
-  border: 1px solid rgba(var(--ink-rgb), 0.12);
-  background: var(--key);
-  color: var(--text-2);
+  text-transform: uppercase;
+  border: 0;
+  background: transparent;
+  color: var(--text-3);
   box-shadow: none;
+  transition: color 0.18s 0.06s;
+}
+/* The outline: a 1px ring at the card outline's tone (the face covers the rest). */
+.tab::before,
+.tab::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+}
+.tab::before {
+  inset: 0;
+  background: rgba(255, 255, 255, 0.3);
+  clip-path: polygon(0 0, calc(100% - var(--tab-cut)) 0, 100% var(--tab-cut), 100% 100%, 0 100%);
+}
+/* The face, 1px inside the outline. Moving a 45° cut 1px inward shortens
+   it by 2 − √2 ≈ 0.59px. Opaque, so the outline only shows as the ring. */
+.tab::after {
+  inset: 1px;
+  background: linear-gradient(rgba(var(--ink-rgb), 0.035), rgba(var(--ink-rgb), 0.035)), var(--bg);
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--tab-cut) + 0.59px) 0,
+    100% calc(var(--tab-cut) - 0.59px),
+    100% 100%,
+    0 100%
+  );
+  transition: background 0.15s;
 }
 .tab:hover {
-  color: var(--text);
-  background: rgba(var(--ink-rgb), 0.12);
+  color: var(--text-2);
 }
-.tab.on {
-  background: var(--plate);
-  border-color: var(--plate);
+.tab:hover::after {
+  background: linear-gradient(rgba(var(--ink-rgb), 0.08), rgba(var(--ink-rgb), 0.08)), var(--bg);
+}
+.tab.on,
+.tab.on:hover {
   color: var(--plate-ink);
 }
+/* Count: a large bright figure next to the muted label. */
 .tab .c {
-  font-family: var(--hud-mono);
-  font-size: 12px;
+  font-family: var(--hud-font);
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  transition: color 0.18s 0.06s;
 }
 .tab.on .c {
-  color: rgba(0, 0, 0, 0.6);
+  color: var(--plate-ink);
+  text-shadow: none;
 }
 
 /* ------------------------------------------------------------- window */
@@ -388,16 +511,15 @@ section.gw {
   background: none;
   box-shadow: none;
 }
-/* Glass: a sheen from the top left over a thin dark tint; the ground's
-   bands show through, softened by the blur. Clipped to the window shape. */
+/* Glass: a thin dark tint; the ground's bands show through, softened by
+   the blur. Clipped to the window shape. */
 .gw-shape {
   position: absolute;
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background:
-    linear-gradient(150deg, rgba(255, 255, 255, 0.075) 0%, rgba(255, 255, 255, 0.02) 22%, rgba(255, 255, 255, 0) 48%),
-    var(--glass);
+  /* Plain tint, no sheen across the body. */
+  background: var(--glass);
   backdrop-filter: blur(8px) saturate(1.2);
   clip-path: var(--gw-shape);
 }
@@ -873,9 +995,7 @@ section.gw.has-foot-keys .gw-foot {
   padding: 0;
   border: 0 !important;
   clip-path: var(--gw-shape);
-  background:
-    linear-gradient(150deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0) 45%),
-    rgba(14, 14, 17, 0.92) !important;
+  background: rgba(14, 14, 17, 0.92) !important;
   backdrop-filter: blur(12px);
 }
 .modal-head.gw-head {
@@ -1253,12 +1373,11 @@ section.gw.has-foot-keys .gw-foot {
 .dt-kv {
   margin: 0;
 }
-.dt-map-head {
+/* Label, the cells, then the key right under them, all left-aligned. */
+.dt-map {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 6px;
+  flex-direction: column;
+  gap: 7px;
 }
 .dt-legend {
   display: flex;
@@ -1279,7 +1398,7 @@ section.gw.has-foot-keys .gw-foot {
 /* File map: one cell per file, filled from the bottom as it arrives. */
 .fmap {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(12px, 1fr));
+  grid-template-columns: repeat(auto-fill, 12px);
   gap: 3px;
 }
 .fmap i {
@@ -1373,4 +1492,45 @@ section.gw.has-foot-keys .gw-foot {
   .dt-batch-eta {
     display: none;
   }
+}
+
+/* Network card: one device location at a time, with ‹ 01/04 › to step through. */
+.netp-kv > .netp-place {
+  align-items: center;
+}
+/* Same as the Active transfer header pager: ‹ 01-04 › in large green. */
+.netp-kv dd.netp-pager {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-family: var(--hud-font);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  text-shadow: 0 0 12px rgba(var(--accent-rgb), 0.5);
+}
+.netp-place > dt {
+  white-space: nowrap;
+}
+.netp-pager .pager-btn {
+  width: 20px;
+  height: 20px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid rgba(var(--ink-rgb), 0.2);
+  background: rgba(var(--ink-rgb), 0.06);
+  color: var(--text-2);
+  border-radius: 0;
+  box-shadow: none;
+  text-shadow: none;
+  cursor: pointer;
+}
+.netp-pager .pager-btn:hover {
+  color: var(--text);
+  border-color: var(--text-2);
+  background: rgba(var(--ink-rgb), 0.06);
+  box-shadow: none;
 }

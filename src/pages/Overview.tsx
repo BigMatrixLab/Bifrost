@@ -1,5 +1,5 @@
-import { ArrowDownLeft, ArrowUpRight, Download, Monitor, Upload } from "lucide-react";
-import { useMemo } from "react";
+import { ArrowDownLeft, ArrowUpRight, ChevronLeft, ChevronRight, Download, Monitor, Upload } from "lucide-react";
+import { useMemo, useState } from "react";
 import { isActive, ago } from "../format";
 import { useStore } from "../store";
 import { Button, Empty, LinkReadout, linkOf, usePhone, type Link } from "../ui";
@@ -37,6 +37,7 @@ function relayHost(url: string | null): string {
 function NetworkPanel() {
   const { network, remotes, grants, settings, jobs, outgoing, pushes, incoming } = useStore();
   const online = !!network?.online;
+  const [placeId, setPlaceId] = useState<string | null>(null);
   const home = relayRegion(network?.relayUrl);
   const mapOn = settings?.mapLocations !== false;
   // Public IPs: from a direct path, or the one each device reported for itself.
@@ -82,7 +83,12 @@ function NetworkPanel() {
   const places = [
     ...(selfGeo ? [{ id: "self", name: settings?.deviceName || "This device", place: placeName(selfGeo) }] : []),
     ...devices.filter((d) => d.online && d.place).map((d) => ({ id: d.id, name: d.name, place: d.place! })),
-  ].slice(0, 4);
+  ];
+  // One place at a time; the choice is kept by id so it doesn't jump when the list changes.
+  const at = Math.max(0, places.findIndex((p) => p.id === placeId));
+  const place = places[at];
+  const step = (d: number) => places.length && setPlaceId(places[(at + d + places.length) % places.length].id);
+  const countries = new Set(places.map((p) => p.place.split(", ").pop())).size;
   const linked = new Set([
     ...remotes.filter((r) => r.status.state === "connected").map((r) => r.peerId),
     ...grants.filter((g) => g.connected).map((g) => g.peerId),
@@ -112,19 +118,38 @@ function NetworkPanel() {
         />
       </div>
       <dl className="netp-kv">
-        {places.map((p) => (
-          <div key={p.id} title="Approximate, from the device's public IP address">
-            <dt className="lab truncate">{p.name}</dt>
-            <dd className="num truncate">{p.place}</dd>
-          </div>
-        ))}
+        {place && (
+          <>
+            {/* Summary and arrows; the row under it shows the chosen device in full. */}
+            <div className="netp-place">
+              <dt className="lab">
+                Locations · {countries} countr{countries === 1 ? "y" : "ies"}
+              </dt>
+              {places.length > 1 ? (
+                <dd className="netp-pager">
+                  <button type="button" className="pager-btn" onClick={() => step(-1)} aria-label="Previous device" title="Previous device">
+                    <ChevronLeft size={13} />
+                  </button>
+                  <span className="num" aria-live="polite">
+                    {pad(at + 1)}-{pad(places.length)}
+                  </span>
+                  <button type="button" className="pager-btn" onClick={() => step(1)} aria-label="Next device" title="Next device">
+                    <ChevronRight size={13} />
+                  </button>
+                </dd>
+              ) : (
+                <dd className="num">1 device</dd>
+              )}
+            </div>
+            <div title="Approximate, from the device's public IP address">
+              <dt className="lab truncate">{place.name}</dt>
+              <dd className="num truncate">{place.place}</dd>
+            </div>
+          </>
+        )}
         <div>
           <dt className="lab">Home relay</dt>
           <dd className="num">{relayHost(network?.relayUrl ?? null)}</dd>
-        </div>
-        <div>
-          <dt className="lab">Devices linked</dt>
-          <dd className="num">{linked} of {known}</dd>
         </div>
         <div>
           <dt className="lab">Stored on servers</dt>

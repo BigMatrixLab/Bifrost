@@ -236,17 +236,15 @@ export function DownloadTotals({ link = false }: { link?: boolean }) {
               </div>
             </dl>
             <div className="dt-map">
-              <div className="dt-map-head">
-                <span className="lab">Files</span>
-                <span className="dt-legend">
-                  <span><i className="fm-done" />Done {t.filesDone}</span>
-                  <span><i className="fm-ok" />Moving {t.moving}</span>
-                  {t.waiting > 0 && <span><i className="fm-warn" />Waiting {t.waiting}</span>}
-                  {t.queued > 0 && <span><i className="fm-muted" />Queued {t.queued}</span>}
-                  {t.attention > 0 && <span><i className="fm-err" />Attention {t.attention}</span>}
-                </span>
-              </div>
+              <span className="lab">Files</span>
               <FileMap jobs={t.jobs} />
+              <span className="dt-legend">
+                <span><i className="fm-done" />Done {t.filesDone}</span>
+                <span><i className="fm-ok" />Moving {t.moving}</span>
+                {t.waiting > 0 && <span><i className="fm-warn" />Waiting {t.waiting}</span>}
+                {t.queued > 0 && <span><i className="fm-muted" />Queued {t.queued}</span>}
+                {t.attention > 0 && <span><i className="fm-err" />Attention {t.attention}</span>}
+              </span>
             </div>
           </div>
         </div>
