@@ -4,11 +4,21 @@ import "./clock";
 const now = Date.now();
 const GB = 1024 ** 3;
 const st = (route: string, rtt: number | null) => ({ kind: route, rttMs: rtt, remote: null });
+// Each mock job is its own download (its own createdAt) unless it sets one:
+// jobs queued together share peer, share and createdAt, like the engine's.
+let jobSeq = 0;
 const job = (o: any) => ({
   peerId: "a1b2c3d4e5", peerName: "Dhaka-Edit-Bay", shareId: "s1", remotePath: [o.displayName], destPath: "C:\\Users\\Lena\\Downloads\\Bifrost\\" + o.displayName,
   verifiedBytes: o.doneBytes, error: null, speedBps: 0, etaSecs: null, totalChunks: Math.ceil(o.size / (16 * 1024 * 1024)), verifiedChunks: Math.floor(o.doneBytes / (16 * 1024 * 1024)),
-  createdAt: now - 3600e3, updatedAt: now, completedAt: null, route: "direct", ...o,
+  createdAt: now - 3600e3 - jobSeq++ * 60e3, updatedAt: now, completedAt: null, route: "direct", ...o,
 });
+/** A folder download: files of "Reel 2" queued in one go, in every state. */
+const REEL = now - 1500e3;
+const reel = (name: string, sizeGb: number, frac: number, status: string, extra: any = {}) =>
+  job({
+    id: `r-${name}`, displayName: name, remotePath: ["Reel 2", name], destPath: `C:\\Users\\Lena\\Downloads\\Bifrost\\Reel 2\\${name}`,
+    size: sizeGb * GB, doneBytes: frac * sizeGb * GB, status, createdAt: REEL, completedAt: status === "completed" ? now - 300e3 : null, ...extra,
+  });
 const NEVER = 253_402_300_799_000;
 const inv = (o: any) => ({ state: "active", hasShortCode: !!o.shortCode, permission: "download", ...o });
 let emitEvent: ((name: string, payload: unknown) => void) | null = null;
@@ -60,6 +70,16 @@ export const data: Record<string, any> = {
     job({ id: "j3", displayName: "color-grade-notes.pdf", size: 4.2 * 1024 * 1024, doneBytes: 4.2 * 1024 * 1024, status: "completed", completedAt: now - 600e3 }),
     job({ id: "j4", displayName: "sound-mix-stems.wav", size: 2.4 * GB, doneBytes: 0.8 * GB, status: "needs_attention", error: "The file changed on the sender's computer." }),
     job({ id: "j5", displayName: "vfx-plates-batch-7.7z", size: 9.8 * GB, doneBytes: 3.3 * GB, status: "paused" }),
+    ...(window as any).__noBatch
+      ? []
+      : [
+          ...["001", "002", "003", "004", "005"].map((n, i) => reel(`scene-${n}.mov`, 2.1 + i * 0.4, 1, "completed")),
+          reel("scene-006.mov", 4.3, 0.62, "downloading", { speedBps: 7.4 * 1024 * 1024, etaSecs: 230 }),
+          reel("scene-007.mov", 3.9, 0.31, "downloading", { speedBps: 6.1 * 1024 * 1024, etaSecs: 440 }),
+          reel("scene-008.mov", 5.2, 0.08, "verifying"),
+          ...["009", "010", "011", "012", "013", "014"].map((n, i) => reel(`scene-${n}.mov`, 2.6 + i * 0.5, 0, "queued")),
+          reel("sound-stems.wav", 1.8, 0.4, "needs_attention", { error: "The file changed on the sender's computer." }),
+        ],
   ],
   pending_requests: (window as any).__pending ? [{ id: "r1", peerId: "x", peerShort: "4be1c09a", deviceName: "Lena's laptop", shareId: "s1", shareName: "Client deliveries", createdAt: now, safetyWords: ["harbor", "quill", "maple", "orbit", "tulip"], permission: "both" }] : [],
   list_activity: [
@@ -204,6 +224,46 @@ export async function invoke<T>(cmd: string, _args?: any): Promise<T> {
     return out;
   }
   if (cmd === "update_settings") return JSON.parse(JSON.stringify((data.bootstrap.settings = _args?.settings)));
+  if (cmd === "measure_download") {
+    // Like a walk on the owner: files count as listed, each folder as 38 GB in 120 files.
+    await new Promise((r) => setTimeout(r, 700));
+    const entries: any[] = data.list_remote_dir.entries;
+    let bytes = 0;
+    let files = 0;
+    for (const it of _args?.items ?? []) {
+      const e = entries.find((x) => x.name === it.path[it.path.length - 1]);
+      if (it.isDir) {
+        bytes += 38 * GB;
+        files += 120;
+      } else if (e) {
+        bytes += e.size;
+        files += 1;
+      }
+    }
+    return { bytes, files, truncated: false } as T;
+  }
+  if (cmd === "disk_space") {
+    // ?free=<GB> in the demo URL sets the free space, to check each warning.
+    const q = new URLSearchParams(location.search).get("free");
+    const free = (q ? Number(q) : 420) * GB;
+    const reserved = data.list_jobs
+      .filter((j: any) => j.status !== "completed" && j.status !== "canceled")
+      .reduce((a: number, j: any) => a + Math.max(0, j.size - j.verifiedBytes), 0);
+    return { path: _args?.path || data.bootstrap.settings.downloadDir, free, total: 1863 * GB, reserved } as T;
+  }
+  if (cmd === "start_download") {
+    const entries: any[] = data.list_remote_dir.entries;
+    const at = Date.now();
+    const made = (_args?.items ?? [])
+      .map((it: any) => entries.find((x) => x.name === it.path[it.path.length - 1] && !x.isDir))
+      .filter(Boolean)
+      .map((e: any, i: number) =>
+        job({ id: `n${at}-${i}`, displayName: e.name, size: e.size, doneBytes: 0, status: "queued", createdAt: at, peerId: _args.peerId, shareId: _args.shareId }),
+      );
+    data.list_jobs = [...made, ...data.list_jobs];
+    made.forEach((j: any) => notify("job-updated", { ...j }));
+    return made.map((j: any) => j.id) as T;
+  }
   if (cmd === "remote_mkdir") {
     const name = String(_args?.path?.[_args.path.length - 1] ?? "New folder");
     data.list_remote_dir.entries.unshift({ name, isDir: true, size: 0, modifiedMs: Date.now(), mine: true });

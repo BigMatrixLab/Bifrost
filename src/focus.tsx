@@ -5,6 +5,7 @@ import { isActive, bytes, duration, speed, statusTone, STATUS_TEXT } from "./for
 import { useStore } from "./store";
 import { Button } from "./ui";
 import { ChunkRing, LinkLine } from "./hud";
+import { Chip, Win } from "./glass";
 
 // Which unfinished download gets the big ring: moving data first, then the
 // ones about to move, then the ones that wait on the user.
@@ -107,8 +108,40 @@ export function FocusTransfer({
     }
   };
 
+  const pager = paged ? (
+    <span className="focus-pager">
+      <button type="button" className="pager-btn" onClick={onPrev} aria-label="Previous transfer" title="Previous (←)">
+        <ChevronLeft size={14} />
+      </button>
+      <span className="num" aria-live="polite">
+        {two(index)}-{two(count)}
+      </span>
+      <button type="button" className="pager-btn" onClick={onNext} aria-label="Next transfer" title="Next (→)">
+        <ChevronRight size={14} />
+      </button>
+    </span>
+  ) : (
+    <span className="num">{two(index)}-{two(count)}</span>
+  );
+
   return (
     <div className={`focus-wrap ${compact ? "compact" : ""}`}>
+      <Win
+        code="FN01"
+        title="Active transfer"
+        meta={pager}
+        metaTone={attention ? "red" : tone === "warn" ? "amber" : "mint"}
+        tone={tone}
+        sub={`${job.route === "relay" ? "RLY" : job.route === "direct" ? "DIR" : "---"} / ${job.peerName} · ${settings?.deviceName || "This device"}`}
+        subKeys={
+          <>
+            <Chip on={job.route === "direct"}>Dir</Chip>
+            <Chip tone={job.route === "relay" ? "warn" : undefined}>Rly</Chip>
+          </>
+        }
+        foot={head}
+        className={`focus-win ftone-${tone}`}
+      >
       <section
         className={`panel focus ftone-${tone} ${attention ? "attn" : ""}`}
         aria-label="Active transfer"
@@ -118,24 +151,6 @@ export function FocusTransfer({
           else if (e.key === "ArrowRight") onNext!();
         }}
       >
-        <div className="focus-head">
-          <span className="lab">Active transfer</span>
-          {paged ? (
-            <span className="focus-pager">
-              <button type="button" className="pager-btn" onClick={onPrev} aria-label="Previous transfer" title="Previous (←)">
-                <ChevronLeft size={14} />
-              </button>
-              <span className="num" aria-live="polite">
-                {two(index)} <span className="faint">/ {two(count)}</span>
-              </span>
-              <button type="button" className="pager-btn" onClick={onNext} aria-label="Next transfer" title="Next (→)">
-                <ChevronRight size={14} />
-              </button>
-            </span>
-          ) : (
-            <span className="num faint">{two(index)} / {two(count)}</span>
-          )}
-        </div>
         {paged && (
           <div className="focus-dots" role="presentation">
             {Array.from({ length: count }, (_, i) => (
@@ -213,6 +228,7 @@ export function FocusTransfer({
           </div>
         </div>
       </section>
+      </Win>
     </div>
   );
 }

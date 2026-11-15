@@ -1,0 +1,1376 @@
+/* =====================================================================
+   BIFROST // HUD WINDOWS (experimental, v4)
+   The old app's layout, colours and charts, with every card drawn as a
+   window from the reference board: a grey code plate with the title,
+   hatching, a readout or the red alert band, an inset body and a foot line
+   ("WIN xx" + keys), corner brackets just outside the glass.
+   Loaded after styles.css. Colours are the old dark theme's tokens:
+     green = running / online / done      amber = waiting / relayed
+     red   = needs attention / offline    white/silver = idle, sent
+   ===================================================================== */
+
+:root,
+:root[data-theme="dark"] {
+  --hud-font: "Rajdhani", "Space Grotesk Variable", "Segoe UI", system-ui, sans-serif;
+  --hud-mono: "Share Tech Mono", ui-monospace, Consolas, monospace;
+  --plate: #d9d9d9;
+  --plate-ink: #0b0b0d;
+  --head: rgba(58, 58, 64, 0.88);
+  --key: rgba(var(--ink-rgb), 0.07);
+  --band: #e5484d;
+  --band-rgb: 229, 72, 77;
+  --glass: rgba(16, 16, 19, 0.62);
+}
+
+/* ------------------------------------------------------------- ground */
+
+html,
+body {
+  background-color: var(--bg);
+}
+body {
+  /* Diagonal light bands and "+" marks, as on the reference board, kept
+     faint on the old near-black so cards stay the brightest things. */
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cpath d='M70 64v12M64 70h12' stroke='%23ffffff' stroke-opacity='.07'/%3E%3C/svg%3E"),
+    repeating-linear-gradient(-52deg, rgba(255, 255, 255, 0.022) 0 72px, transparent 72px 168px),
+    radial-gradient(55% 45% at 32% 22%, rgba(var(--accent-rgb), 0.045), transparent 70%),
+    radial-gradient(45% 40% at 85% 85%, rgba(255, 255, 255, 0.03), transparent 70%);
+  background-attachment: fixed;
+}
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(var(--ink-rgb), 0.28);
+  border-radius: 0;
+}
+::-webkit-scrollbar-track {
+  background: rgba(var(--ink-rgb), 0.04);
+}
+
+/* ------------------------------------------------------------- shell */
+
+.shell {
+  background: transparent;
+}
+.main,
+.content {
+  background: transparent;
+}
+.sidebar {
+  background: rgba(9, 9, 11, 0.82);
+  backdrop-filter: blur(10px);
+  border-right: 1px solid rgba(var(--ink-rgb), 0.1);
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.03);
+}
+.brand {
+  font-family: var(--hud-font);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.26em;
+}
+
+/* Nav: coded rows; the current page is a pale plate like the board's menus */
+.nav-item {
+  font-family: var(--hud-font);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  gap: 9px;
+  padding: 0 10px 0 10px;
+  margin: 0 10px;
+  height: 38px;
+  border: 1px solid transparent;
+}
+.nav-code {
+  flex: none;
+  width: 18px;
+  font-family: var(--hud-mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--text-3);
+}
+.nav-item:hover {
+  background: rgba(var(--ink-rgb), 0.06);
+  border-color: rgba(var(--ink-rgb), 0.1);
+}
+.nav-item.active {
+  color: var(--plate-ink);
+  transition: color 0.18s 0.08s;
+}
+/* The sliding selection block is the pale plate */
+.nav.slides::after {
+  background: var(--plate);
+  box-shadow: none;
+}
+.nav.slides .nav-item.active:hover {
+  border-color: transparent;
+}
+.nav-item.active > svg,
+.nav-item.active .nav-code {
+  color: var(--plate-ink);
+}
+.nav-item.active::after {
+  content: "";
+  position: absolute;
+  left: -10px;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  background: var(--accent);
+  box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.7);
+}
+/* On the pale plate: dark numbers with no outline; the red count stays white. */
+.nav-item.active .nav-count {
+  color: var(--plate-ink);
+  box-shadow: none;
+}
+.nav-item.active .nav-count.alert {
+  color: #fff;
+}
+.nav-item.alert:not(.active) {
+  border-color: rgba(var(--band-rgb), 0.5);
+  background: repeating-linear-gradient(-48deg, rgba(var(--band-rgb), 0.16) 0 3px, transparent 3px 8px);
+}
+.nav-count {
+  font-family: var(--hud-mono);
+  font-size: 11px;
+}
+/* Live counts are green text only, without the outlined box. */
+.nav-count.hot {
+  box-shadow: none;
+}
+.nav-count.alert {
+  background: var(--band);
+  color: #fff;
+}
+
+/* Sidebar blocks become small windows */
+.side-win {
+  margin: 18px 12px 16px;
+  flex-shrink: 0;
+}
+/* The calendar sits straight in the window: no inset body box around it. */
+.side-win .gw-body {
+  border: 0;
+  background: transparent;
+  margin: 6px 10px 12px;
+}
+.side-win .mini-cal {
+  margin: 0;
+  padding: 2px 0 4px;
+  border: 0;
+  background: transparent;
+}
+.side-win .gw-head {
+  height: 26px;
+}
+.side-win .gw-code,
+.side-win .gw-title {
+  font-size: 12.5px;
+}
+.side-notice {
+  border: 1px solid rgba(var(--ink-rgb), 0.12);
+  background: var(--glass);
+}
+.sidebar-foot {
+  border-top: 1px solid rgba(var(--ink-rgb), 0.1);
+  background: rgba(0, 0, 0, 0.25);
+}
+.me-name {
+  font-family: var(--hud-font);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* Top bar: page plate on the left; Send, Receive and the red clock on the right */
+.topbar {
+  background: rgba(9, 9, 11, 0.7);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(var(--ink-rgb), 0.1);
+}
+
+/* Desktop chrome lines up on three rules:
+   - the top bar and the sidebar's BIFROST row are one height (--topbar-h),
+     with their bottom lines at the same level;
+   - Send, Receive and the time tag are one height (--tb-ctl);
+   - the top bar's right edge (the time tag) and the cards' right edges are
+     the same distance from the window edge (--edge). The content area always
+     keeps room for its scrollbar, and the top bar adds the same width. */
+@media (min-width: 761px) {
+  :root {
+    --topbar-h: 56px;
+    --tb-ctl: 36px;
+    --edge: 28px;
+    --sb-w: 6px;
+  }
+  .topbar {
+    height: var(--topbar-h);
+    box-sizing: border-box;
+    padding: 0 calc(var(--edge) + var(--sb-w)) 0 var(--edge);
+  }
+  .brand,
+  .brand:is(*) {
+    height: var(--topbar-h);
+    box-sizing: border-box;
+    margin-bottom: 12px;
+    border-bottom: 1px solid rgba(var(--ink-rgb), 0.1);
+  }
+  .content {
+    padding-left: var(--edge);
+    padding-right: var(--edge);
+    scrollbar-gutter: stable;
+  }
+  .topbar-actions {
+    gap: 8px;
+  }
+  .topbar-actions .btn,
+  .topbar-actions .btn-md {
+    height: var(--tb-ctl);
+    padding: 0 14px;
+    font-size: 12.5px;
+  }
+  .topbar-actions .gx-clock {
+    height: var(--tb-ctl);
+    box-sizing: border-box;
+    margin-left: 0;
+  }
+}
+.gx-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--hud-font);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.gx-title b {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  min-width: 30px;
+  height: 24px;
+  padding: 0 5px;
+  font-family: var(--hud-mono);
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  background: var(--plate);
+  color: var(--plate-ink);
+}
+.topbar-actions {
+  margin-left: auto;
+  align-items: center;
+}
+.gx-clock {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 12px;
+  background: linear-gradient(180deg, #ef5358, #c9343a);
+  color: #fff;
+  box-shadow: 0 0 18px rgba(var(--band-rgb), 0.35);
+}
+.gx-clock-lab {
+  font-family: var(--hud-font);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  line-height: 1;
+  opacity: 0.9;
+}
+.gx-clock-v {
+  font-family: var(--hud-mono);
+  font-size: 17px;
+  line-height: 1.05;
+  letter-spacing: 0.05em;
+}
+.gx-clock-v em {
+  font-style: normal;
+  color: #ffd6d7;
+}
+
+/* Section titles above lists of windows (Shared folders, Devices) */
+.section-head h3 {
+  font-family: var(--hud-font);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--text-2);
+}
+.section-head {
+  gap: 12px;
+}
+.section-head::before {
+  content: "";
+  order: 1;
+  flex: 1;
+  height: 10px;
+  min-width: 20px;
+  background: repeating-linear-gradient(-48deg, rgba(var(--ink-rgb), 0.12) 0 2px, transparent 2px 7px);
+}
+.section-head .section-actions {
+  order: 2;
+}
+.sec-stat {
+  font-family: var(--hud-mono);
+  font-size: 12px;
+}
+
+/* Tabs (Transfers, Activity): grey keys, the chosen one a pale plate */
+.tabs {
+  gap: 4px;
+  border-bottom: 0;
+}
+.tabs.slides::before,
+.tabs.slides::after {
+  display: none;
+}
+.tab {
+  height: 34px;
+  padding: 0 14px;
+  font-family: var(--hud-font);
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  border: 1px solid rgba(var(--ink-rgb), 0.12);
+  background: var(--key);
+  color: var(--text-2);
+  box-shadow: none;
+}
+.tab:hover {
+  color: var(--text);
+  background: rgba(var(--ink-rgb), 0.12);
+}
+.tab.on {
+  background: var(--plate);
+  border-color: var(--plate);
+  color: var(--plate-ink);
+}
+.tab .c {
+  font-family: var(--hud-mono);
+  font-size: 12px;
+}
+.tab.on .c {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+/* ------------------------------------------------------------- window */
+
+/* The window's outline, as on the reference: the top-right corner is square
+   (it carries the X); top-left, bottom-left and bottom-right are cut at 45°.
+   --cut is the size of each cut; keep it equal to CUT in glass.tsx, which
+   draws the outline. */
+section.gw,
+.modal {
+  --cut: 12px;
+  --c: var(--cut);
+  /* Only the bottom-left corner is cut. */
+  --gw-shape: polygon(0 0, 100% 0, 100% 100%, var(--c) 100%, 0 calc(100% - var(--c)));
+}
+section.gw {
+  --tn: transparent;
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+/* Glass: a sheen from the top left over a thin dark tint; the ground's
+   bands show through, softened by the blur. Clipped to the window shape. */
+.gw-shape {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.075) 0%, rgba(255, 255, 255, 0.02) 22%, rgba(255, 255, 255, 0) 48%),
+    var(--glass);
+  backdrop-filter: blur(8px) saturate(1.2);
+  clip-path: var(--gw-shape);
+}
+/* The outline (drawn by <Outline> in glass.tsx): a metallic outer hairline
+   and a fainter inner one 3px inside, both broken along the bottom-left and
+   on the right edge beside the sub bar, where short green segments sit. */
+.gw-line {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+.gw-line svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.gw-line path {
+  fill: none;
+  stroke-linejoin: miter;
+  stroke-linecap: butt;
+}
+.gw-line .ol-outer {
+  stroke-width: 1;
+}
+.gw-line .ol-hot {
+  stroke: var(--accent);
+  stroke-width: 2;
+  filter: drop-shadow(0 0 2px rgba(var(--accent-rgb), 0.6));
+}
+/* The bottom segment underlines the window code, so it takes the code's
+   colour: red on alert windows (.gw-err .gw-win b), green otherwise. */
+section.gw.gw-err .gw-line .ol-ul {
+  stroke: var(--band);
+  filter: drop-shadow(0 0 2px rgba(var(--band-rgb), 0.6));
+}
+
+/* Windows without a foot keep the body clear of the bottom cuts. */
+section.gw.bare > .gw-body {
+  margin-bottom: 10px;
+}
+section.gw.gw-ok { --tn: var(--ok); }
+section.gw.gw-warn { --tn: var(--warn); }
+section.gw.gw-err { --tn: var(--band); }
+section.gw.gw-off { --tn: rgba(var(--ink-rgb), 0.35); }
+
+
+/* The bright bar along the top edge, from the cut to about half way, as on
+   the reference's header */
+/* Exactly as wide as the title plate: drawn on the plate's own top edge. */
+.gw-plate {
+  position: relative;
+}
+.gw-plate::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2px;
+  background: rgba(var(--ink-rgb), 0.55);
+  pointer-events: none;
+}
+/* Small ticks across both side edges just above the foot */
+.gw-foot {
+  position: relative;
+}
+.gw-foot::before,
+.gw-foot::after {
+  content: "";
+  position: absolute;
+  top: -1px;
+  width: 7px;
+  height: 1px;
+  background: rgba(var(--ink-rgb), 0.55);
+}
+.gw-foot::before {
+  left: 0;
+}
+.gw-foot::after {
+  right: 0;
+}
+.gw-side {
+  position: absolute;
+  right: -18px;
+  top: 44px;
+  writing-mode: vertical-rl;
+  font-family: var(--hud-font);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Header: grey plate (code + title), hatching, readout, X */
+.gw-head {
+  flex: none;
+  display: flex;
+  align-items: stretch;
+  height: 34px;
+  min-width: 0;
+  background: rgba(0, 0, 0, 0.3);
+}
+.gw-plate {
+  flex: 0 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 0 20px 0 12px;
+  background: var(--head);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+}
+.gw-code {
+  flex: none;
+  font-family: var(--hud-font);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #fafafa;
+}
+.gw-title {
+  min-width: 0;
+  margin: 0;
+  font-family: var(--hud-font);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #b4b4b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gw-hatch {
+  flex: 1;
+  min-width: 16px;
+  margin: 8px 6px;
+  background: repeating-linear-gradient(-48deg, rgba(var(--ink-rgb), 0.13) 0 2px, transparent 2px 7px);
+}
+.gw-meta {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  font-family: var(--hud-font);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-2);
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+.gw-meta.mint {
+  color: var(--accent);
+  text-shadow: 0 0 12px rgba(var(--accent-rgb), 0.5);
+}
+.gw-meta.amber {
+  color: var(--warn);
+  text-shadow: 0 0 12px rgba(var(--warn-rgb), 0.45);
+}
+.gw-head.alert .gw-meta {
+  color: #fff;
+  padding-left: 40px;
+  background: linear-gradient(90deg, rgba(var(--band-rgb), 0), rgba(var(--band-rgb), 0.6) 30%, #c9343a);
+  text-shadow: none;
+}
+.gw-meta > i {
+  width: 7px;
+  height: 7px;
+  background: rgba(255, 255, 255, 0.9);
+}
+.gw-x {
+  flex: none;
+  width: 34px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+}
+.gw-x:hover {
+  color: #fff;
+  background: var(--band);
+}
+.gw-x.deco {
+  cursor: default;
+  background:
+    linear-gradient(rgba(var(--ink-rgb), 0.5), rgba(var(--ink-rgb), 0.5)) 11px 50% / 5px 5px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) 18px 50% / 5px 5px no-repeat;
+}
+.gw-x.deco:hover {
+  background:
+    linear-gradient(rgba(var(--ink-rgb), 0.5), rgba(var(--ink-rgb), 0.5)) 11px 50% / 5px 5px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) 18px 50% / 5px 5px no-repeat;
+}
+.gw-head.alert .gw-x {
+  background-color: #c9343a;
+  color: #fff;
+}
+.gw-head.alert .gw-x.deco,
+.gw-head.alert .gw-x.deco:hover {
+  background:
+    linear-gradient(#fff, #fff) 11px 50% / 5px 5px no-repeat,
+    linear-gradient(#fff, #fff) 18px 50% / 5px 5px no-repeat,
+    #c9343a;
+}
+
+/* Header pager (Active transfer): ‹ 01-07 › */
+.gw-meta .focus-pager {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.gw-meta .pager-btn {
+  width: 20px;
+  height: 20px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid rgba(var(--ink-rgb), 0.2);
+  background: rgba(var(--ink-rgb), 0.06);
+  color: var(--text-2);
+  border-radius: 0;
+  cursor: pointer;
+  text-shadow: none;
+}
+.gw-meta .pager-btn:hover {
+  color: var(--text);
+  border-color: var(--text-2);
+}
+
+/* Sub line: small address text with chips */
+.gw-sub {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 24px;
+  margin: 8px 10px 0;
+  padding: 0 4px 0 8px;
+  font-family: var(--hud-mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  background: rgba(0, 0, 0, 0.35);
+  min-width: 0;
+}
+.gw-sub > i {
+  flex: none;
+  width: 10px;
+  height: 7px;
+  background:
+    linear-gradient(var(--text-3), var(--text-3)) left / 6px 100% no-repeat,
+    linear-gradient(var(--accent), var(--accent)) right / 2px 100% no-repeat;
+}
+.gw-sub-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gw-sub-keys {
+  flex: none;
+  display: flex;
+  gap: 4px;
+}
+.gx-chip {
+  display: inline-grid;
+  place-items: center;
+  height: 16px;
+  padding: 0 7px;
+  font-family: var(--hud-font);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  background: rgba(var(--ink-rgb), 0.12);
+}
+.gx-chip.on {
+  color: var(--accent-ink);
+  background: var(--accent);
+}
+.gx-chip.warn {
+  color: #1c1305;
+  background: var(--warn);
+}
+.gx-chip.err {
+  color: #fff;
+  background: var(--band);
+}
+
+/* Body: the darker inset panel; the old card sits inside it unchanged */
+.gw-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 8px 10px 0;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(var(--ink-rgb), 0.06);
+}
+.gw-body > * {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.gw-body > .panel,
+.gw-body > section.panel,
+.gw-body .side-block {
+  border: 0 !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  --cm-img: none;
+  --mark: transparent;
+}
+.gw-body > .panel:not(.focus) {
+  background-image: none !important;
+}
+
+/* Foot: "WIN xx", a note, the card's keys */
+.gw-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 34px;
+  padding: 0 10px 0 12px;
+  font-family: var(--hud-font);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  min-width: 0;
+}
+.gw-win {
+  flex: none;
+  color: var(--text-2);
+}
+.gw-win b {
+  margin-left: 6px;
+  font-family: var(--hud-mono);
+  font-weight: 400;
+  color: var(--accent);
+}
+.gw-err .gw-win b {
+  color: var(--band);
+}
+.gw-foot-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gw-keys {
+  flex: none;
+  display: flex;
+  gap: 4px;
+}
+section.gw.has-foot-keys .gw-foot {
+  padding-right: 8px;
+}
+
+/* ------------------------------------------------------------- layout fixes */
+
+.hud-top {
+  gap: 26px;
+}
+.hud-top > .gw,
+.focus-wrap > .gw {
+  flex: 1;
+  min-width: 0;
+}
+.focus-wrap {
+  display: flex;
+}
+.focus-win .focus {
+  padding-top: 14px;
+}
+.hero-win .hero-actions {
+  padding: 14px;
+  gap: 12px;
+}
+.two-col,
+.two-col.even {
+  gap: 26px;
+}
+.two-col.even > .gw {
+  min-width: 0;
+}
+.page {
+  gap: 26px;
+}
+.share-list {
+  gap: 22px;
+}
+.tr-section {
+  margin-top: 0;
+}
+.tabs + .tr-section,
+.tr-section + .tr-section {
+  margin-top: 22px;
+}
+
+/* Send / Receive tiles: the plate carries the name */
+.share-win .share-name {
+  display: none;
+}
+.share-win .share-top {
+  border-bottom: 1px solid rgba(var(--ink-rgb), 0.06);
+}
+
+/* History: the calendar window takes the calendar's grid place */
+.history-top {
+  column-gap: 26px;
+  row-gap: 26px;
+}
+.history-top > .cal-win {
+  grid-column: 1;
+  grid-row: 1;
+}
+.history-side {
+  gap: 26px;
+}
+.gw .side-head h3 {
+  display: none;
+}
+.gw .side-head:not(:has(> :not(h3))) {
+  display: none;
+}
+.gw .side-block {
+  padding: 14px 16px;
+}
+@media (max-width: 1080px) {
+  .history-top > .cal-win {
+    grid-column: auto;
+    grid-row: auto;
+  }
+}
+
+/* Browse: the table window fills the page */
+.br-win .gw-body {
+  padding: 10px 12px;
+  gap: 10px;
+}
+.br-win .gw-body > * {
+  flex: none;
+}
+.br-win .tbody {
+  height: calc(100vh - 380px);
+}
+.br-win .table {
+  background: transparent;
+}
+
+/* Dialogs: the same window */
+.modal {
+  --cm-img: none;
+  position: relative;
+  overflow: visible;
+  padding: 0;
+  border: 0 !important;
+  clip-path: var(--gw-shape);
+  background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0) 45%),
+    rgba(14, 14, 17, 0.92) !important;
+  backdrop-filter: blur(12px);
+}
+.modal-head.gw-head {
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+.modal-head .gw-title {
+  font-size: 16px;
+}
+.modal-backdrop {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(3px);
+}
+
+/* Notices sit between windows: give them the window edge */
+.notice {
+  border: 1px solid rgba(var(--ink-rgb), 0.12);
+  background: var(--glass);
+  border-radius: 0;
+}
+
+/* ------------------------------------------------------------- prominent numbers */
+
+/* Summary strips: the board's statistic boxes, big light figures */
+.hud-win .send-hud {
+  padding: 14px;
+}
+.send-stat {
+  position: relative;
+  gap: 8px;
+  padding: 14px 16px 22px;
+  background: linear-gradient(to top right, transparent calc(50% - 0.5px), rgba(var(--ink-rgb), 0.05) 50%, transparent calc(50% + 0.5px));
+}
+.send-stat .lab {
+  font-family: var(--hud-font);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+}
+.send-stat {
+  container-type: inline-size;
+}
+.send-stat .v {
+  font-family: var(--hud-font);
+  /* As large as the box allows: 38px in four columns, smaller in five. */
+  font-size: clamp(22px, 18cqi, 38px);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.send-stat .v .faint {
+  font-size: 0.62em;
+  font-weight: 400;
+}
+.send-stat.warn .v {
+  color: var(--warn);
+}
+.send-stat.err .v {
+  color: var(--err);
+  text-shadow: 0 0 12px rgba(var(--err-rgb), 0.45);
+}
+.send-stat-idx {
+  position: absolute;
+  right: 8px;
+  bottom: 5px;
+  font-family: var(--hud-mono);
+  font-size: 11px;
+  color: var(--text-3);
+}
+.send-stat::after {
+  content: "";
+  position: absolute;
+  left: 16px;
+  bottom: 9px;
+  width: 44px;
+  height: 3px;
+  background: rgba(var(--ink-rgb), 0.18);
+}
+.send-stat.live::after {
+  background: var(--ok);
+  box-shadow: 0 0 6px rgba(var(--ok-rgb), 0.6);
+}
+.send-stat.warn::after {
+  background: var(--warn);
+}
+.send-stat.err::after {
+  background: var(--band);
+}
+
+/* Active transfer: ring figure and facts */
+.ring-pct {
+  font-family: var(--hud-font);
+  font-size: 46px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.ring-pct small {
+  font-size: 0.5em;
+}
+.focus-kv dd {
+  font-family: var(--hud-font);
+  font-size: 19px;
+  font-weight: 500;
+  line-height: 1.05;
+}
+.focus-kv dd .faint {
+  font-size: 0.7em;
+}
+/* Long values (QUIC · TLS 1.3) wrap instead of being cut off. */
+.focus-kv dd {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+.focus-kv dt,
+.netp-kv dt,
+.share-stat .k {
+  font-family: var(--hud-font);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+}
+.focus-name {
+  font-family: var(--hud-font);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.netp-kv dd {
+  font-family: var(--hud-font);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Tile stats (Send / Receive) and the throughput legend */
+.share-stat .v {
+  font-family: var(--hud-font);
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.05;
+}
+.flow-legend b {
+  font-family: var(--hud-font);
+  font-size: 20px;
+  font-weight: 600;
+}
+.flow-win .flow {
+  padding-top: 10px;
+}
+.who-pct,
+.side-sum {
+  font-family: var(--hud-mono);
+}
+
+/* ------------------------------------------------------------- keys */
+
+.btn,
+.btn:hover:not(:disabled),
+.btn-secondary,
+.btn-secondary:hover:not(:disabled),
+.btn-ghost,
+.btn-ghost:hover:not(:disabled),
+.btn-danger,
+.btn-danger:hover:not(:disabled) {
+  background-image: none !important;
+}
+.btn {
+  border-radius: 0 !important;
+  font-family: var(--hud-font);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.btn-sm {
+  font-size: 12px;
+}
+.btn-secondary,
+.btn-ghost {
+  background-color: var(--key);
+  border: 1px solid rgba(var(--ink-rgb), 0.16);
+  color: var(--text);
+}
+.btn-ghost {
+  color: var(--text-2);
+}
+.btn-secondary:hover:not(:disabled),
+.btn-ghost:hover:not(:disabled) {
+  background-color: rgba(var(--ink-rgb), 0.16);
+  border-color: rgba(var(--ink-rgb), 0.3);
+  color: var(--text);
+}
+.btn.topbar-on,
+.btn.topbar-on:hover:not(:disabled) {
+  background-color: var(--plate);
+  border-color: var(--plate);
+  color: var(--plate-ink);
+}
+.btn-primary {
+  border: 1px solid var(--accent);
+}
+.btn-danger {
+  background-color: transparent;
+  border: 1px solid rgba(var(--err-rgb), 0.6);
+  color: var(--err);
+}
+.btn-danger:hover:not(:disabled) {
+  color: #fff;
+  background-image: repeating-linear-gradient(-48deg, rgba(var(--band-rgb), 0.95) 0 3px, rgba(var(--band-rgb), 0.65) 3px 7px) !important;
+}
+.gw-keys .btn {
+  height: 24px;
+}
+.icon-btn {
+  border-radius: 0 !important;
+}
+
+/* Hero tiles (no transfer running): the board's large menu plates */
+.hero-tile {
+  --cm-img: none;
+  border: 1px solid rgba(var(--ink-rgb), 0.14);
+  background: var(--key) !important;
+}
+.hero-tile:hover {
+  border-color: var(--plate);
+  background: rgba(var(--ink-rgb), 0.14) !important;
+}
+.hero-tile .t {
+  font-family: var(--hud-font);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* ------------------------------------------------------------- download dialog: drive space */
+
+.space-check {
+  --lv: rgba(var(--ink-rgb), 0.4);
+  --lv-rgb: var(--ink-rgb);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(var(--ink-rgb), 0.1);
+  background: rgba(0, 0, 0, 0.25);
+}
+.space-check.lv-ok { --lv: var(--ok); --lv-rgb: var(--ok-rgb); }
+.space-check.lv-warn { --lv: var(--warn); --lv-rgb: var(--warn-rgb); }
+.space-check.lv-err { --lv: var(--band); --lv-rgb: var(--band-rgb); border-color: rgba(var(--band-rgb), 0.45); }
+.space-sum {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.space-sum > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.space-v {
+  font-family: var(--hud-font);
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 1.1;
+  color: var(--text);
+  white-space: nowrap;
+}
+.space-v.tone-ok { color: var(--ok); }
+.space-v.tone-warn { color: var(--warn); }
+.space-v.tone-err { color: var(--err); }
+.space-sub {
+  font-size: 11px;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* The drive as one bar: used, promised to other downloads, this download, free. */
+.space-bar {
+  display: flex;
+  height: 10px;
+  background: repeating-linear-gradient(90deg, rgba(var(--ink-rgb), 0.08) 0 3px, transparent 3px 5px);
+  overflow: hidden;
+}
+.space-bar i,
+.space-legend i {
+  flex: none;
+  display: block;
+  height: 100%;
+}
+.sb-used {
+  background: rgba(var(--ink-rgb), 0.38);
+}
+.sb-res {
+  background: repeating-linear-gradient(-48deg, var(--warn) 0 3px, rgba(var(--warn-rgb), 0.35) 3px 6px);
+}
+.sb-this {
+  background: var(--lv);
+  box-shadow: 0 0 8px rgba(var(--lv-rgb), 0.5);
+}
+.sb-this.tone-err {
+  background: repeating-linear-gradient(-48deg, var(--band) 0 3px, rgba(var(--band-rgb), 0.55) 3px 6px);
+}
+.sb-free {
+  background: rgba(var(--ink-rgb), 0.1);
+}
+.space-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 11px;
+  color: var(--text-3);
+}
+.space-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.space-legend i {
+  width: 9px;
+  height: 9px;
+}
+.space-legend .sb-this.tone-ok { background: var(--ok); }
+.space-legend .sb-this.tone-warn { background: var(--warn); }
+.space-msg {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 12px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text);
+  background: rgba(var(--ink-rgb), 0.05);
+  box-shadow: inset 2px 0 0 rgba(var(--ink-rgb), 0.4);
+}
+.space-msg > svg {
+  flex: none;
+  margin-top: 1px;
+  color: var(--text-3);
+}
+.space-msg.lv-ok { background: var(--ok-soft); box-shadow: inset 2px 0 0 var(--ok); }
+.space-msg.lv-ok > svg { color: var(--ok); }
+.space-msg.lv-warn { background: var(--warn-soft); box-shadow: inset 2px 0 0 var(--warn); }
+.space-msg.lv-warn > svg { color: var(--warn); }
+.space-msg.lv-err { background: rgba(var(--band-rgb), 0.16); box-shadow: inset 2px 0 0 var(--band); }
+.space-msg.lv-err > svg { color: var(--band); }
+
+/* ------------------------------------------------------------- download total (multi-file) */
+
+.dt {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 18px;
+}
+.dt-top {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  min-width: 0;
+}
+.dt-facts {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.dt-kv {
+  margin: 0;
+}
+.dt-map-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.dt-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 11px;
+  color: var(--text-3);
+}
+.dt-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.dt-legend i {
+  width: 8px;
+  height: 8px;
+}
+/* File map: one cell per file, filled from the bottom as it arrives. */
+.fmap {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12px, 1fr));
+  gap: 3px;
+}
+.fmap i {
+  --c: rgba(var(--ink-rgb), 0.35);
+  height: 14px;
+  background:
+    linear-gradient(to top, var(--c) calc(var(--p, 0) * 100%), rgba(var(--ink-rgb), 0.08) calc(var(--p, 0) * 100%));
+}
+.fm-done { --c: var(--ok); }
+.fmap .fm-done { background: var(--ok); opacity: 0.55; }
+.fm-ok { --c: var(--ok); }
+.fmap .fm-ok { box-shadow: 0 0 6px rgba(var(--ok-rgb), 0.5); }
+.fm-warn { --c: var(--warn); }
+.fm-err { --c: var(--band); }
+.fmap .fm-err { box-shadow: inset 0 0 0 1px var(--band); }
+.fm-muted { --c: rgba(var(--ink-rgb), 0.35); }
+.dt-legend .fm-done { background: var(--ok); opacity: 0.55; }
+.dt-legend .fm-ok { background: var(--ok); }
+.dt-legend .fm-warn { background: var(--warn); }
+.dt-legend .fm-err { background: var(--band); }
+.dt-legend .fm-muted { background: rgba(var(--ink-rgb), 0.35); }
+
+/* One row per download (folder or set of files) */
+.dt-batches {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid rgba(var(--ink-rgb), 0.07);
+}
+.dt-batch {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1.2fr) minmax(120px, 1fr) auto 64px;
+  align-items: center;
+  gap: 14px;
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(var(--ink-rgb), 0.05);
+}
+.dt-batch-ico {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid rgba(var(--ink-rgb), 0.15);
+  color: var(--text-2);
+}
+.dt-batch.tone-ok .dt-batch-ico { color: var(--ok); border-color: rgba(var(--ok-rgb), 0.45); }
+.dt-batch.tone-warn .dt-batch-ico { color: var(--warn); border-color: rgba(var(--warn-rgb), 0.45); }
+.dt-batch.tone-err .dt-batch-ico { color: var(--band); border-color: rgba(var(--band-rgb), 0.55); }
+.dt-batch-id {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.dt-batch-name {
+  font-family: var(--hud-font);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--text);
+}
+.dt-batch-sub {
+  font-size: 11px;
+  color: var(--text-3);
+}
+.dt-batch-num {
+  font-family: var(--hud-font);
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.dt-batch-eta {
+  font-family: var(--hud-mono);
+  font-size: 12px;
+  color: var(--text-2);
+  text-align: right;
+}
+@media (max-width: 1100px) {
+  .dt-top {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .dt-top > .ring {
+    align-self: center;
+  }
+  .dt-batch {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+  .dt-batch-bar {
+    grid-column: 2 / -1;
+    grid-row: 2;
+  }
+  .dt-batch-eta {
+    display: none;
+  }
+}

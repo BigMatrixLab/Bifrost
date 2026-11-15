@@ -20,7 +20,8 @@ import { InviteDialog } from "../dialogs";
 import { StorageAccessNotice } from "../android";
 import { ago, neverExpires, speed, until } from "../format";
 import { useStore } from "../store";
-import { Button, CodeCells, Empty, IconButton, Modal, Progress, SectionHeader, linkOf } from "../ui";
+import { Button, CodeCells, Empty, HudStrip, IconButton, Modal, Progress, SectionHeader, linkOf } from "../ui";
+import { Win, pad } from "../glass";
 import { DeviceTile } from "./Overview";
 
 /** Opens the native folder picker and creates a share; returns the new share. */
@@ -253,7 +254,7 @@ function InviteRow({ i, onRevoke }: { i: Invitation; onRevoke: () => void }) {
   );
 }
 
-function ShareCard({ share, onInvite }: { share: Share; onInvite: () => void }) {
+function ShareCard({ share, index, onInvite }: { share: Share; index: number; onInvite: () => void }) {
   const { grants, uploads, toast } = useStore();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const devices = grants.filter((g) => g.shareId === share.id);
@@ -270,6 +271,15 @@ function ShareCard({ share, onInvite }: { share: Share; onInvite: () => void }) 
   };
 
   return (
+    <Win
+      code={`F${pad(index)}`}
+      title={share.name}
+      meta={state === "paused" ? "Paused" : state === "sending" ? speed(bps) : "Ready"}
+      metaTone={state === "paused" ? "amber" : "mint"}
+      tone={state === "paused" ? "warn" : state === "sending" ? "ok" : undefined}
+      foot={`${pad(online)} / ${pad(devices.length)} devices · ${pad(invites.length)} invitations`}
+      className="share-win"
+    >
     <section className={`panel share-tile st-${state}`} aria-label={share.name}>
       <header className="share-top">
         <span className="share-node" aria-hidden="true">
@@ -353,6 +363,7 @@ function ShareCard({ share, onInvite }: { share: Share; onInvite: () => void }) 
         </Modal>
       )}
     </section>
+    </Win>
   );
 }
 
@@ -387,33 +398,24 @@ export default function Shares() {
     <div className="page">
       <StorageAccessNotice />
 
-      <section className="panel send-hud" aria-label="Sharing summary">
-        <div className="send-hud-stats">
-          <div className="send-stat">
-            <span className="lab">Folders shared</span>
-            <span className="v num">{active}<span className="faint"> / {shares.length}</span></span>
-          </div>
-          <div className="send-stat">
-            <span className="lab">Devices online</span>
-            <span className="v num">{online.size}<span className="faint"> / {peers.size}</span></span>
-          </div>
-          <div className="send-stat">
-            <span className="lab">Open invitations</span>
-            <span className="v num">{invites}</span>
-          </div>
-          <div className={`send-stat ${bps > 0 ? "live" : ""}`}>
-            <span className="lab">Sending now</span>
-            <span className="v num">{bps > 0 ? speed(bps) : "–"}</span>
-          </div>
-        </div>
-        <div className="send-hud-cta">
-          <span className="small muted">
+      <HudStrip
+        code="H2"
+        label="Sharing summary"
+        meta={`${pad(active)} / ${pad(shares.length)}`}
+        stats={[
+          { label: "Folders shared", value: active, of: shares.length },
+          { label: "Devices online", value: online.size, of: peers.size },
+          { label: "Open invitations", value: invites },
+          { label: "Sending now", value: bps > 0 ? speed(bps) : "–", tone: bps > 0 ? "live" : undefined },
+        ]}
+        note={
+          <>
             Invited devices reach these folders only, never anything else on this computer. Each invitation says whether its device can
             download, upload or both, and you can change it per device. They can only delete what they uploaded.
-          </span>
-          <Button variant="primary" icon={<FolderUp size={15} />} onClick={shareFolder}>Share a folder</Button>
-        </div>
-      </section>
+          </>
+        }
+        action={<Button variant="primary" icon={<FolderUp size={15} />} onClick={shareFolder}>Share a folder</Button>}
+      />
 
       {/* Header and list in one block, like the Overview sections, so the
           title sits right above its cards instead of a page gap away. */}
@@ -425,14 +427,16 @@ export default function Shares() {
           </span>
         </SectionHeader>
         {shares.length === 0 ? (
-          <div className="panel">
-            <Empty icon={<FolderUp size={20} />} title="You're not sharing anything">
-              Choose a specific folder to share. Bifrost never shares a whole drive.
-            </Empty>
-          </div>
+          <Win code="F00" title="Shared folders" meta="00 / 00" foot="Nothing shared">
+            <div className="panel">
+              <Empty icon={<FolderUp size={20} />} title="You're not sharing anything">
+                Choose a specific folder to share. Bifrost never shares a whole drive.
+              </Empty>
+            </div>
+          </Win>
         ) : (
           <div className="share-list">
-            {shares.map((s) => <ShareCard key={s.id} share={s} onInvite={() => setInviting(s)} />)}
+            {shares.map((s, i) => <ShareCard key={s.id} index={i + 1} share={s} onInvite={() => setInviting(s)} />)}
           </div>
         )}
       </div>

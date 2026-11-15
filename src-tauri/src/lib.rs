@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 use bifrost_core::{
-    AccessRequest, ActivityDto, Core, CoreEvent, CoreOptions, CreatedInvitation, DownloadItem, GeoLoc, GrantDto, HistoryDto, IncomingDto, OutgoingDto,
+    AccessRequest, ActivityDto, Core, CoreEvent, CoreOptions, CreatedInvitation, DiskSpace, DownloadEstimate, DownloadItem, GeoLoc, GrantDto, HistoryDto, IncomingDto, OutgoingDto,
     JobSnapshot, JoinResult, ListResult, NetworkStatus, PeerStatus, PushDto, RemoteDto, Settings, ShareDto, SyncDto,
 };
 use serde::Serialize;
@@ -358,6 +358,21 @@ async fn start_download(
     dest_dir: Option<String>,
 ) -> CmdResult<Vec<String>> {
     s.core.start_download(&peer_id, &share_id, items, dest_dir).await.map_err(err)
+}
+
+#[tauri::command]
+async fn measure_download(
+    s: State<'_, AppState>,
+    peer_id: String,
+    share_id: String,
+    items: Vec<DownloadItem>,
+) -> CmdResult<DownloadEstimate> {
+    s.core.measure_download(&peer_id, &share_id, items).await.map_err(err)
+}
+
+#[tauri::command]
+fn disk_space(s: State<AppState>, path: String) -> CmdResult<DiskSpace> {
+    s.core.disk_space(&path).map_err(err)
 }
 
 #[tauri::command]
@@ -812,6 +827,8 @@ pub fn run() {
             connect_remote,
             list_remote_dir,
             start_download,
+            measure_download,
+            disk_space,
             list_jobs,
             pause_job,
             resume_job,

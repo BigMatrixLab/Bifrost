@@ -2,7 +2,8 @@ import { ArrowDownLeft, ArrowUpRight, Download, Monitor, Upload } from "lucide-r
 import { useMemo } from "react";
 import { isActive, ago } from "../format";
 import { useStore } from "../store";
-import { Button, Empty, LinkReadout, SectionHeader, linkOf, usePhone, type Link } from "../ui";
+import { Button, Empty, LinkReadout, linkOf, usePhone, type Link } from "../ui";
+import { Win, pad } from "../glass";
 import { DotGlobe, relayRegion, type GlobeDevice } from "../hud";
 import { placeName, useLocations } from "../geo";
 import { FocusTransfer, useFocusJob } from "../focus";
@@ -11,6 +12,7 @@ import { useShareFolder } from "./Shares";
 import { StorageAccessNotice } from "../android";
 import { LiveFlow, useFlowActive } from "../flow";
 import PhoneHome from "./PhoneHome";
+import { DownloadTotals } from "../totals";
 
 export default function Overview() {
   return usePhone() ? <PhoneHome /> : <DesktopOverview />;
@@ -87,14 +89,17 @@ function NetworkPanel() {
   ]).size;
   const known = new Set([...remotes.map((r) => r.peerId), ...grants.map((g) => g.peerId)]).size;
   return (
+    <Win
+      code="H4"
+      title="Network"
+      meta={online ? "Online" : "Connecting"}
+      metaTone={online ? "mint" : "red"}
+      tone={online ? "ok" : "warn"}
+      sub={`Relay / ${relayHost(network?.relayUrl ?? null)} · direct first`}
+      foot={`${pad(linked)} / ${pad(known)} linked`}
+      className="netp-win"
+    >
     <section className="panel netp" aria-label="Network">
-      <div className="focus-head">
-        <span className="lab">Network</span>
-        <span className="lab netp-state">
-          <span className={`dot ${online ? "ok" : "warn"}`} />
-          {online ? "Online" : "Connecting"}
-        </span>
-      </div>
       <div className="netp-globe">
         <DotGlobe
           size={176}
@@ -127,6 +132,7 @@ function NetworkPanel() {
         </div>
       </dl>
     </section>
+    </Win>
   );
 }
 
@@ -207,15 +213,14 @@ function DevicesPanel() {
   ];
   const online = tiles.filter((t) => t.link !== "offline").length;
   return (
-    <div>
-      <SectionHeader title="Devices">
-        {tiles.length > 0 && (
-          <span className="sec-stat num">
-            <i className={online ? "on" : ""} />
-            {online} / {tiles.length} online
-          </span>
-        )}
-      </SectionHeader>
+    <Win
+      code="R4"
+      title="Devices"
+      meta={`${pad(online)}-${pad(tiles.length)}`}
+      metaTone="mint"
+      sub="Link / direct first"
+      foot={`${online} online`}
+    >
       <div className="panel dev-list flat">
         {tiles.length === 0 ? (
           <Empty icon={<Monitor size={20} />} title="No devices yet">Devices you connect to or share with show up here.</Empty>
@@ -223,7 +228,7 @@ function DevicesPanel() {
           tiles.map(({ key, ...t }) => <DeviceTile key={key} {...t} />)
         )}
       </div>
-    </div>
+    </Win>
   );
 }
 
@@ -239,10 +244,14 @@ function ActivityPanel() {
   const { activity, setPage } = useStore();
   const items = activity.slice(0, 6);
   return (
-    <div>
-      <SectionHeader title="Recent activity">
-        <Button size="sm" variant="ghost" onClick={() => setPage("activity")}>View all</Button>
-      </SectionHeader>
+    <Win
+      code="N7"
+      title="Recent activity"
+      meta={`${pad(items.length)} / ${pad(activity.length)}`}
+      metaTone={items.some((a) => a.level === "error") ? "red" : undefined}
+      foot="Newest first"
+      keys={<Button size="sm" variant="ghost" onClick={() => setPage("activity")}>View all</Button>}
+    >
       <div className="panel act-list">
         {items.length === 0 ? (
           <Empty icon={<ArrowUpRight size={20} />} title="No activity yet" />
@@ -262,7 +271,7 @@ function ActivityPanel() {
           </ol>
         )}
       </div>
-    </div>
+    </Win>
   );
 }
 
@@ -284,6 +293,7 @@ function DesktopOverview() {
         {focus.job ? (
           <FocusTransfer job={focus.job} index={focus.index} count={focus.count} onPrev={focus.prev} onNext={focus.next} />
         ) : (
+          <Win code="FN01" title="Console" meta="00-00" metaTone="mint" sub="Mode / standby · no transfer running" foot="Select a function" className="hero-win">
           <div className="hero-actions stacked">
             <button className="hero-tile" onClick={shareFolder}>
               <span className="ico"><Upload size={22} /></span>
@@ -300,33 +310,48 @@ function DesktopOverview() {
               </span>
             </button>
           </div>
+          </Win>
         )}
         <NetworkPanel />
       </div>
 
+      <DownloadTotals link />
+
       {(flowActive || down > 0 || up > 0) && <LiveFlow />}
 
       {sendingNow.length > 0 && (
-        <div>
-          <SectionHeader title="Send">
+        <Win
+          code="K1"
+          title="Send"
+          meta={`${pad(Math.min(5, sendingNow.length))} / ${pad(sendingNow.length)}`}
+          metaTone="mint"
+          foot="Uploads to devices"
+          keys={
             <Button size="sm" variant="ghost" onClick={() => setPage("transfers")} icon={<ArrowUpRight size={14} />}>
               All transfers
             </Button>
-          </SectionHeader>
+          }
+        >
           <div className="panel">
             {sendingNow.slice(0, 5).map((o) => (
               <SendRow key={o.id} o={o} compact />
             ))}
           </div>
-        </div>
+        </Win>
       )}
 
-      <div>
-        <SectionHeader title="Receive">
+      <Win
+        code="K2"
+        title="Receive"
+        meta={`${pad(Math.min(5, active.length))} / ${pad(active.length)}`}
+        metaTone={active.some((j) => j.status === "needs_attention") ? "red" : "mint"}
+        foot="Downloads to this device"
+        keys={
           <Button size="sm" variant="ghost" onClick={() => setPage("transfers")} icon={<ArrowUpRight size={14} />}>
             All transfers
           </Button>
-        </SectionHeader>
+        }
+      >
         {active.length === 0 ? (
           <div className="panel">
             <Empty icon={<ArrowUpRight size={20} />} title="Nothing being received">
@@ -340,7 +365,7 @@ function DesktopOverview() {
             ))}
           </div>
         )}
-      </div>
+      </Win>
 
       <div className="two-col even">
         <DevicesPanel />

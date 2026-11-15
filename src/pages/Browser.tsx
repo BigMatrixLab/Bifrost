@@ -27,6 +27,8 @@ import { api, canDownload, canUpload, errorText, type RemoteEntry, type SharePer
 import { bytes, dateTime } from "../format";
 import { useStore } from "../store";
 import { Button, Empty, IconButton, Modal, usePhone } from "../ui";
+import { Win, pad } from "../glass";
+import { DownloadSpace, type SpaceVerdict } from "../space";
 import { isAndroid, pickFiles } from "../platform";
 import { useSlide } from "../slide";
 
@@ -80,6 +82,7 @@ export default function Browser() {
   const [scrollTop, setScrollTop] = useState(0);
   const [viewH, setViewH] = useState(600);
   const [confirm, setConfirm] = useState(false);
+  const [space, setSpace] = useState<SpaceVerdict | null>(null);
   const [dest, setDest] = useState("");
   const [starting, setStarting] = useState(false);
   const body = useRef<HTMLDivElement>(null);
@@ -118,6 +121,18 @@ export default function Browser() {
     // `known` only seeds the permission; the listing reports the current one.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [browse, load]);
+
+  // Demo build only (screenshots): ?open=download selects a folder and three files and opens the download dialog.
+  const demoDl = useRef(false);
+  useEffect(() => {
+    if (import.meta.env.MODE !== "mock" || demoDl.current || entries.length < 6) return;
+    if (new URLSearchParams(location.search).get("open") !== "download") return;
+    demoDl.current = true;
+    const files = entries.filter((e) => !e.isDir).slice(0, 3).map((e) => e.name);
+    setSelected(new Set([entries[0].name, ...files]));
+    setDest(settings?.downloadDir ?? "");
+    setConfirm(true);
+  }, [entries, settings]);
 
   // Show files as they finish uploading into this folder.
   const finished = pushes.filter((p) => p.peerId === browse?.peerId && p.shareId === browse?.shareId && p.status === "completed").length;
@@ -173,11 +188,13 @@ export default function Browser() {
   if (!browse) {
     return (
       <div className="page">
+        <Win code="B3" title="Browse" meta="00 / 00" foot="Nothing open">
         <div className="panel">
           <Empty icon={<FolderOpen size={20} />} title="Nothing open">
             Choose a shared folder in <a href="#" onClick={(e) => { e.preventDefault(); setPage("devices"); }}>Receive</a>.
           </Empty>
         </div>
+        </Win>
       </div>
     );
   }
@@ -269,6 +286,15 @@ export default function Browser() {
 
   return (
     <div className="page" style={{ gap: 14 }}>
+      <Win
+        code="B3"
+        title={browse.shareName}
+        meta={`${pad(sel.length)} / ${pad(total)}`}
+        metaTone={error ? "red" : "mint"}
+        tone={error ? "err" : "ok"}
+        foot={`${browse.peerName} · ${perm === "upload" ? "Upload only" : mayUpload ? "Download and upload" : "Download only"}`}
+        className="br-win"
+      >
       {phone ? (
         <div className="m-browse-head">
           <div className="hstack">
@@ -483,6 +509,7 @@ export default function Browser() {
           </div>
         </div>
       )}
+      </Win>
 
       {sel.length > 0 && (
         <div className={`selection-bar ${phone ? "m-selbar" : ""}`}>
@@ -563,15 +590,30 @@ export default function Browser() {
           footer={
             <>
               <Button variant="ghost" onClick={() => setConfirm(false)}>Cancel</Button>
-              <Button variant="primary" loading={starting} icon={<Download size={15} />} onClick={startDownload}>Start download</Button>
+              {space?.level === "err" ? (
+                <Button variant="danger" loading={starting} icon={<Download size={15} />} onClick={startDownload} title="Files stop with an error when the drive is full">
+                  Download anyway
+                </Button>
+              ) : (
+                <Button variant="primary" loading={starting} icon={<Download size={15} />} onClick={startDownload}>Start download</Button>
+              )}
             </>
           }
         >
           <StorageAccessNotice compact />
           <span>
             {sel.length === 1 ? <b>{sel[0].name}</b> : <b>{sel.length} items</b>}
-            {selFiles.length > 0 && <span className="muted"> ({bytes(selBytes)}{sel.length > selFiles.length ? " plus folder contents" : ""})</span>}
+            {sel.length > selFiles.length && <span className="muted"> ({sel.length - selFiles.length} folder{sel.length - selFiles.length === 1 ? "" : "s"} included)</span>}
           </span>
+          <DownloadSpace
+            peerId={browse.peerId}
+            shareId={browse.shareId}
+            items={sel.map((e) => ({ path: [...path, e.name], isDir: e.isDir }))}
+            knownBytes={selBytes}
+            hasFolders={sel.length > selFiles.length}
+            dest={dest || settings?.downloadDir || ""}
+            onVerdict={setSpace}
+          />
           <div className="field">
             <span className="label">Save to</span>
             <div className="hstack">

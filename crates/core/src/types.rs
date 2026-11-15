@@ -237,6 +237,30 @@ pub struct RemoteEntry {
     pub mine: bool,
 }
 
+/// What a download would bring in, measured before it starts.
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DownloadEstimate {
+    pub bytes: u64,
+    pub files: u64,
+    /// A folder had more files than one download takes; only the first ones count.
+    pub truncated: bool,
+}
+
+/// Space on the drive a download folder is on.
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DiskSpace {
+    /// The folder the numbers were read at (the nearest one that exists).
+    pub path: String,
+    /// Free bytes this user can write.
+    pub free: u64,
+    /// Size of the drive.
+    pub total: u64,
+    /// Still to be written by unfinished downloads to this drive.
+    pub reserved: u64,
+}
+
 #[derive(Serialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ListResult {

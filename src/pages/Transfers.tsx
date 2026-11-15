@@ -21,7 +21,9 @@ import { isAndroid } from "../platform";
 import { bytes, dateTime, duration, isActive, mbit, speed, statusTone } from "../format";
 import { useStore } from "../store";
 import { LiveFlow, useFlowActive } from "../flow";
-import { Button, Empty, HudStrip, IconButton, Modal, Progress, RouteBadge, SectionHeader, StatusIcon, StatusPill } from "../ui";
+import { Button, Empty, HudStrip, IconButton, Modal, Progress, RouteBadge, StatusIcon, StatusPill } from "../ui";
+import { Win, pad } from "../glass";
+import { DownloadTotals } from "../totals";
 import { useSlide } from "../slide";
 
 function explain(job: Job): string | null {
@@ -536,6 +538,9 @@ export default function Transfers() {
   return (
     <div className="page">
       <HudStrip
+        code="ST"
+        meta={`${pad(counts.receiving + counts.sending)} / ${pad(counts.all)}`}
+        alert={counts.attention > 0}
         label="Transfer summary"
         stats={[
           { label: "Receiving", value: total > 0 ? speed(total) : counts.receiving || "–", tone: total > 0 ? "live" : undefined },
@@ -546,6 +551,7 @@ export default function Transfers() {
         ]}
         note={`${counts.done} completed and verified end to end. Downloads keep their verified progress through disconnects, app restarts and reboots.`}
       />
+      <DownloadTotals />
       {(flowActive || total > 0) && <LiveFlow />}
       <div>
         <div className="tabs slides" role="tablist" ref={tabSlide}>
@@ -564,54 +570,76 @@ export default function Transfers() {
           ))}
         </div>
         {sends.length > 0 && (
-          <div className="tr-section">
-            <SectionHeader title="Send">
-              {sentDone.length > 0 && (filter === "sending" || filter === "all") && (
+          <Win
+            code="R1"
+            title="Send"
+            meta={`${pad(sends.filter((o) => o.status === "sending").length)} / ${pad(sends.length)}`}
+            metaTone="mint"
+            className="tr-section"
+            foot="Downloads from your shared folders"
+            keys={
+              sentDone.length > 0 && (filter === "sending" || filter === "all") ? (
                 <Button size="sm" variant="ghost" onClick={() => api.clearOutgoing().catch((e) => toast(errorText(e), "err"))}>
                   Clear finished
                 </Button>
-              )}
-            </SectionHeader>
+              ) : undefined
+            }
+          >
             <div className="panel job-list">
               {sends.map((o) => (
                 <SendRow key={o.id} o={o} />
               ))}
             </div>
-          </div>
+          </Win>
         )}
         {pushShown.length > 0 && (
-          <div className="tr-section">
-            <SectionHeader title="Upload">
-              {pushDone.length > 0 && (filter === "all" || filter === "done") && (
+          <Win
+            code="R2"
+            title="Upload"
+            meta={`${pad(pushRunning.length)} / ${pad(pushShown.length)}`}
+            metaTone={pushFailed.length > 0 ? "red" : "mint"}
+            className="tr-section"
+            foot="Your uploads into other devices' folders"
+            keys={
+              pushDone.length > 0 && (filter === "all" || filter === "done") ? (
                 <Button size="sm" variant="ghost" onClick={() => api.clearPushes().catch((e) => toast(errorText(e), "err"))}>
                   Clear finished
                 </Button>
-              )}
-            </SectionHeader>
+              ) : undefined
+            }
+          >
             <div className="panel job-list">
               {pushShown.map((p) => (
                 <PushRow key={p.id} p={p} />
               ))}
             </div>
-          </div>
+          </Win>
         )}
         {inShown.length > 0 && (
-          <div className="tr-section">
-            <SectionHeader title="Uploads to your folders">
-              {inDone.length > 0 && (filter === "all" || filter === "done") && (
+          <Win
+            code="R3"
+            title="Uploads to your folders"
+            meta={`${pad(inRunning.length)} / ${pad(inShown.length)}`}
+            metaTone={inFailed.length > 0 ? "red" : "mint"}
+            className="tr-section"
+            foot="Files other devices put in your folders"
+            keys={
+              inDone.length > 0 && (filter === "all" || filter === "done") ? (
                 <Button size="sm" variant="ghost" onClick={() => api.clearIncoming().catch((e) => toast(errorText(e), "err"))}>
                   Clear finished
                 </Button>
-              )}
-            </SectionHeader>
+              ) : undefined
+            }
+          >
             <div className="panel job-list">
               {inShown.map((f) => (
                 <IncomingRow key={f.id} f={f} />
               ))}
             </div>
-          </div>
+          </Win>
         )}
         {shown.length === 0 && sends.length === 0 && pushShown.length === 0 && inShown.length === 0 ? (
+          <Win code="R0" title="Transfers" meta="00 / 00" className="tr-section" foot="Nothing in this list">
           <div className="panel">
             <Empty
               icon={filter === "sending" ? <UploadIcon size={20} /> : <Download size={20} />}
@@ -626,17 +654,22 @@ export default function Transfers() {
               )}
             </Empty>
           </div>
+          </Win>
         ) : shown.length > 0 ? (
-          <div className="tr-section">
-            <SectionHeader title="Receive">
-              <span className="sec-stat num">{shown.length} file{shown.length === 1 ? "" : "s"}</span>
-            </SectionHeader>
+          <Win
+            code="R4"
+            title="Receive"
+            meta={`${pad(shown.filter((j) => j.status === "downloading").length)} / ${pad(shown.length)}`}
+            metaTone={shown.some((j) => j.status === "needs_attention" || j.status === "failed") ? "red" : "mint"}
+            className="tr-section"
+            foot={`${shown.length} file${shown.length === 1 ? "" : "s"}`}
+          >
             <div className="panel job-list">
               {shown.map((j) => (
                 <JobRow key={j.id} job={j} />
               ))}
             </div>
-          </div>
+          </Win>
         ) : null}
       </div>
     </div>

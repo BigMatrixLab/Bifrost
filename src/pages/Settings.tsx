@@ -6,7 +6,8 @@ import { isAndroid, pickFolder } from "../platform";
 import { useStorageAccess } from "../android";
 import { mbit } from "../format";
 import { useStore } from "../store";
-import { Button, HudStrip, Modal, SectionHeader, Segmented, Toggle } from "../ui";
+import { Button, HudStrip, Modal, Segmented, Toggle } from "../ui";
+import { Win } from "../glass";
 
 function Row({ label, hint, children }: { label: string; hint?: React.ReactNode; children: React.ReactNode }) {
   return (
@@ -86,6 +87,10 @@ export default function Settings() {
   return (
     <div className="page page-settings">
       <HudStrip
+        code="H7"
+        title="This device"
+        meta={network?.online ? "Online" : "Connecting"}
+        alert={!network?.online}
         label="This device"
         stats={[
           { label: isAndroid() ? "This device" : "This computer", value: settings.deviceName },
@@ -97,7 +102,7 @@ export default function Settings() {
         note={`Bifrost ${version}. Settings are stored only on this device.`}
       />
       <section>
-        <SectionHeader title="General" />
+        <Win code="C1" title="General" meta="01 / 06" foot="This device's name, folders and startup">
         <div className="panel settings-group">
           <Row label={isAndroid() ? "Device name" : "Computer name"} hint="Shown to devices you share with or connect to.">
             <input className="input" defaultValue={settings.deviceName} maxLength={64} onBlur={(e) => e.target.value.trim() && e.target.value !== settings.deviceName && save({ deviceName: e.target.value })} />
@@ -151,11 +156,12 @@ export default function Settings() {
           </>)}
           <Toggle checked={settings.notifications} label="Notifications" hint="When a transfer finishes, needs attention, or a device asks for access." onChange={(v) => save({ notifications: v })} />
         </div>
+        </Win>
       </section>
 
       {isAndroid() && (
         <section>
-          <SectionHeader title="Android" />
+          <Win code="C2" title="Android" foot="Storage access">
           <div className="panel settings-group">
             <Row label="All files access" hint="Needed to share folders and save downloads to real folders such as Download/Bifrost.">
               {storage.granted ? (
@@ -175,11 +181,12 @@ export default function Settings() {
               <Button icon={<Bell size={14} />} onClick={() => android.requestNotificationPermission().catch(() => {})}>Request</Button>
             </Row>
           </div>
+          </Win>
         </section>
       )}
 
       <section>
-        <SectionHeader title="Speed and resources" />
+        <Win code="C3" title="Speed and resources" meta="02 / 06" foot="Streams, limits and piece size">
         <div className="panel settings-group">
           <Row
             label="Parallel streams per file"
@@ -248,6 +255,7 @@ export default function Settings() {
             <Segmented label="Piece size" value={settings.chunkSizeMib} onChange={(v) => save({ chunkSizeMib: v })} options={[8, 16, 32].map((n) => ({ value: n, label: `${n} MB` }))} />
           </Row>
         </div>
+        </Win>
         {restartNote && (
           <div className="notice" style={{ marginTop: 10 }}>
             <Info size={16} />
@@ -257,7 +265,7 @@ export default function Settings() {
       </section>
 
       <section>
-        <SectionHeader title="Connection" />
+        <Win code="C4" title="Connection" meta="03 / 06" foot="Route mode and relay">
         <div className="panel settings-group">
           <Row
             label="Route mode"
@@ -334,6 +342,7 @@ export default function Settings() {
             />
           </Row>
         </div>
+        </Win>
         {relayNote && (
           <div className="notice" style={{ marginTop: 10 }}>
             <Info size={16} />
@@ -349,7 +358,7 @@ export default function Settings() {
       </section>
 
       <section>
-        <SectionHeader title="Privacy" />
+        <Win code="C5" title="Privacy" meta="04 / 06" foot="Nothing is stored on servers">
         <div className="panel settings-group">
           <div className="privacy-facts">
             <Lock size={16} aria-hidden="true" />
@@ -390,6 +399,7 @@ export default function Settings() {
             <Button variant="danger" disabled={history.length === 0} onClick={() => setConfirmClear("clear")}>Clear history</Button>
           </Row>
         </div>
+        </Win>
         {confirmClear && (
           <Modal
             title={confirmClear === "off" ? "Turn off history?" : "Clear history?"}
@@ -425,7 +435,7 @@ export default function Settings() {
       </section>
 
       <section>
-        <SectionHeader title="About" />
+        <Win code="C6" title="About" meta="05 / 06" foot={`Bifrost ${version}`}>
         <div className="panel settings-group">
           <Row label="Device ID" hint="Your cryptographic identity. Others verify it on every connection.">
             <div className="hstack">
@@ -447,6 +457,7 @@ export default function Settings() {
             <span className="mono small faint selectable" style={{ overflowWrap: "anywhere" }}>{dataDir}</span>
           </Row>
         </div>
+        </Win>
       </section>
     </div>
   );

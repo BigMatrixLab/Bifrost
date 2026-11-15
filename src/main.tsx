@@ -4,10 +4,19 @@ import App from "./App";
 import { StoreProvider } from "./store";
 import { FlowProvider } from "./flow";
 import "@fontsource-variable/space-grotesk";
+import "@fontsource/rajdhani/300.css";
+import "@fontsource/rajdhani/400.css";
+import "@fontsource/rajdhani/500.css";
+import "@fontsource/rajdhani/600.css";
+import "@fontsource/rajdhani/700.css";
+import "@fontsource/share-tech-mono/400.css";
 import "./styles.css";
-import { applyTheme, storedTheme } from "./theme";
+// HUD build: the window-card look goes last and restyles the cards above.
+import "./glass.css";
+import { applyTheme } from "./theme";
 
-applyTheme(storedTheme());
+// One palette in the HUD build: the old app's dark theme.
+applyTheme("dark");
 
 // Desktop app: no browser context menu or accidental reloads.
 window.addEventListener("contextmenu", (e) => {

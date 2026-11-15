@@ -5,6 +5,7 @@ import { ago, isActive, speed } from "../format";
 import { pickFolder } from "../platform";
 import { useStore } from "../store";
 import { Button, Empty, HudStrip, IconButton, Modal, SafetyWords, SectionHeader, SignalBars, Toggle, linkOf } from "../ui";
+import { Win, pad } from "../glass";
 
 /** Auto-sync for one shared folder: on/off, its local folder and last check. */
 function SyncButton({ peerId, share }: { peerId: string; share: RemoteShare }) {
@@ -125,7 +126,7 @@ function SyncButton({ peerId, share }: { peerId: string; share: RemoteShare }) {
  * header with its readouts and actions, then its folders and its identity
  * side by side.
  */
-function RemoteCard({ r }: { r: Remote }) {
+function RemoteCard({ r, index }: { r: Remote; index: number }) {
   const { openBrowser, toast, jobs } = useStore();
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState(false);
@@ -152,6 +153,15 @@ function RemoteCard({ r }: { r: Remote }) {
     }
   };
   return (
+    <Win
+      code={`D${pad(index)}`}
+      title={r.name}
+      meta={link === "offline" ? "Offline" : `${link === "direct" ? "Direct" : "Relay"}${rtt != null ? ` ${rtt} ms` : ""}`}
+      metaTone={link === "offline" ? "red" : link === "relay" ? "amber" : "mint"}
+      tone={link === "direct" ? "ok" : link === "relay" ? "warn" : "off"}
+      foot={`${pad(r.shares.length)} folders · ID ${r.peerShort}`}
+      className={`share-win lk-${link}`}
+    >
     <section className={`panel share-tile lk-${link}`} aria-label={r.name}>
       <header className="share-top">
         <span className="share-node" aria-hidden="true">
@@ -251,6 +261,7 @@ function RemoteCard({ r }: { r: Remote }) {
         </Modal>
       )}
     </section>
+    </Win>
   );
 }
 
@@ -264,6 +275,8 @@ export default function Devices() {
   return (
     <div className="page">
       <HudStrip
+        code="H3"
+        meta={`${pad(online)} / ${pad(remotes.length)}`}
         label="Receiving summary"
         stats={[
           { label: "Devices online", value: online, of: remotes.length },
@@ -285,14 +298,16 @@ export default function Devices() {
           )}
         </SectionHeader>
         {remotes.length === 0 ? (
-          <div className="panel">
-            <Empty icon={<Monitor size={20} />} title="No devices yet">
-              Ask the sender to share a folder in Bifrost and send you a 16-character code.
-            </Empty>
-          </div>
+          <Win code="D00" title="Devices" meta="00 / 00" foot="Nobody shares with you yet">
+            <div className="panel">
+              <Empty icon={<Monitor size={20} />} title="No devices yet">
+                Ask the sender to share a folder in Bifrost and send you a 16-character code.
+              </Empty>
+            </div>
+          </Win>
         ) : (
           <div className="share-list">
-            {remotes.map((r) => <RemoteCard key={r.peerId} r={r} />)}
+            {remotes.map((r, i) => <RemoteCard key={r.peerId} index={i + 1} r={r} />)}
           </div>
         )}
       </div>

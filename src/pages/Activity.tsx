@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { ListChecks } from "lucide-react";
 import { useStore } from "../store";
-import { Empty, HudStrip, SectionHeader } from "../ui";
+import { Empty, HudStrip } from "../ui";
+import { Win, pad } from "../glass";
 import { useSlide } from "../slide";
 
 type Level = "success" | "warning" | "error" | "info";
@@ -51,6 +52,9 @@ export default function Activity() {
   return (
     <div className="page">
       <HudStrip
+        code="H6"
+        meta={`${pad(count("error"))} / ${pad(activity.length)}`}
+        alert={count("error") > 0}
         label="Activity summary"
         stats={[
           { label: "Events", value: activity.length },
@@ -79,17 +83,24 @@ export default function Activity() {
       </div>
 
       {shown.length === 0 ? (
-        <div className="panel tr-section">
+        <Win code="N0" title="Log" meta="00 / 00" className="tr-section" foot="Nothing at this level">
+        <div className="panel">
           <Empty icon={<ListChecks size={20} />} title={activity.length === 0 ? "No activity yet" : "Nothing at this level"}>
             {activity.length === 0 ? "Sharing, pairing and transfer events are recorded here." : "Choose All to see every event."}
           </Empty>
         </div>
+        </Win>
       ) : (
-        days.map((d) => (
-          <div key={d.label} className="tr-section">
-            <SectionHeader title={d.label}>
-              <span className="sec-stat num">{d.items.length} event{d.items.length === 1 ? "" : "s"}</span>
-            </SectionHeader>
+        days.map((d, di) => (
+          <Win
+            key={d.label}
+            code={`N${di + 7}`}
+            title={d.label}
+            meta={`${pad(d.items.length)} event${d.items.length === 1 ? "" : "s"}`}
+            metaTone={d.items.some((a) => a.level === "error") ? "red" : "mint"}
+            className="tr-section"
+            foot="Newest first"
+          >
             <div className="panel act-list">
               <ol className="act-rail">
                 {d.items.map((a, i) => {
@@ -105,7 +116,7 @@ export default function Activity() {
                 })}
               </ol>
             </div>
-          </div>
+          </Win>
         ))
       )}
       </div>

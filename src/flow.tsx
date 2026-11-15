@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { bytes, speed, totalRates } from "./format";
 import { useStore } from "./store";
+import { Win } from "./glass";
 
 /**
  * Two-series chart colours: received is green, sent is silver. They differ in
@@ -272,11 +273,18 @@ export function LiveFlow() {
   };
 
   return (
+    <Win
+      code="H9"
+      title="Throughput"
+      meta="Live"
+      metaTone="mint"
+      tone={hasDown || hasUp ? "ok" : "off"}
+      sub="Last 2 min · 1 s resolution"
+      foot="Receiving above the line · sending below"
+      className="flow-win"
+    >
     <section className="panel flow" aria-label="Live transfer speed">
       <div className="flow-head">
-        <h3>Throughput</h3>
-        <span className="flow-live" aria-hidden="true"><i />Live</span>
-        <span className="flow-sub">Last 2 min · 1 s resolution</span>
         <div className="flow-legend" role="list">
           <span role="listitem" className={hasDown ? "in" : "in dim"}>
             <i style={{ background: SERIES.in }} />
@@ -419,6 +427,7 @@ export function LiveFlow() {
         )}
       </div>
     </section>
+    </Win>
   );
 }
 

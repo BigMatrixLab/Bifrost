@@ -5,7 +5,8 @@ import { CATEGORIES, categoryInfo, categoryOf, type Category } from "../categori
 import { SERIES } from "../flow";
 import { bytes, duration, speed } from "../format";
 import { useStore } from "../store";
-import { Button, Empty, HudStrip, IconButton, SafetyWords, SectionHeader, Segmented, usePhone } from "../ui";
+import { Button, Empty, HudStrip, IconButton, SafetyWords, Segmented, usePhone } from "../ui";
+import { Win, pad } from "../glass";
 
 export type Dir = "both" | "received" | "sent";
 
@@ -604,6 +605,8 @@ export default function History() {
   return (
     <div className="page history">
       <HudStrip
+        code="H5"
+        meta={`${pad(scope.length)} files`}
         label="History summary"
         stats={[
           { label: "Received", value: inB > 0 ? bytes(inB) : "–", tone: inB > 0 ? "live" : undefined },
@@ -630,6 +633,14 @@ export default function History() {
         </div>
       )}
       <div className="history-top">
+        <Win
+          code="C1"
+          title="Calendar"
+          meta={monthName}
+          metaTone="mint"
+          foot={selected ? "One day selected" : "Pick a day to filter"}
+          className="cal-win"
+        >
         <section className="panel cal-panel" aria-label="Calendar">
           <div className="cal-head">
             <IconButton label="Previous month" onClick={() => shift(-1)} disabled={!canBack}>
@@ -658,8 +669,10 @@ export default function History() {
           </div>
           <MonthCalendar month={month} days={days} max={max} dir={dir} selected={selected} onSelect={setSelected} />
         </section>
+        </Win>
 
         <aside className="history-side">
+          <Win code="P2" title="By device" meta={`${pad(pairs.length)} / ${pad(pairs.length)}`} metaTone="mint" foot="Received and sent">
           <section className="side-block hud-side" aria-label="By device" ref={whoRef} onPointerLeave={() => setSideTip(null)}>
             <div className="side-head">
               <h3>
@@ -699,7 +712,9 @@ export default function History() {
               />
             )}
           </section>
+          </Win>
 
+          <Win code="P3" title="By file type" meta={`${pad(cats.length)} / ${pad(cats.length)}`} metaTone="mint" foot={cats.length ? `${bytes(catTotal)} · ${scope.length} file${scope.length === 1 ? "" : "s"}` : "No files"}>
           <section className="side-block hud-side" aria-label="By file type" ref={whatRef} onPointerLeave={() => setSideTip(null)}>
             <div className="side-head">
               <div className="side-title">
@@ -745,12 +760,18 @@ export default function History() {
               />
             )}
           </section>
+          </Win>
         </aside>
 
-        <section className="history-receipts" aria-label="Receipts">
-          <SectionHeader title="Receipts">
-            {receipts.length > 0 && <span className="sec-stat num">{receipts.length} in {selected ? "this day" : "this month"}</span>}
-          </SectionHeader>
+        <Win
+          code="R7"
+          title="Receipts"
+          meta={`${pad(Math.min(limit, receipts.length))} / ${pad(receipts.length)}`}
+          metaTone="mint"
+          foot={receipts.length > 0 ? `${receipts.length} in ${selected ? "this day" : "this month"}` : "Privacy receipts"}
+          className="history-receipts"
+          aria-label="Receipts"
+        >
           <div className="panel">
             {receipts.length === 0 ? (
               <Empty icon={<HistoryIcon size={20} />} title={history.length === 0 ? "No finished transfers yet" : "Nothing in this period"}>
@@ -773,7 +794,7 @@ export default function History() {
               </>
             )}
           </div>
-        </section>
+        </Win>
       </div>
 
       {!historyOff && (

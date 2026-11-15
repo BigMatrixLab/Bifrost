@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDownUp,
   CalendarDays,
@@ -10,14 +10,12 @@ import {
   LayoutGrid,
   ListChecks,
   Menu,
-  Moon,
   Settings as SettingsIcon,
-  Sun,
   Upload,
   X,
   XCircle,
 } from "lucide-react";
-import { useTheme } from "./theme";
+import { ClockTag, Win, pad } from "./glass";
 import { AccessRequests, ConnectDialog, Onboarding } from "./dialogs";
 import { FolderPickerHost } from "./android";
 import { noticeText } from "./api";
@@ -87,12 +85,23 @@ export default function App() {
   const s = useStore();
   const phone = usePhone();
   const [moreOpen, setMoreOpen] = useState(false);
-  const [theme, toggleTheme] = useTheme();
   const navSlide = useSlide<HTMLElement>(".nav-item", ".nav-item.active");
   const jobs = useMemo(() => Object.values(s.jobs), [s.jobs]);
   const activeCount = jobs.filter((j) => isActive(j.status)).length + s.outgoing.filter((o) => o.status === "sending" || o.status === "waiting").length;
   const attention = jobs.filter((j) => j.status === "needs_attention").length;
   const latest = s.notices[0];
+
+  // Demo build only (screenshots): ?open=connect | browse opens that view.
+  const demoOpened = useRef(false);
+  useEffect(() => {
+    if (import.meta.env.MODE !== "mock" || demoOpened.current || !s.ready) return;
+    const open = new URLSearchParams(location.search).get("open");
+    if (!open) return;
+    demoOpened.current = true;
+    if (open === "connect") s.setConnectOpen(true);
+    const r = s.remotes.find((x) => x.shares.length);
+    if ((open === "browse" || open === "download") && r) s.openBrowser({ peerId: r.peerId, shareId: r.shares[0].id, shareName: r.shares[0].name, peerName: r.name });
+  }, [s, s.ready]);
 
   const nav: { id: Page; label: string; short: string; icon: React.ReactNode; count?: number; hot?: boolean; alert?: boolean }[] = [
     { id: "overview", label: "Overview", short: "Home", icon: <LayoutGrid size={17} /> },
@@ -105,6 +114,8 @@ export default function App() {
   ];
   if (s.browse && !phone) nav.splice(3, 0, { id: "browse", label: s.browse.shareName, short: "Browse", icon: <FolderOpen size={17} /> });
   const shownNav = phone ? nav.filter((n) => PHONE_TABS.includes(n.id)) : nav;
+  const currentAt = nav.findIndex((n) => n.id === s.page);
+  const current = currentAt >= 0 ? { idx: currentAt + 1, label: nav[currentAt].label } : null;
   const isOn = (id: Page) => s.page === id || (phone && id === "devices" && s.page === "browse");
   const moreOn = phone && !PHONE_TABS.includes(s.page) && s.page !== "browse";
 
@@ -137,8 +148,9 @@ export default function App() {
           Bifrost
         </div>
         <nav className="nav slides" aria-label="Main" ref={navSlide}>
-          {shownNav.map((n) => (
-            <button key={n.id} className={`nav-item nav-${n.id} ${isOn(n.id) ? "active" : ""}`} onClick={() => s.setPage(n.id)} aria-current={isOn(n.id) ? "page" : undefined}>
+          {shownNav.map((n, i) => (
+            <button key={n.id} className={`nav-item nav-${n.id} ${isOn(n.id) ? "active" : ""} ${n.alert ? "alert" : ""}`} onClick={() => s.setPage(n.id)} aria-current={isOn(n.id) ? "page" : undefined}>
+              {!phone && <b className="nav-code num" aria-hidden="true">{pad(i + 1)}</b>}
               {n.icon}
               <span className="truncate nav-long">{n.label}</span>
               <span className="nav-short">{n.short}</span>
@@ -177,7 +189,11 @@ export default function App() {
             )}
           </div>
         )}
-        {!phone && <MiniCalendar />}
+        {!phone && (
+          <Win code="C0" title="Month" bare className="side-win">
+            <MiniCalendar />
+          </Win>
+        )}
         <div className="sidebar-foot">
           <div className="foot-row">
             <span className="me">
@@ -193,6 +209,12 @@ export default function App() {
       </aside>
       <main className={`main page-${s.page}`}>
         <header className="topbar">
+          {!phone && current && (
+            <div className="gx-title" aria-hidden="true">
+              <b className="num">{pad(current.idx)}</b>
+              <span className="truncate">{current.label}</span>
+            </div>
+          )}
           <div className="topbar-actions">
             {/* The phone home screen has its own big Send and Receive buttons. */}
             {!(phone && s.page === "overview") && (
@@ -219,15 +241,7 @@ export default function App() {
                 </Button>
               </>
             )}
-            <button
-              type="button"
-              className="theme-toggle"
-              onClick={toggleTheme}
-              aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
-              title={theme === "dark" ? "Light theme" : "Dark theme"}
-            >
-              {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-            </button>
+            {!phone && <ClockTag />}
           </div>
         </header>
         <div className="content">

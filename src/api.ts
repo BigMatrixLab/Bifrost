@@ -381,6 +381,24 @@ export interface DownloadItem {
   isDir: boolean;
 }
 
+/** What a download would bring in, measured before it starts (folders walked on the sender). */
+export interface DownloadEstimate {
+  bytes: number;
+  files: number;
+  /** A folder had more files than one download takes; only the first ones count. */
+  truncated: boolean;
+}
+
+/** Space on the drive a download folder is on. */
+export interface DiskSpace {
+  /** The folder the numbers were read at (nearest existing one). */
+  path: string;
+  free: number;
+  total: number;
+  /** Still to be written by unfinished downloads to this drive. */
+  reserved: number;
+}
+
 export const api = {
   bootstrap: () => invoke<Bootstrap>("bootstrap"),
   networkStatus: () => invoke<NetworkStatus>("network_status"),
@@ -430,6 +448,9 @@ export const api = {
     invoke<ListResult>("list_remote_dir", { peerId, shareId, path, offset, limit }),
   startDownload: (peerId: string, shareId: string, items: DownloadItem[], destDir: string | null) =>
     invoke<string[]>("start_download", { peerId, shareId, items, destDir }),
+  measureDownload: (peerId: string, shareId: string, items: DownloadItem[]) =>
+    invoke<DownloadEstimate>("measure_download", { peerId, shareId, items }),
+  diskSpace: (path: string) => invoke<DiskSpace>("disk_space", { path }),
   listJobs: () => invoke<Job[]>("list_jobs"),
   pauseJob: (id: string) => invoke<void>("pause_job", { id }),
   resumeJob: (id: string) => invoke<void>("resume_job", { id }),

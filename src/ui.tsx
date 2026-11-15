@@ -17,6 +17,7 @@ import type { JobStatus, RouteInfo } from "./api";
 import { STATUS_TEXT, statusTone, type Tone } from "./format";
 import { RouteGlyph } from "./hud";
 import { useSlide } from "./slide";
+import { Outline, Win } from "./glass";
 
 export function Button({
   variant = "secondary",
@@ -177,11 +178,16 @@ export function Modal({
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && closeRef.current()}>
       <div className={`modal ${fit ? "fit" : ""}`} role="dialog" aria-modal="true" tabIndex={-1} style={{ maxWidth: width }} ref={ref}>
         <div className="sheet-handle" aria-hidden="true" />
-        <div className="modal-head">
-          <h2>{title}</h2>
-          <IconButton label="Close" onClick={() => closeRef.current()}>
-            <X size={16} />
-          </IconButton>
+        <Outline />
+        <div className="modal-head gw-head">
+          <span className="gw-plate">
+            <b className="gw-code" aria-hidden="true">DLG</b>
+            <h2 className="gw-title">{title}</h2>
+          </span>
+          <span className="gw-hatch" aria-hidden="true" />
+          <button type="button" className="gw-x" aria-label="Close" title="Close" onClick={() => closeRef.current()}>
+            <X size={15} />
+          </button>
         </div>
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-foot">{footer}</div>}
@@ -367,26 +373,50 @@ export interface HudStat {
 }
 
 /** The page summary: a row of readouts, then an optional note and action (as on the Send page). */
-export function HudStrip({ stats, note, action, label }: { stats: HudStat[]; note?: ReactNode; action?: ReactNode; label: string }) {
+export function HudStrip({
+  stats,
+  note,
+  action,
+  label,
+  code = "H9",
+  title = "Statistics",
+  meta,
+  alert,
+}: {
+  stats: HudStat[];
+  note?: ReactNode;
+  action?: ReactNode;
+  label: string;
+  /** Window plate: code and title. */
+  code?: string;
+  title?: ReactNode;
+  /** Header readout, e.g. "03 / 04". */
+  meta?: ReactNode;
+  /** Something needs attention: the header readout becomes the red band. */
+  alert?: boolean;
+}) {
   return (
-    <section className="panel send-hud" aria-label={label}>
-      <div className="send-hud-stats" style={{ gridTemplateColumns: `repeat(${stats.length}, minmax(0, 1fr))` }}>
-        {stats.map((s) => (
-          <div key={s.label} className={`send-stat ${s.tone ?? ""}`}>
-            <span className="lab">{s.label}</span>
-            <span className="v num">
-              {s.value}
-              {s.of != null && <span className="faint"> / {s.of}</span>}
-            </span>
-          </div>
-        ))}
-      </div>
-      {(note || action) && (
-        <div className="send-hud-cta">
-          <span className="small muted">{note}</span>
-          {action}
+    <Win code={code} title={title} meta={meta} metaTone={alert ? "red" : "mint"} tone={alert ? "err" : undefined} foot={label} className="hud-win">
+      <section className="panel send-hud" aria-label={label}>
+        <div className="send-hud-stats" style={{ gridTemplateColumns: `repeat(${stats.length}, minmax(0, 1fr))` }}>
+          {stats.map((s, i) => (
+            <div key={s.label} className={`send-stat ${s.tone ?? ""}`}>
+              <span className="lab">{s.label}</span>
+              <span className="v num">
+                {s.value}
+                {s.of != null && <span className="faint"> / {s.of}</span>}
+              </span>
+              <span className="send-stat-idx num" aria-hidden="true">{String(i + 1).padStart(3, "0")}</span>
+            </div>
+          ))}
         </div>
-      )}
-    </section>
+        {(note || action) && (
+          <div className="send-hud-cta">
+            <span className="small muted">{note}</span>
+            {action}
+          </div>
+        )}
+      </section>
+    </Win>
   );
 }

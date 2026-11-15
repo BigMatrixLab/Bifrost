@@ -961,18 +961,51 @@ impl Core {
         let dest_root = PathBuf::from(dest_dir.filter(|d| !d.trim().is_empty()).unwrap_or(settings.download_dir.clone()));
         std::fs::create_dir_all(&dest_root).map_err(|e| anyhow!("Can't use the download folder: {e}"))?;
 
-        // (remote path, local relative path, size, mtime)
+        let (files, truncated) = self.expand_items(&conn, share_id, items).await?;
+        for name in truncated {
+            self.inner.log("warning", &format!("\"{name}\" has too many files; only the first {} were queued", proto::MAX_WALK_FILES), None);
+        }
+        if files.is_empty() {
+            bail!("Nothing to download.");
+        }
+
+        queue_files(&self.inner, peer_id, share_id, files, &dest_root)
+    }
+
+    /// What `start_download` would queue for these items, without queuing:
+    /// total bytes and file count, folders walked on the owner's side.
+    pub async fn measure_download(&self, peer_id: &str, share_id: &str, items: Vec<DownloadItem>) -> Result<DownloadEstimate> {
+        let id: EndpointId = peer_id.parse().map_err(|_| anyhow!("invalid device id"))?;
+        let conn = get_conn(&self.inner, id).await.map_err(je)?;
+        let (files, truncated) = self.expand_items(&conn, share_id, items).await?;
+        Ok(DownloadEstimate {
+            bytes: files.iter().map(|f| f.2).sum(),
+            files: files.len() as u64,
+            truncated: !truncated.is_empty(),
+        })
+    }
+
+    /// Expands download items into files: (remote path, local relative path,
+    /// size, mtime). Folders are walked on the owner's side; returns the names
+    /// of folders whose walk was cut short at `MAX_WALK_FILES`.
+    async fn expand_items(
+        &self,
+        conn: &iroh::endpoint::Connection,
+        share_id: &str,
+        items: Vec<DownloadItem>,
+    ) -> Result<(Vec<(Vec<String>, PathBuf, u64, i64)>, Vec<String>)> {
         let mut files: Vec<(Vec<String>, PathBuf, u64, i64)> = Vec::new();
+        let mut cut = Vec::new();
         for item in items {
             proto::validate_components(&item.path).map_err(|_| anyhow!("invalid path"))?;
             let Some(last) = item.path.last().cloned() else { continue };
             if item.is_dir {
-                let resp = request(&conn, &Request::Walk { share: share_id.into(), path: item.path.clone() })
+                let resp = request(conn, &Request::Walk { share: share_id.into(), path: item.path.clone() })
                     .await
                     .map_err(je)?;
                 let Response::Walk { files: list, truncated } = resp else { bail!("Unexpected reply.") };
                 if truncated {
-                    self.inner.log("warning", &format!("\"{last}\" has too many files; only the first {} were queued", list.len()), None);
+                    cut.push(last.clone());
                 }
                 let base = PathBuf::from(sanitize_filename(&last));
                 // Older owners still list system files (.DS_Store, Thumbs.db, ...).
@@ -986,7 +1019,7 @@ impl Core {
                     files.push((remote, rel, f.size, f.mtime_ms));
                 }
             } else {
-                let resp = request(&conn, &Request::Stat { share: share_id.into(), path: item.path.clone() })
+                let resp = request(conn, &Request::Stat { share: share_id.into(), path: item.path.clone() })
                     .await
                     .map_err(je)?;
                 let Response::Stat { size, mtime_ms, dir } = resp else { bail!("Unexpected reply.") };
@@ -996,11 +1029,27 @@ impl Core {
                 files.push((item.path, PathBuf::from(sanitize_filename(&last)), size, mtime_ms));
             }
         }
-        if files.is_empty() {
-            bail!("Nothing to download.");
-        }
+        Ok((files, cut))
+    }
 
-        queue_files(&self.inner, peer_id, share_id, files, &dest_root)
+    /// Space on the drive that holds `dir` (or the download folder when
+    /// empty): what is free, its size, and how much unfinished downloads to
+    /// the same drive still need, so a new download can be checked against
+    /// what will really be left.
+    pub fn disk_space(&self, dir: &str) -> Result<DiskSpace> {
+        let dir = if dir.trim().is_empty() { PathBuf::from(self.inner.settings().download_dir) } else { PathBuf::from(dir) };
+        let (at, free, total) = util::space_of(&dir).ok_or_else(|| anyhow!("Can't read free space for this folder."))?;
+        let volume = util::volume_key(&at);
+        let reserved = self
+            .inner
+            .db
+            .list_jobs()?
+            .iter()
+            .filter(|j| !matches!(j.status, JobStatus::Completed | JobStatus::Canceled))
+            .filter(|j| volume.is_some() && util::volume_key(Path::new(&j.dest_path)) == volume)
+            .map(|j| j.size.saturating_sub(j.verified_bytes))
+            .sum();
+        Ok(DiskSpace { path: at.to_string_lossy().to_string(), free, total, reserved })
     }
 
     pub fn list_jobs(&self) -> Result<Vec<JobSnapshot>> {

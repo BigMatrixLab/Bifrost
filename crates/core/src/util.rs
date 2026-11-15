@@ -212,14 +212,60 @@ pub fn unique_path(path: &Path) -> PathBuf {
 }
 
 pub fn available_space(dir: &Path) -> Option<u64> {
+    space_of(dir).map(|(_, free, _)| free)
+}
+
+/// Free space (for this user) and drive size for `dir`, read at its nearest
+/// existing ancestor, so a download folder that doesn't exist yet works.
+/// Returns that ancestor too.
+pub fn space_of(dir: &Path) -> Option<(PathBuf, u64, u64)> {
     let mut p = dir.to_path_buf();
     loop {
         if p.exists() {
-            return fs4::available_space(&p).ok();
+            let free = fs4::available_space(&p).ok()?;
+            let total = fs4::total_space(&p).unwrap_or(0);
+            return Some((p, free, total));
         }
         if !p.pop() {
             return None;
         }
+    }
+}
+
+/// Which drive a path is on, for comparing paths: the drive or UNC share on
+/// Windows ("C:", "\\server\share"), the device id elsewhere. None if unknown.
+pub fn volume_key(path: &Path) -> Option<String> {
+    #[cfg(windows)]
+    {
+        use std::path::{Component, Prefix};
+        match path.components().next()? {
+            Component::Prefix(p) => Some(match p.kind() {
+                Prefix::Disk(d) | Prefix::VerbatimDisk(d) => format!("{}:", (d as char).to_ascii_uppercase()),
+                Prefix::UNC(s, h) | Prefix::VerbatimUNC(s, h) => {
+                    format!("\\\\{}\\{}", s.to_string_lossy().to_lowercase(), h.to_string_lossy().to_lowercase())
+                }
+                _ => p.as_os_str().to_string_lossy().to_lowercase(),
+            }),
+            _ => None,
+        }
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        let mut p = path.to_path_buf();
+        loop {
+            if let Ok(m) = std::fs::metadata(&p) {
+                return Some(m.dev().to_string());
+            }
+            if !p.pop() {
+                return None;
+            }
+        }
+    }
+    #[cfg(not(any(windows, unix)))]
+    {
+        let _ = path;
+        None
     }
 }
 
