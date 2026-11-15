@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Bifrost HUD",
+  "mainBinaryName": "Bifrost-HUD",
+  "identifier": "app.bifrost.hud-preview",
+  "build": {
+    "frontendDist": "../ui-hud/dist",
+    "devUrl": "http://localhost:5174",
+    "beforeDevCommand": "",
+    "beforeBuildCommand": ""
+  }
+}
