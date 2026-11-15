@@ -1535,3 +1535,64 @@ section.gw.has-foot-keys .gw-foot {
   background: rgba(var(--ink-rgb), 0.06);
   box-shadow: none;
 }
+
+/* Settings → Connection: Windows Firewall state under "Allow direct connections". */
+.fw-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+.fw-state.tone-ok { color: var(--ok); }
+.fw-state.tone-warn { color: var(--warn); }
+.fw-state.tone-err { color: var(--err); }
+.fw-done {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--hud-font);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ok);
+}
+
+/* First-run prompt: where to find the setting later. */
+.fw-path {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid rgba(var(--ink-rgb), 0.14);
+  background: rgba(0, 0, 0, 0.25);
+  font-family: var(--hud-font);
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.fw-path b {
+  color: var(--text);
+}
+.fw-path span {
+  color: var(--accent);
+}
+/* The row flashes when "Show me where" opens it. */
+.setting.fw-flash {
+  animation: fw-flash 2.4s ease-out;
+}
+@keyframes fw-flash {
+  0%,
+  35% {
+    background: rgba(var(--accent-rgb), 0.14);
+    box-shadow: inset 2px 0 0 var(--accent);
+  }
+  100% {
+    background: transparent;
+    box-shadow: inset 2px 0 0 transparent;
+  }
+}

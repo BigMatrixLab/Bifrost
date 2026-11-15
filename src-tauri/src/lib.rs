@@ -20,6 +20,8 @@ use tauri_plugin_notification::NotificationExt;
 #[cfg(target_os = "android")]
 use tauri_plugin_bifrost_android::BifrostAndroidExt;
 
+mod firewall;
+
 struct AppState {
     core: Core,
 }
@@ -373,6 +375,18 @@ async fn measure_download(
 #[tauri::command]
 fn disk_space(s: State<AppState>, path: String) -> CmdResult<DiskSpace> {
     s.core.disk_space(&path).map_err(err)
+}
+
+/// Whether Windows Firewall lets other devices reach Bifrost directly.
+#[tauri::command]
+async fn firewall_status() -> CmdResult<firewall::FirewallStatus> {
+    tauri::async_runtime::spawn_blocking(firewall::status).await.map_err(|e| e.to_string())?
+}
+
+/// Adds the firewall rule for direct connections (one administrator prompt).
+#[tauri::command]
+async fn allow_direct_connections() -> CmdResult<firewall::FirewallStatus> {
+    tauri::async_runtime::spawn_blocking(firewall::allow).await.map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
@@ -829,6 +843,8 @@ pub fn run() {
             start_download,
             measure_download,
             disk_space,
+            firewall_status,
+            allow_direct_connections,
             list_jobs,
             pause_job,
             resume_job,

@@ -389,6 +389,17 @@ export interface DownloadEstimate {
   truncated: boolean;
 }
 
+/** Windows Firewall and Bifrost's direct connections (Settings → Connection). */
+export interface FirewallStatus {
+  /** Windows only. */
+  supported: boolean;
+  /** An inbound UDP allow rule covers every network type, and nothing blocks Bifrost. */
+  allowed: boolean;
+  /** Rules that block Bifrost (they win over allow rules). */
+  blocked: number;
+  program: string;
+}
+
 /** Space on the drive a download folder is on. */
 export interface DiskSpace {
   /** The folder the numbers were read at (nearest existing one). */
@@ -451,6 +462,8 @@ export const api = {
   measureDownload: (peerId: string, shareId: string, items: DownloadItem[]) =>
     invoke<DownloadEstimate>("measure_download", { peerId, shareId, items }),
   diskSpace: (path: string) => invoke<DiskSpace>("disk_space", { path }),
+  firewallStatus: () => invoke<FirewallStatus>("firewall_status"),
+  allowDirectConnections: () => invoke<FirewallStatus>("allow_direct_connections"),
   listJobs: () => invoke<Job[]>("list_jobs"),
   pauseJob: (id: string) => invoke<void>("pause_job", { id }),
   resumeJob: (id: string) => invoke<void>("resume_job", { id }),

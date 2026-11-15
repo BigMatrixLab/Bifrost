@@ -8,6 +8,7 @@ import { mbit } from "../format";
 import { useStore } from "../store";
 import { Button, HudStrip, Modal, Segmented, Toggle } from "../ui";
 import { Win } from "../glass";
+import { FirewallRow } from "../firewall";
 
 function Row({ label, hint, children }: { label: string; hint?: React.ReactNode; children: React.ReactNode }) {
   return (
@@ -341,6 +342,7 @@ export default function Settings() {
               }}
             />
           </Row>
+          {!isAndroid() && <FirewallRow />}
         </div>
         </Win>
         {relayNote && (

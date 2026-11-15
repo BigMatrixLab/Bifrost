@@ -251,6 +251,15 @@ export async function invoke<T>(cmd: string, _args?: any): Promise<T> {
       .reduce((a: number, j: any) => a + Math.max(0, j.size - j.verifiedBytes), 0);
     return { path: _args?.path || data.bootstrap.settings.downloadDir, free, total: 1863 * GB, reserved } as T;
   }
+  // ?fw=blocked | partial | allowed in the demo URL sets the firewall state.
+  if (cmd === "firewall_status" || cmd === "allow_direct_connections") {
+    if (cmd === "allow_direct_connections") {
+      await new Promise((r) => setTimeout(r, 1200));
+      (window as any).__fw = "allowed";
+    }
+    const fw = (window as any).__fw ?? new URLSearchParams(location.search).get("fw") ?? "partial";
+    return { supported: true, allowed: fw === "allowed", blocked: fw === "blocked" ? 1 : 0, program: "C:\\Users\\Lena\\AppData\\Local\\Bifrost\\Bifrost.exe" } as T;
+  }
   if (cmd === "start_download") {
     const entries: any[] = data.list_remote_dir.entries;
     const at = Date.now();

@@ -16,6 +16,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { ClockTag, Win, pad } from "./glass";
+import { FirewallPrompt } from "./firewall";
 import { AccessRequests, ConnectDialog, Onboarding } from "./dialogs";
 import { FolderPickerHost } from "./android";
 import { noticeText } from "./api";
@@ -254,6 +255,7 @@ export default function App() {
       <AccessRequests />
       <FolderPickerHost />
       {s.ready && <Onboarding />}
+      {s.ready && !phone && <FirewallPrompt />}
 
       <div className="toasts" aria-live="polite">
         {s.toasts.map((t) => (

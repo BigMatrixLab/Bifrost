@@ -448,6 +448,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bifrost-core",
+ "data-encoding",
  "serde",
  "serde_json",
  "tauri",
