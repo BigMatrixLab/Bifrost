@@ -2150,46 +2150,6 @@ main,
   scroll-snap-align: end;
 }
 
-/* ------------------------------------------------------------ overview (hero + live app) */
-.hero2 {
-  display: grid;
-  gap: clamp(24px, 4vh, 40px);
-}
-.hero-head {
-  display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
-  gap: 48px;
-  align-items: end;
-}
-.hero2 h1 {
-  margin-top: 16px;
-  font-size: clamp(38px, 4.6vw, 64px);
-  line-height: 1.02;
-  max-width: 14ch;
-}
-.hero2 .lede {
-  margin: 0;
-  font-size: 17px;
-  max-width: 36em;
-}
-.hero2 .cta-row {
-  margin-top: 22px;
-}
-.hero-stage .band-phone {
-  bottom: -28px;
-}
-.hero-hint {
-  margin: 12px 0 0;
-  color: var(--text-3);
-  font-size: 13.5px;
-}
-@media (max-width: 1080px) {
-  .hero-head {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 28px;
-  }
-}
-
 /* ------------------------------------------------------------ features carousel */
 /* The section is as tall as its pages (one screen each) with a snap stop per
    page, and its view stays pinned while you scroll through it. main.js turns
@@ -2582,10 +2542,6 @@ h2 {
   line-height: 0.98;
 }
 h1 {
-  max-width: 15ch;
-}
-.hero2 h1 {
-  font-size: clamp(42px, 5vw, 72px);
   max-width: 15ch;
 }
 h2 {
@@ -3176,50 +3132,6 @@ thead .us {
   .band-phone,
   .live.band-phone {
     display: none;
-  }
-}
-/* The side-by-side layout needs room for a readable app window. */
-@media (min-width: 1200px) {
-  .hero2 {
-    width: min(1440px, calc(100vw - 2 * var(--rail-space)));
-    grid-template-columns: minmax(440px, 0.8fr) minmax(0, 1.55fr);
-    gap: clamp(36px, 4vw, 64px);
-    align-items: center;
-  }
-  .hero-head {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 26px;
-    align-items: start;
-  }
-  .hero2 h1 {
-    margin-top: 18px;
-    font-size: clamp(44px, 3.9vw, 68px);
-    max-width: 12ch;
-  }
-  .hero2 .lede {
-    font-size: 17px;
-  }
-  .hero2 .cta-row {
-    flex-wrap: nowrap;
-    margin-top: 26px;
-  }
-  .hero2 .cta-row .btn-lg {
-    flex: none;
-    padding: 0 18px;
-    font-size: 14px;
-  }
-  .hero-hint {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .hero-hint::before {
-    content: "";
-    flex: none;
-    width: 7px;
-    height: 7px;
-    background: var(--accent);
-    box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.6);
   }
 }
 
@@ -3936,5 +3848,426 @@ thead .us {
   }
   .doc-intro p {
     font-size: 16px;
+  }
+}
+
+/* ------------------------------------------------------------ hero: the bridge */
+/* The hero is one transfer drawn across the page. A masthead headline runs
+   the full width (its second line set right, so it reads left to right like
+   the data). Under it, the sending device (TX01) sits on the left with the
+   copy, the live app is the receiver (RX01) on the right, and a wire joins
+   them. main.js ("bridge") reads the app's active transfer and draws the
+   wire from the sender's progress bar to the app window at the height of
+   the app's chunk ring; the wire's style follows the real route (solid
+   direct, dashed amber relay, dotted no path) and its packets move only
+   while the app is receiving. */
+
+.hero3 {
+  /* Wide enough for both download buttons on one line from about 1440px. */
+  --tx-w: clamp(320px, 27.4vw, 420px);
+  --gap-x: clamp(56px, 5vw, 96px);
+  position: relative;
+  container-type: inline-size;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "kick"
+    "title"
+    "copy"
+    "tx"
+    "stage"
+    "hint";
+}
+.hero-kicker {
+  grid-area: kick;
+}
+.hero-title {
+  grid-area: title;
+  margin: 14px 0 0;
+  max-width: none;
+  /* Sized to the hero's width so the first line spans most of it. */
+  font-size: clamp(40px, 7.6cqi, 132px);
+  line-height: 0.9;
+  letter-spacing: 0.005em;
+}
+.hero-title > span {
+  display: block;
+}
+.hero-title > span + span {
+  text-align: right;
+  color: var(--text-2);
+}
+.hero-copy {
+  grid-area: copy;
+  margin-top: clamp(24px, 4vh, 44px);
+}
+.hero3 .lede {
+  margin: 0;
+  font-size: 16.5px;
+  line-height: 1.55;
+  max-width: 34em;
+}
+.hero3 .cta-row {
+  margin-top: 22px;
+  gap: 10px;
+}
+.hero3 .cta-row .btn-lg {
+  flex: 1 1 auto;
+  padding: 0 14px;
+  font-size: 13.5px;
+  letter-spacing: 0.1em;
+}
+
+/* ---- the sender */
+.tx {
+  grid-area: tx;
+  margin-top: 28px;
+  display: flex;
+  flex-direction: column;
+}
+.tx-body {
+  display: grid;
+  gap: 12px;
+  padding: 14px 16px 24px;
+}
+.tx-who {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.tx-who .lab {
+  font-size: 11.5px;
+}
+.tx-who .lab span {
+  color: var(--text-2);
+}
+.tx-name {
+  margin-top: 4px;
+  font-family: var(--hud-font);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.tx-file {
+  overflow: hidden;
+  color: var(--text-2);
+  font-size: 14px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/* The app's cell progress bar: white cells are delivered and verified, the
+   leading green cell is the one arriving. */
+.tx-cells {
+  display: grid;
+  grid-template-columns: repeat(32, minmax(0, 1fr));
+  gap: 2px;
+  height: 10px;
+}
+.tx-cells i {
+  background: rgba(var(--ink-rgb), 0.1);
+}
+.tx-cells i.v {
+  background: var(--text);
+}
+.tx-cells i.f {
+  background: var(--accent);
+  box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.6);
+}
+[data-bridge][data-state="paused"] .tx-cells i.v {
+  background: rgba(var(--ink-rgb), 0.5);
+}
+.tx-kv,
+.tx-proof {
+  margin: 0;
+}
+.tx-kv {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.tx-kv div,
+.tx-proof div {
+  min-width: 0;
+}
+.tx dt.lab {
+  display: block;
+  font-size: 11px;
+}
+.tx dd {
+  margin: 0;
+}
+.tx-kv dd {
+  margin-top: 2px;
+  font-size: 22px;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.tx-proof {
+  display: grid;
+  border-top: 1px solid rgba(var(--ink-rgb), 0.08);
+}
+.tx-proof div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(var(--ink-rgb), 0.08);
+}
+.tx-proof div:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.tx-proof dd {
+  font-family: var(--hud-font);
+  font-size: 15.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.tx-proof dd.num {
+  font-family: var(--hud-mono);
+  font-size: 14.5px;
+}
+.tx .gw-meta {
+  font-size: 15px;
+}
+[data-bridge][data-state="moving"] .tx .gw-meta {
+  color: var(--accent);
+  text-shadow: 0 0 12px rgba(var(--accent-rgb), 0.5);
+}
+[data-bridge][data-state="paused"] .tx .gw-meta,
+[data-bridge][data-route="relay"] [data-b-route] {
+  color: var(--warn);
+}
+
+/* ---- the receiver */
+.hero-stage {
+  grid-area: stage;
+  min-width: 0;
+  margin-top: 64px;
+}
+.hero-stage .band-desktop {
+  margin: 0;
+}
+.hero3 .hero-hint {
+  grid-area: hint;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 0;
+  color: var(--text-3);
+  font-size: 13.5px;
+}
+.hero3 .hero-hint::before {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  background: var(--accent);
+  box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.6);
+}
+
+/* ---- the wire */
+.bridge-wire {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 8;
+  fill: none;
+}
+.bridge-wire:not(.on),
+.bw-tag:not(.on) {
+  visibility: hidden;
+}
+.bw-base {
+  stroke: rgba(var(--ink-rgb), 0.6);
+  stroke-width: 1.5;
+}
+[data-bridge][data-route="relay"] .bw-base {
+  stroke: var(--warn);
+  stroke-dasharray: 6 5;
+}
+[data-bridge][data-route="none"] .bw-base {
+  stroke: rgba(var(--ink-rgb), 0.35);
+  stroke-dasharray: 0.1 6;
+  stroke-linecap: round;
+  stroke-width: 2;
+}
+/* Packets: short green dashes running toward the receiver while data flows. */
+.bw-pkt {
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-dasharray: 12 52;
+  filter: drop-shadow(0 0 4px rgba(var(--accent-rgb), 0.8));
+  opacity: 0;
+  transition: opacity 0.3s;
+  animation: bw-flow 0.8s linear infinite;
+}
+[data-bridge][data-state="moving"]:not([data-route="none"]) .bw-pkt {
+  opacity: 1;
+}
+@keyframes bw-flow {
+  from {
+    stroke-dashoffset: 64;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.bw-node {
+  fill: var(--bg);
+  stroke: rgba(var(--ink-rgb), 0.85);
+  stroke-width: 1.5;
+}
+[data-bridge][data-state="moving"] .bw-node.b {
+  fill: var(--accent);
+  stroke: var(--accent);
+}
+.bw-tag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 9;
+  height: 18px;
+  padding: 0 7px;
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg);
+  border: 1px solid rgba(var(--ink-rgb), 0.22);
+  color: var(--text-2);
+  font-family: var(--hud-font);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+[data-bridge][data-state="moving"] .bw-tag {
+  color: var(--accent);
+  border-color: rgba(var(--accent-rgb), 0.55);
+}
+[data-bridge][data-route="relay"] .bw-tag {
+  color: var(--warn);
+  border-color: rgba(var(--warn-rgb), 0.55);
+}
+
+/* Tablets: the sender lays out in a row above the app; the wire drops
+   straight down from it into the window. */
+@media (min-width: 641px) and (max-width: 1199px) {
+  .hero-copy {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: 32px;
+    align-items: end;
+  }
+  .hero3 .cta-row {
+    margin-top: 0;
+  }
+  .tx-body {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 28px;
+    align-items: start;
+  }
+  .tx-cells,
+  .tx-kv {
+    grid-column: 1;
+  }
+  .tx-proof {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    border-top: 0;
+  }
+}
+
+/* PC: copy and sender in a column on the left, the app on the right, and
+   the wire across the gap between them. */
+@media (min-width: 1200px) {
+  .hero3 {
+    width: min(1560px, calc(100vw - 2 * var(--rail-space)));
+    grid-template-columns: var(--tx-w) var(--gap-x) minmax(0, 1fr);
+    grid-template-rows: auto auto auto 1fr auto;
+    grid-template-areas:
+      "kick  kick  kick"
+      "title title title"
+      "copy  .     stage"
+      "tx    .     stage"
+      ".     .     hint";
+  }
+  .hero-copy {
+    margin-top: clamp(28px, 4.5vh, 52px);
+  }
+  .hero-stage {
+    margin-top: clamp(28px, 4.5vh, 52px);
+  }
+  .tx {
+    align-self: end;
+  }
+}
+/* Narrower PCs: the app window is shorter than the copy and the full sender,
+   so the sender drops its proof rows (the app beside it shows the same
+   route, encryption and "Stored on servers"). */
+@media (min-width: 1200px) and (max-width: 1439px) {
+  .tx-proof {
+    display: none;
+  }
+  /* Both download buttons still fit on one line from about 1280px. */
+  .hero3 .cta-row .btn-lg {
+    height: 46px;
+    padding: 0 12px;
+    font-size: 12.5px;
+    letter-spacing: 0.08em;
+  }
+}
+
+/* Phones: one column, the phone layout of the app under the sender. */
+@media (max-width: 640px) {
+  .hero-title {
+    font-size: clamp(26px, 9.6cqi, 60px);
+    line-height: 0.95;
+  }
+  .hero-title > span + span {
+    text-align: left;
+  }
+  .hero3 .cta-row .btn-lg {
+    flex: 1 1 100%;
+  }
+  .hero-stage {
+    margin-top: 56px;
+  }
+  .tx-kv dd {
+    font-size: 20px;
+  }
+}
+/* Phones: the app frame takes no input, so there is no Pause to press. */
+@media (max-width: 760px) {
+  .hero3 .hero-hint {
+    display: none;
+  }
+}
+
+/* The wire is laid last, once the windows at both ends have risen in. */
+@media (prefers-reduced-motion: no-preference) {
+  .js .screen .bridge-wire,
+  .js .screen .bw-tag {
+    transition: opacity 0.5s ease 0.7s;
+  }
+  .js .screen:not(.in) .bridge-wire,
+  .js .screen:not(.in) .bw-tag {
+    opacity: 0;
+    transition: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Packets hold still, as in the app. */
+  .bw-pkt {
+    animation: none;
   }
 }

@@ -245,6 +245,145 @@
     requestAnimationFrame(tick);
   }
 
+  // ------------------------------------------------------------------ bridge
+  // The hero draws one transfer across the page: the sending device (TX01),
+  // the live app as the receiver, and the wire between them. Everything on
+  // the sender and the wire is read from the app's own active transfer in the
+  // hero frame (same origin, see live.js), so it is the app's real state:
+  // Pause in the app and the packets stop here; a relayed route turns the
+  // wire amber and dashed. While the app shows another page, the last
+  // reading stays. Without the live app (no JavaScript, no demo build) the
+  // sender shows its names only.
+  const bridge = $("[data-bridge]");
+  if (bridge) {
+    const fig = $(".band-desktop", bridge);
+    const screen = $(".live-screen", fig);
+    const tx = $(".tx", bridge);
+    const cellsEl = $("[data-b-cells]", bridge);
+    const svg = $("[data-wire]", bridge);
+    const paths = $$("[data-wire-path]", bridge);
+    const [nodeA, nodeB] = $$(".bw-node", bridge);
+    const tag = $("[data-wire-tag]", bridge);
+    const out = {};
+    for (const k of ["state", "local", "peer", "file", "pct", "speed", "route"]) out[k] = $(`[data-b-${k}]`, bridge);
+    const ROUTE = { direct: "Direct", relay: "Relay", none: "No path" };
+    const CELLS = 32;
+    const cells = Array.from({ length: CELLS }, () => cellsEl.appendChild(document.createElement("i")));
+    let cellsKey = -1;
+    const paintCells = (v, moving) => {
+      const n = Math.max(0, Math.min(CELLS, Math.floor(v * CELLS)));
+      const key = n * 2 + (moving ? 1 : 0);
+      if (key === cellsKey) return;
+      cellsKey = key;
+      cells.forEach((c, i) => (c.className = i < n ? "v" : i === n && moving ? "f" : ""));
+    };
+    const set = (el, text) => {
+      if (!el || text == null) return;
+      text = text.replace(/\s+/g, " ").trim();
+      if (text && el.textContent !== text) el.textContent = text;
+    };
+    // The ring's centre as a share of the app's height: where the wire enters.
+    let ringY = 0.42;
+
+    const read = () => {
+      if (!fig.classList.contains("live-on")) return;
+      let doc = null;
+      try {
+        doc = fig.querySelector("iframe")?.contentDocument;
+      } catch {
+        return;
+      }
+      const focus = doc?.querySelector(".focus");
+      if (!focus) return;
+      const line = focus.querySelector(".link-line");
+      const route = line?.classList.contains("link-direct") ? "direct" : line?.classList.contains("link-relay") ? "relay" : "none";
+      const moving = !!line?.classList.contains("moving");
+      const status = focus.querySelector(".focus-status")?.textContent ?? "";
+      const state = moving ? "moving" : /paused/i.test(status) ? "paused" : "waiting";
+      if (bridge.dataset.route !== route) bridge.dataset.route = route;
+      if (bridge.dataset.state !== state) bridge.dataset.state = state;
+      set(out.state, state === "moving" ? "Sending" : state === "paused" ? "Paused" : "Waiting");
+      set(out.peer, focus.querySelector(".ll-end.right .truncate")?.textContent);
+      set(out.local, focus.querySelector(".ll-end:not(.right) .truncate")?.textContent);
+      set(out.file, focus.querySelector(".focus-name")?.textContent);
+      const pct = (focus.querySelector(".ring-pct")?.textContent ?? "").replace(/\s+/g, "");
+      set(out.pct, pct);
+      const speedDt = [...focus.querySelectorAll(".focus-kv dt")].find((d) => /speed/i.test(d.textContent));
+      set(out.speed, speedDt?.nextElementSibling?.textContent);
+      set(out.route, ROUTE[route]);
+      set(tag, state === "paused" ? `${ROUTE[route]} · Paused` : ROUTE[route]);
+      paintCells((parseFloat(pct) || 0) / 100, moving);
+      const ring = focus.querySelector(".ring")?.getBoundingClientRect();
+      const h = doc.defaultView?.innerHeight;
+      if (ring && ring.height && h) ringY = Math.min(0.9, Math.max(0.1, (ring.top + ring.height / 2) / h));
+    };
+
+    let lastD = "";
+    const draw = () => {
+      if (!tx.getClientRects().length || !fig.getClientRects().length) return;
+      const box = bridge.getBoundingClientRect();
+      const k = box.width / bridge.offsetWidth || 1; // the screen's fit scale
+      const P = (x, y) => [Math.round(((x - box.left) / k) * 2) / 2, Math.round(((y - box.top) / k) * 2) / 2];
+      const t = tx.getBoundingClientRect();
+      const f = fig.getBoundingClientRect();
+      const s = screen.getBoundingClientRect();
+      const c = cellsEl.getBoundingClientRect();
+      let a, b, d, mid;
+      if (f.left >= t.right - 1) {
+        // Side by side: out of the sender's progress bar, into the window at the ring.
+        a = P(t.right, c.top + c.height / 2);
+        b = P(f.left, s.top + s.height * ringY);
+        const dx = b[0] - a[0];
+        const dy = b[1] - a[1];
+        const xm = Math.round(a[0] + dx / 2);
+        if (Math.abs(dy) < 2) {
+          d = `M${a[0]} ${a[1]}H${b[0]}`;
+          mid = [xm, a[1]];
+        } else {
+          const r = Math.min(14, Math.abs(dy) / 2, dx / 4);
+          const sy = Math.sign(dy);
+          d = `M${a[0]} ${a[1]}H${xm - r}L${xm} ${a[1] + sy * r}V${b[1] - sy * r}L${xm + r} ${b[1]}H${b[0]}`;
+          mid = [xm, (a[1] + b[1]) / 2];
+        }
+      } else {
+        // Stacked: straight down from the sender into the top of the window.
+        const x = Math.min(Math.max(f.left + f.width / 2, t.left + 24), t.right - 24);
+        a = P(x, t.bottom);
+        b = P(x, f.top);
+        d = `M${a[0]} ${a[1]}V${b[1]}`;
+        mid = [a[0], (a[1] + b[1]) / 2];
+      }
+      if (d !== lastD) {
+        lastD = d;
+        paths.forEach((p) => p.setAttribute("d", d));
+        nodeA.setAttribute("x", a[0] - 4.5);
+        nodeA.setAttribute("y", a[1] - 4.5);
+        nodeB.setAttribute("x", b[0] - 4.5);
+        nodeB.setAttribute("y", b[1] - 4.5);
+        tag.style.left = `${mid[0]}px`;
+        tag.style.top = `${mid[1]}px`;
+      }
+      svg.classList.add("on");
+      tag.classList.add("on");
+    };
+
+    const tick = () => {
+      read();
+      draw();
+    };
+    let poll = 0;
+    new IntersectionObserver((entries) => {
+      const on = entries.some((e) => e.isIntersecting);
+      clearInterval(poll);
+      if (on) {
+        tick();
+        poll = setInterval(tick, 250);
+      }
+    }).observe(bridge);
+    new ResizeObserver(() => requestAnimationFrame(draw)).observe(bridge);
+    draw();
+  }
+
   // ------------------------------------------------------------------ screens
   // Each .screen, and each carousel page (.slide), is one viewport tall.
   // Content taller than the viewport is scaled down to fit (never below
