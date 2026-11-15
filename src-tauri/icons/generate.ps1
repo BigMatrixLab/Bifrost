@@ -2,6 +2,7 @@
 # bifrost-mark.py, which draws the cube mark):
 #   app-icon.svg            the Bifrost cube mark on a transparent background
 #   app-icon-small.svg      the same mark with thicker strokes, for 16 to 48 px
+#   app-icon-macos.svg      the mark on a dark rounded plate, for icon.icns (macOS)
 #   android-foreground.svg  the mark inside the safe zone, for Android's adaptive icon
 # Run from the repository root:  powershell -File src-tauri/icons/generate.ps1
 # Then rebuild the app (build.rs re-embeds icon.ico when this folder changes).
@@ -16,13 +17,16 @@ try {
   npx --no-install tauri icon src-tauri/icons/icon-manifest.json -o "$tmp\full" | Out-Null
   # Small sizes from the simplified mark.
   npx --no-install tauri icon src-tauri/icons/app-icon-small.svg -p 16,24,32,48 -o "$tmp\small" | Out-Null
+  # macOS: the mark on its dark plate (macOS puts bare marks on a white tile).
+  npx --no-install tauri icon src-tauri/icons/app-icon-macos.svg -o "$tmp\mac" | Out-Null
 } finally {
   Pop-Location
 }
 
-foreach ($f in "128x128.png", "128x128@2x.png", "icon.icns", "icon.png") {
+foreach ($f in "128x128.png", "128x128@2x.png", "icon.png") {
   Copy-Item "$tmp\full\$f" (Join-Path $icons $f) -Force
 }
+Copy-Item "$tmp\mac\icon.icns" (Join-Path $icons "icon.icns") -Force
 Copy-Item "$tmp\small\32x32.png" (Join-Path $icons "32x32.png") -Force
 
 # Android launcher icons. The adaptive icon keeps its existing XML, whose

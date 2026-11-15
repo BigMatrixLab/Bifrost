@@ -55,6 +55,16 @@ if __name__ == "__main__":
         "  <!-- App icon: the Bifrost cube mark on a transparent background. -->\n"
         f'  <svg x="40" y="40" width="944" height="944" viewBox="0 0 100 100">{mark()}</svg>\n</svg>\n'
     )
+    # macOS icon: macOS puts icons that don't fill Apple's rounded-square grid
+    # on a white tile, so this one brings its own dark plate (the app's
+    # background, a faint green edge): 824 px body inset 100 px, radius 185.
+    open(os.path.join(here, "app-icon-macos.svg"), "w", newline="\n").write(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">\n'
+        "  <!-- macOS app icon: the cube mark on the app's dark plate, on Apple's icon grid. -->\n"
+        '  <rect x="100" y="100" width="824" height="824" rx="185" fill="#121212"/>\n'
+        '  <rect x="106" y="106" width="812" height="812" rx="179" fill="none" stroke="#4ade80" stroke-opacity="0.18" stroke-width="12"/>\n'
+        f'  <svg x="232" y="232" width="560" height="560" viewBox="0 0 100 100">{mark()}</svg>\n</svg>\n'
+    )
     open(os.path.join(here, "app-icon-small.svg"), "w", newline="\n").write(
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="256" height="256">\n'
         "  <!-- App icon for 16 to 48 px (taskbar, title bar, tray, Explorer): the cube\n"
