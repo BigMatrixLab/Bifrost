@@ -123,9 +123,13 @@ body {
   background: var(--accent);
   box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.7);
 }
+/* On the pale plate: dark numbers with no outline; the red count stays white. */
 .nav-item.active .nav-count {
   color: var(--plate-ink);
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+  box-shadow: none;
+}
+.nav-item.active .nav-count.alert {
+  color: #fff;
 }
 .nav-item.alert:not(.active) {
   border-color: rgba(var(--band-rgb), 0.5);
@@ -135,6 +139,10 @@ body {
   font-family: var(--hud-mono);
   font-size: 11px;
 }
+/* Live counts are green text only, without the outlined box. */
+.nav-count.hot {
+  box-shadow: none;
+}
 .nav-count.alert {
   background: var(--band);
   color: #fff;
@@ -142,8 +150,14 @@ body {
 
 /* Sidebar blocks become small windows */
 .side-win {
-  margin: 18px 12px 0;
+  margin: 18px 12px 16px;
   flex-shrink: 0;
+}
+/* The calendar sits straight in the window: no inset body box around it. */
+.side-win .gw-body {
+  border: 0;
+  background: transparent;
+  margin: 6px 10px 12px;
 }
 .side-win .mini-cal {
   margin: 0;
@@ -251,12 +265,6 @@ body {
   letter-spacing: 0.04em;
   background: var(--plate);
   color: var(--plate-ink);
-}
-.gx-title-hatch {
-  flex: 0 1 160px;
-  min-width: 20px;
-  height: 12px;
-  background: repeating-linear-gradient(-48deg, rgba(var(--ink-rgb), 0.16) 0 2px, transparent 2px 7px);
 }
 .topbar-actions {
   margin-left: auto;
@@ -366,10 +374,8 @@ section.gw,
 .modal {
   --cut: 12px;
   --c: var(--cut);
-  --gw-shape: polygon(
-    var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%,
-    var(--c) 100%, 0 calc(100% - var(--c)), 0 var(--c)
-  );
+  /* Only the bottom-left corner is cut. */
+  --gw-shape: polygon(0 0, 100% 0, 100% 100%, var(--c) 100%, 0 calc(100% - var(--c)));
 }
 section.gw {
   --tn: transparent;
@@ -419,20 +425,18 @@ section.gw {
 .gw-line .ol-outer {
   stroke-width: 1;
 }
-.gw-line .ol-inner {
-  stroke: rgba(var(--ink-rgb), 0.085);
-  stroke-width: 1;
-}
 .gw-line .ol-hot {
   stroke: var(--accent);
   stroke-width: 2;
   filter: drop-shadow(0 0 2px rgba(var(--accent-rgb), 0.6));
 }
-/* Header and other full-width rows follow the top-left cut too. */
-section.gw > .gw-head,
-.modal > .gw-head {
-  clip-path: polygon(var(--c) 0, 100% 0, 100% 100%, 0 100%, 0 var(--c));
+/* The bottom segment underlines the window code, so it takes the code's
+   colour: red on alert windows (.gw-err .gw-win b), green otherwise. */
+section.gw.gw-err .gw-line .ol-ul {
+  stroke: var(--band);
+  filter: drop-shadow(0 0 2px rgba(var(--band-rgb), 0.6));
 }
+
 /* Windows without a foot keep the body clear of the bottom cuts. */
 section.gw.bare > .gw-body {
   margin-bottom: 10px;
@@ -442,26 +446,19 @@ section.gw.gw-warn { --tn: var(--warn); }
 section.gw.gw-err { --tn: var(--band); }
 section.gw.gw-off { --tn: rgba(var(--ink-rgb), 0.35); }
 
-/* Traffic-light mark outside the lower left edge */
-section.gw::before {
-  content: "";
-  position: absolute;
-  left: -8px;
-  bottom: 22px;
-  width: 3px;
-  height: 18px;
-  background: var(--tn);
-  box-shadow: 0 0 8px var(--tn);
-}
+
 /* The bright bar along the top edge, from the cut to about half way, as on
    the reference's header */
-section.gw::after {
+/* Exactly as wide as the title plate: drawn on the plate's own top edge. */
+.gw-plate {
+  position: relative;
+}
+.gw-plate::before {
   content: "";
   position: absolute;
-  z-index: 4;
-  left: var(--cut);
+  left: 0;
+  right: 0;
   top: 0;
-  width: min(46%, 260px);
   height: 2px;
   background: rgba(var(--ink-rgb), 0.55);
   pointer-events: none;
@@ -756,11 +753,9 @@ section.gw::after {
   font-family: var(--hud-mono);
   font-weight: 400;
   color: var(--accent);
-  box-shadow: inset 0 -2px 0 var(--accent);
 }
 .gw-err .gw-win b {
   color: var(--band);
-  box-shadow: inset 0 -2px 0 var(--band);
 }
 .gw-foot-text {
   flex: 1;

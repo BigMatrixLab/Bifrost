@@ -213,7 +213,6 @@ export default function App() {
             <div className="gx-title" aria-hidden="true">
               <b className="num">{pad(current.idx)}</b>
               <span className="truncate">{current.label}</span>
-              <i className="gx-title-hatch" />
             </div>
           )}
           <div className="topbar-actions">

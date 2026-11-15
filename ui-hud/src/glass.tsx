@@ -131,52 +131,75 @@ const SLANT = Math.SQRT2 - 1;
  */
 export function Outline() {
   const box = useRef<HTMLSpanElement>(null);
-  const [size, setSize] = useState<{ w: number; h: number; head: number } | null>(null);
+  const [size, setSize] = useState<{
+    w: number;
+    h: number;
+    head: number;
+    ul: [number, number] | null;
+    sub: [number, number] | null;
+  } | null>(null);
   const gid = useId();
   useLayoutEffect(() => {
     const el = box.current;
     if (!el) return;
+    const measure = (sync: boolean) => {
+      const r = el.getBoundingClientRect();
+      const w = el.clientWidth;
+      const h = el.clientHeight;
+      const card = el.parentElement;
+      // The breaks follow the window's own header (34px, 26px in the sidebar).
+      const head = card?.querySelector<HTMLElement>(":scope > .gw-head")?.offsetHeight || 34;
+      // The bottom segment underlines the foot's window code ("WIN FN01").
+      const code = card?.querySelector<HTMLElement>(":scope > .gw-foot .gw-win b")?.getBoundingClientRect();
+      const ul: [number, number] | null = code && code.width > 0 ? [code.left - r.left, code.right - r.left] : null;
+      // The right-edge bar runs beside the secondary bar; none without one.
+      const subEl = card?.querySelector<HTMLElement>(":scope > .gw-sub")?.getBoundingClientRect();
+      const sub: [number, number] | null = subEl && subEl.height > 0 ? [subEl.top - r.top, subEl.bottom - r.top] : null;
+      const same = (a: [number, number] | null, b: [number, number] | null) => a?.[0] === b?.[0] && a?.[1] === b?.[1];
+      const next = (s: typeof size) =>
+        s && Math.abs(s.w - w) < 0.25 && Math.abs(s.h - h) < 0.25 && s.head === head && same(s.ul, ul) && same(s.sub, sub)
+          ? s
+          : { w, h, head, ul, sub };
+      if (sync) flushSync(() => setSize(next));
+      else setSize(next);
+    };
     // Resize callbacks run after layout and before paint; flushSync redraws
     // in that same frame, so the outline never lags the window by a frame.
-    const ro = new ResizeObserver(([e]) => {
-      const { width: w, height: h } = e.contentRect;
-      // The breaks follow the window's own header (34px, 26px in the sidebar).
-      const head = el.parentElement?.querySelector<HTMLElement>(":scope > .gw-head")?.offsetHeight || 34;
-      flushSync(() =>
-        setSize((s) => (s && Math.abs(s.w - w) < 0.25 && Math.abs(s.h - h) < 0.25 && s.head === head ? s : { w, h, head })),
-      );
-    });
+    const ro = new ResizeObserver(() => measure(true));
     ro.observe(el);
-    return () => ro.disconnect();
+    // Web fonts change the code's width without resizing the window.
+    let live = true;
+    document.fonts?.ready.then(() => live && measure(false));
+    return () => {
+      live = false;
+      ro.disconnect();
+    };
   }, []);
 
-  let paths: { outer: string; inner: string; hot: string } | null = null;
+  let paths: { outer: string; hot: string; bar: string } | null = null;
   if (size && size.w > 80 && size.h > 60) {
     const { w, h } = size;
     const o = 0.5; // outer line centre
     const k = CUT + o * SLANT;
-    const d = 3.5; // inner line centre
-    const ki = CUT + d * SLANT;
-    const headH = size.head; // the inner line starts under the header
-    // Bottom-left break: border stub, gap, green segment, gap, border.
+    // Bottom-left break: border, gap, green segment, gap, border. The
+    // segment sits under the window code and is exactly as wide.
     const GAP = 5;
-    const bx1 = k + 10;
-    const gx1 = bx1 + GAP;
-    const gx2 = gx1 + 44;
+    const [gx1, gx2] = size.ul && size.ul[0] - GAP > k ? size.ul : [k + 10 + GAP, k + 10 + GAP + 44];
+    const bx1 = gx1 - GAP;
     const bx2 = gx2 + GAP;
-    // Right-edge break beside the sub bar: the segment sits in the 8px gap
-    // between the header and the sub bar and ends on the right border.
-    const tr = h > 120 ? { a: headH - 3, y: headH + 4, b: headH + 12, len: 26 } : null;
+    // Right-edge break beside the sub bar: a 6px vertical bar as tall as the
+    // sub bar, flush with the right edge, with a gap above and below.
+    const BAR = 2;
+    const tr = size.sub ? { a: size.sub[0] - GAP, b: size.sub[1] + GAP, y1: size.sub[0], y2: size.sub[1] } : null;
 
+    // Only the bottom-left corner is cut; the other three are square.
     const outer = tr
-      ? `M${bx2} ${h - o}L${w - k} ${h - o}L${w - o} ${h - k}L${w - o} ${tr.b}` +
-        `M${w - o} ${tr.a}L${w - o} ${o}L${k} ${o}L${o} ${k}L${o} ${h - k}L${k} ${h - o}L${bx1} ${h - o}`
-      : `M${bx2} ${h - o}L${w - k} ${h - o}L${w - o} ${h - k}L${w - o} ${o}L${k} ${o}L${o} ${k}L${o} ${h - k}L${k} ${h - o}L${bx1} ${h - o}`;
-    const inner =
-      `M${d} ${headH}L${d} ${h - ki}L${ki} ${h - d}L${bx1} ${h - d}` +
-      `M${bx2} ${h - d}L${w - ki} ${h - d}L${w - d} ${h - ki}L${w - d} ${tr ? tr.b : headH}`;
-    const hot = `M${gx1} ${h - 1}L${gx2} ${h - 1}` + (tr ? `M${w - tr.len} ${tr.y}L${w} ${tr.y}` : "");
-    paths = { outer, inner, hot };
+      ? `M${bx2} ${h - o}L${w - o} ${h - o}L${w - o} ${tr.b}` +
+        `M${w - o} ${tr.a}L${w - o} ${o}L${o} ${o}L${o} ${h - k}L${k} ${h - o}L${bx1} ${h - o}`
+      : `M${bx2} ${h - o}L${w - o} ${h - o}L${w - o} ${o}L${o} ${o}L${o} ${h - k}L${k} ${h - o}L${bx1} ${h - o}`;
+    const hot = `M${gx1} ${h - 1}L${gx2} ${h - 1}`;
+    const bar = tr ? `M${w - BAR / 2} ${tr.y1}L${w - BAR / 2} ${tr.y2}` : "";
+    paths = { outer, hot, bar };
   }
 
   return (
@@ -193,9 +216,9 @@ export function Outline() {
               <stop offset="1" stopColor="#fff" stopOpacity="0.26" />
             </linearGradient>
           </defs>
-          <path className="ol-inner" d={paths.inner} />
           <path className="ol-outer" d={paths.outer} stroke={`url(#${gid}-m)`} />
-          <path className="ol-hot" d={paths.hot} />
+          <path className="ol-hot ol-ul" d={paths.hot} />
+          {paths.bar && <path className="ol-hot ol-bar" d={paths.bar} />}
         </svg>
       )}
     </span>
