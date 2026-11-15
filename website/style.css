@@ -545,7 +545,7 @@ p a,
 .rail-mark.on {
   opacity: 1;
 }
-.rail-mark.slide {
+.rail-mark.glide {
   transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s;
 }
 .rail-foot {
@@ -2175,10 +2175,6 @@ main,
 .hero2 .cta-row {
   margin-top: 22px;
 }
-.hero2 .fineprint {
-  margin-top: 14px;
-  font-size: 13.5px;
-}
 .hero-stage .band-phone {
   bottom: -28px;
 }
@@ -2428,5 +2424,1517 @@ main,
     opacity: 0;
     transform: translateY(18px);
     filter: blur(6px);
+  }
+}
+
+/* =====================================================================
+   HUD BUILD
+   The app's current look (src/glass.css over src/styles.css), at website
+   scale: one dark palette, Rajdhani for labels, titles and controls, Share
+   Tech Mono for figures, and every panel drawn as a window: a grey code
+   plate with the title, hatching, a readout and an X, a glass body with
+   only the bottom-left corner cut, a hairline outline and a short green
+   segment on the bottom edge. Loaded last; it restyles everything above.
+   ===================================================================== */
+
+@font-face {
+  font-family: "Rajdhani";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(assets/fonts/rajdhani-latin-400-normal.woff2) format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Rajdhani";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url(assets/fonts/rajdhani-latin-500-normal.woff2) format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Rajdhani";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url(assets/fonts/rajdhani-latin-600-normal.woff2) format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Rajdhani";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url(assets/fonts/rajdhani-latin-700-normal.woff2) format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Rajdhani";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(assets/fonts/rajdhani-latin-ext-400-normal.woff2) format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF,
+    U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Rajdhani";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url(assets/fonts/rajdhani-latin-ext-500-normal.woff2) format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF,
+    U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Rajdhani";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url(assets/fonts/rajdhani-latin-ext-600-normal.woff2) format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF,
+    U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Rajdhani";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url(assets/fonts/rajdhani-latin-ext-700-normal.woff2) format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF,
+    U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Share Tech Mono";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(assets/fonts/share-tech-mono-latin-400-normal.woff2) format("woff2");
+}
+
+/* ------------------------------------------------------------ tokens */
+
+:root,
+:root[data-theme] {
+  --hud-font: "Rajdhani", "Space Grotesk Variable", "Segoe UI", system-ui, sans-serif;
+  --hud-mono: "Share Tech Mono", ui-monospace, Consolas, monospace;
+  --plate: #d9d9d9;
+  --plate-ink: #0b0b0d;
+  --head: rgba(58, 58, 64, 0.88);
+  --key: rgba(var(--ink-rgb), 0.07);
+  --band: #e5484d;
+  --band-rgb: 229, 72, 77;
+  --glass: rgba(16, 16, 19, 0.62);
+  /* Window outline tone and corner cut; keep --cut equal to the app's (12px). */
+  --ol: rgba(255, 255, 255, 0.3);
+  --cut: 12px;
+  --code-bg: rgba(0, 0, 0, 0.35);
+}
+
+/* ------------------------------------------------------------ ground */
+/* Diagonal light bands and "+" marks, as in the app, kept faint so the
+   windows stay the brightest things on the page. */
+body {
+  background-color: var(--bg);
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cpath d='M70 64v12M64 70h12' stroke='%23ffffff' stroke-opacity='.07'/%3E%3C/svg%3E"),
+    repeating-linear-gradient(-52deg, rgba(255, 255, 255, 0.022) 0 72px, transparent 72px 168px),
+    radial-gradient(55% 45% at 32% 22%, rgba(var(--accent-rgb), 0.045), transparent 70%),
+    radial-gradient(45% 40% at 85% 85%, rgba(255, 255, 255, 0.03), transparent 70%);
+  background-repeat: repeat;
+  background-attachment: fixed;
+}
+.hero::before {
+  display: none;
+}
+.sb i {
+  width: 6px;
+  background: rgba(var(--ink-rgb), 0.28);
+}
+
+/* ------------------------------------------------------------ type */
+
+h1,
+h2,
+h3,
+.brand,
+.lab,
+.btn,
+.tag,
+.rail-label,
+.dl-name,
+thead th,
+.car-dashes button,
+.ll-end,
+.ll-tag {
+  font-family: var(--hud-font);
+}
+h1,
+h2 {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  line-height: 0.98;
+}
+h1 {
+  max-width: 15ch;
+}
+.hero2 h1 {
+  font-size: clamp(42px, 5vw, 72px);
+  max-width: 15ch;
+}
+h2 {
+  font-size: clamp(34px, 4.2vw, 54px);
+  max-width: 18ch;
+}
+.feature h2 {
+  font-size: clamp(32px, 3.5vw, 48px);
+}
+h3 {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.lab {
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+}
+.rs-row .lab,
+.facts dt,
+.demo-receipt dt {
+  font-size: 11.5px;
+}
+.num,
+.code-chip,
+.words i,
+.car-count,
+.demo-log time {
+  font-family: var(--hud-mono);
+  font-weight: 400;
+}
+.rs-v {
+  font-family: var(--hud-font);
+  font-size: 17px;
+  font-weight: 600;
+}
+.rs-v.num {
+  font-family: var(--hud-mono);
+  font-size: 15px;
+}
+.rs-title strong {
+  font-family: var(--hud-font);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* Section index: the app's page-number plate (pale, dark mono figure). */
+.idx {
+  min-width: 30px;
+  height: 22px;
+  padding: 0 5px;
+  border: 0;
+  background: var(--plate);
+  color: var(--plate-ink);
+  font-family: var(--hud-mono);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+/* A hatched rule runs on from each section label, like the app's section heads. */
+.section .wrap > .lab,
+.receipt-copy > .lab,
+.words-section > div:last-child > .lab,
+.oss .lab,
+.faq .lab {
+  display: flex;
+  max-width: 520px;
+}
+.section .wrap > .lab::after,
+.receipt-copy > .lab::after,
+.words-section > div:last-child > .lab::after,
+.oss .lab::after,
+.faq .lab::after {
+  content: "";
+  flex: 1;
+  height: 10px;
+  min-width: 20px;
+  background: repeating-linear-gradient(-48deg, rgba(var(--ink-rgb), 0.12) 0 2px, transparent 2px 7px);
+}
+
+/* ------------------------------------------------------------ chips and keys */
+
+.tag {
+  height: 18px;
+  padding: 0 8px;
+  border: 0;
+  background: rgba(var(--ink-rgb), 0.12);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+.tag-ok,
+.dl.recommended .tag {
+  border: 0;
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.tag-warn {
+  border: 0;
+  background: var(--warn);
+  color: #1c1305;
+}
+
+.btn {
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+.btn-sm {
+  font-size: 12px;
+}
+.btn-md {
+  font-size: 13.5px;
+}
+.btn-lg {
+  font-size: 15px;
+}
+.btn-primary {
+  border: 1px solid var(--accent);
+}
+.btn-secondary,
+.btn-ghost {
+  background-image: none;
+  background-color: var(--key);
+  border: 1px solid rgba(var(--ink-rgb), 0.16);
+  color: var(--text);
+}
+.btn-ghost {
+  color: var(--text-2);
+}
+.btn-secondary:hover:not(:disabled),
+.btn-ghost:hover:not(:disabled) {
+  background-color: rgba(var(--ink-rgb), 0.16);
+  border-color: rgba(var(--ink-rgb), 0.3);
+  color: var(--text);
+}
+.icon-btn {
+  border: 1px solid rgba(var(--ink-rgb), 0.16);
+  background: var(--key);
+}
+.icon-btn:hover {
+  border-color: rgba(var(--ink-rgb), 0.3);
+  background: rgba(var(--ink-rgb), 0.16);
+}
+
+/* ------------------------------------------------------------ window */
+/* Every panel (but the rail) is a window: glass clipped to the window shape
+   (bottom-left corner cut), and an outline drawn on ::after with the cut as
+   a diagonal and a green segment on the bottom edge. The segment grows in
+   with the arrival animation (--mk). */
+
+.panel:not(.rail) {
+  position: relative;
+  isolation: isolate;
+  border: 0;
+  background-color: var(--glass);
+  background-image: none;
+  -webkit-backdrop-filter: blur(8px) saturate(1.2);
+  backdrop-filter: blur(8px) saturate(1.2);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, var(--cut) 100%, 0 calc(100% - var(--cut)));
+}
+.panel:not(.rail)::after {
+  --seg: calc(44px * var(--mk));
+  --hot: var(--accent);
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  pointer-events: none;
+  background:
+    /* top, with a brighter run from the left like the app's brushed edge */
+    linear-gradient(90deg, rgba(255, 255, 255, 0.5), var(--ol) 40%) left top / 100% 1px no-repeat,
+    /* right */
+    linear-gradient(var(--ol), var(--ol)) right top / 1px 100% no-repeat,
+    /* left, down to the cut */
+    linear-gradient(var(--ol), var(--ol)) left top / 1px calc(100% - var(--cut)) no-repeat,
+    /* the cut */
+    linear-gradient(to top right, transparent calc(50% - 0.75px), var(--ol) 50%, transparent calc(50% + 0.75px)) left bottom /
+      var(--cut) var(--cut) no-repeat,
+    /* bottom: a short run after the cut, a gap, the green segment, a gap, the rest */
+    linear-gradient(var(--ol), var(--ol)) var(--cut) 100% / 10px 1px no-repeat,
+    linear-gradient(var(--hot), var(--hot)) calc(var(--cut) + 15px) 100% / var(--seg) 2px no-repeat,
+    linear-gradient(var(--ol), var(--ol)) right bottom / calc(100% - var(--cut) - 64px) 1px no-repeat;
+}
+/* The flush-mark overlays of the old corner-mark look are gone. */
+.band-desktop::before,
+.feature-shot::before {
+  display: none;
+}
+
+/* Header: grey plate (code + title), hatching, readout, X */
+.gw-head {
+  flex: none;
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  height: 32px;
+  min-width: 0;
+  background: rgba(0, 0, 0, 0.3);
+  font-family: var(--hud-font);
+  line-height: 1;
+}
+.gw-plate {
+  position: relative;
+  flex: 0 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 0 20px 0 12px;
+  background: var(--head);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+}
+.gw-plate::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2px;
+  background: rgba(var(--ink-rgb), 0.55);
+}
+.gw-code {
+  flex: none;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #fafafa;
+}
+.gw-title {
+  min-width: 0;
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #b4b4b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gw-hatch {
+  flex: 1;
+  min-width: 16px;
+  margin: 8px 6px;
+  background: repeating-linear-gradient(-48deg, rgba(var(--ink-rgb), 0.13) 0 2px, transparent 2px 7px);
+}
+.gw-meta {
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.gw-meta.mint {
+  color: var(--accent);
+  text-shadow: 0 0 12px rgba(var(--accent-rgb), 0.5);
+}
+.gw-x.deco {
+  flex: none;
+  width: 34px;
+  background:
+    linear-gradient(rgba(var(--ink-rgb), 0.5), rgba(var(--ink-rgb), 0.5)) 11px 50% / 5px 5px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) 18px 50% / 5px 5px no-repeat;
+}
+
+/* Bodies: live app frames sit in the app's darker inset, clear of the cut. */
+.panel.live > .live-screen {
+  margin: 8px 10px 20px;
+  border: 1px solid rgba(var(--ink-rgb), 0.06);
+}
+.band-desktop {
+  box-shadow: none;
+}
+.device {
+  padding-top: 0;
+  padding-bottom: 26px;
+}
+.device > .gw-head {
+  margin: 0 -22px 2px;
+}
+.receipt .rs-row:last-child {
+  padding-bottom: 24px;
+}
+.steps-win {
+  margin-top: 48px;
+}
+.steps {
+  margin: 0;
+}
+.steps li {
+  padding-bottom: 32px;
+}
+.sees-win {
+  margin-top: 44px;
+}
+.sees-win .sees {
+  margin-top: 0;
+  padding-bottom: 8px;
+}
+.table-win {
+  margin-top: 40px;
+}
+.table-win .table-wrap {
+  margin-top: 0;
+  padding-bottom: 10px;
+}
+.tiles li,
+.dl {
+  padding-bottom: 30px;
+}
+.install-help .install-body {
+  padding-bottom: 28px;
+}
+/* The windows clip what pokes outside them, so focus rings go inside. */
+.dl:focus-visible,
+.panel :focus-visible {
+  outline-offset: -3px;
+}
+.panel .btn:focus-visible {
+  outline-offset: 2px;
+}
+
+/* Row lines inside windows: the app's faint inner rules. */
+.rs-head,
+.rs-row,
+.steps li + li,
+.sees-col + .sees-col,
+th,
+td,
+.demo-log {
+  border-color: rgba(var(--ink-rgb), 0.07);
+}
+
+/* ------------------------------------------------------------ parts */
+
+.step-n {
+  height: 24px;
+  min-width: 34px;
+  border: 0;
+  background: var(--plate);
+  color: var(--plate-ink);
+  font-size: 14px;
+  letter-spacing: 0.04em;
+}
+.code-chip,
+.words i {
+  border: 1px solid rgba(var(--ink-rgb), 0.2);
+  background: rgba(0, 0, 0, 0.35);
+}
+.words i {
+  font-size: 13px;
+  letter-spacing: 0.1em;
+}
+.words.big i {
+  font-size: clamp(14px, 1.5vw, 17px);
+}
+.rs-ico,
+.tile-ico {
+  border: 1px solid rgba(var(--ink-rgb), 0.14);
+  background: var(--key);
+}
+.tiles li:hover {
+  --ol: rgba(255, 255, 255, 0.6);
+}
+.device-link span {
+  background: var(--accent);
+  box-shadow: 0 0 6px rgba(var(--accent-rgb), 0.6);
+}
+/* Security list: the app's statistic-box underline, lit. */
+.sec-list strong {
+  font-family: var(--hud-font);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.sec-list strong::before {
+  width: 44px;
+  height: 3px;
+  box-shadow: 0 0 6px rgba(var(--accent-rgb), 0.6);
+}
+.sees-col li::before {
+  background: var(--accent);
+}
+
+/* Compare: the Bifrost column header is the pale selected plate with the
+   green underline, like the app's chosen tab. */
+thead th {
+  font-size: 12.5px;
+  font-weight: 700;
+}
+tbody th {
+  font-family: var(--hud-font);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+thead .us {
+  background: var(--plate);
+  color: var(--plate-ink);
+  box-shadow: inset 0 -4px 0 var(--accent);
+}
+.us {
+  background: rgba(var(--accent-rgb), 0.07);
+}
+
+/* Downloads */
+.dl-name {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+.dl:hover {
+  --ol: rgba(255, 255, 255, 0.6);
+  background-color: rgba(var(--ink-rgb), 0.08);
+}
+.dl.recommended {
+  --ol: rgba(var(--accent-rgb), 0.7);
+}
+.install-help summary .lab {
+  font-size: 13.5px;
+}
+
+/* Under the hood */
+.code {
+  border: 1px solid rgba(var(--ink-rgb), 0.06);
+  font: 14px/1.75 var(--hud-mono);
+}
+.code .c {
+  color: var(--accent);
+  opacity: 0.75;
+}
+
+/* FAQ: questions in the HUD face, answers stay in the reading face. */
+.faq-list summary {
+  font-family: var(--hud-font);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.faq-list details,
+.faq-list details:first-child {
+  border-color: rgba(var(--ink-rgb), 0.1);
+}
+
+/* Features bar: numbered dashes like the app's tab strip, current one lit. */
+.car-bar {
+  border-top: 1px solid rgba(var(--ink-rgb), 0.1);
+  background: rgba(9, 9, 11, 0.7);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+.car-dashes button {
+  font-family: var(--hud-mono);
+  font-size: 12px;
+  font-weight: 400;
+}
+.car-dashes button::before {
+  background: rgba(var(--ink-rgb), 0.3);
+}
+.car-dashes i {
+  box-shadow: 0 0 6px rgba(var(--accent-rgb), 0.6);
+}
+.car-name {
+  color: var(--text);
+}
+
+/* Footer */
+.footer {
+  border-top: 1px solid rgba(var(--ink-rgb), 0.1);
+  background: rgba(0, 0, 0, 0.25);
+}
+.footer a {
+  font-family: var(--hud-font);
+  font-size: 13px;
+  font-weight: 700;
+}
+.brand {
+  font-family: var(--hud-font);
+  font-weight: 700;
+  letter-spacing: 0.26em;
+}
+
+/* ------------------------------------------------------------ rail */
+/* The app's sidebar: a dark, lightly blurred bar; the current section is
+   the pale plate, with the green bar riding beside it. */
+.rail {
+  background-image: none;
+  background-color: rgba(9, 9, 11, 0.82);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(var(--ink-rgb), 0.1);
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.03), 0 18px 48px rgba(0, 0, 0, 0.6);
+}
+.rail:hover,
+.rail:has(:focus-visible) {
+  background-color: rgba(9, 9, 11, 0.92);
+}
+.rail-brand {
+  border-bottom-color: rgba(var(--ink-rgb), 0.1);
+}
+.brand-word {
+  font-family: var(--hud-font);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.26em;
+}
+.rail-label {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+}
+.rail-mark {
+  left: 8px;
+  width: calc(100% - 14px);
+  background: var(--plate);
+  box-shadow: none;
+}
+.rail-mark::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--accent);
+  box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.7);
+}
+.rail-item.on,
+.rail-item.on svg,
+.rail-item.on.accent svg {
+  color: var(--plate-ink);
+  transition: color 0.18s 0.08s;
+}
+.rail-item.on:hover {
+  background-color: transparent;
+}
+
+/* ------------------------------------------------------------ small screens */
+
+
+/* Phone-layout frames drop the window and show a bare phone, as before. */
+@media (max-width: 640px) {
+  .live[data-narrow] {
+    clip-path: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background-color: transparent;
+  }
+  .live[data-narrow]::after,
+  .live[data-narrow] > .gw-head {
+    display: none;
+  }
+  .panel.live[data-narrow] > .live-screen {
+    margin: 0;
+  }
+  .gw-title {
+    font-size: 13px;
+  }
+  .gw-meta {
+    font-size: 15px;
+  }
+}
+@media (max-width: 980px) {
+  .steps li:nth-child(n + 3),
+  .sees-col + .sees-col {
+    border-color: rgba(var(--ink-rgb), 0.07);
+  }
+}
+
+/* ------------------------------------------------------------ hero, PC */
+/* PC only (above the 1080px stacking point): no phone; from 1200px the copy
+   is one column on the left and the live desktop app the large window on the right.
+   The hero is wider than the other sections and stays clear of the rail on
+   both sides. Tablets and phones keep the stacked layout above. */
+@media (min-width: 1081px) {
+  .band {
+    padding-right: 0;
+  }
+  .band-phone,
+  .live.band-phone {
+    display: none;
+  }
+}
+/* The side-by-side layout needs room for a readable app window. */
+@media (min-width: 1200px) {
+  .hero2 {
+    width: min(1440px, calc(100vw - 2 * var(--rail-space)));
+    grid-template-columns: minmax(440px, 0.8fr) minmax(0, 1.55fr);
+    gap: clamp(36px, 4vw, 64px);
+    align-items: center;
+  }
+  .hero-head {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 26px;
+    align-items: start;
+  }
+  .hero2 h1 {
+    margin-top: 18px;
+    font-size: clamp(44px, 3.9vw, 68px);
+    max-width: 12ch;
+  }
+  .hero2 .lede {
+    font-size: 17px;
+  }
+  .hero2 .cta-row {
+    flex-wrap: nowrap;
+    margin-top: 26px;
+  }
+  .hero2 .cta-row .btn-lg {
+    flex: none;
+    padding: 0 18px;
+    font-size: 14px;
+  }
+  .hero-hint {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .hero-hint::before {
+    content: "";
+    flex: none;
+    width: 7px;
+    height: 7px;
+    background: var(--accent);
+    box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.6);
+  }
+}
+
+/* ------------------------------------------------------------ phones */
+/* Up to 760px (phoneMq in main.js):
+   - the page scrolls continuously: no snapping, no wheel paging, sections at
+     their natural height and size, and the features as a plain list;
+   - the rail is a full-width top bar with the logo, the name and a menu
+     button that opens the section list under it;
+   - the app frames are for watching only (live.js), the hero one included. */
+.rail-burger {
+  display: none;
+}
+@media (max-width: 760px) {
+  html {
+    scroll-snap-type: none;
+  }
+
+  /* Sections */
+  .screen,
+  .section.screen,
+  .hero.screen,
+  .shot-band.screen {
+    min-height: 0;
+    padding: 56px 0;
+  }
+  .hero.screen {
+    padding-top: calc(var(--bar) + 32px);
+  }
+  .faq-screen.screen {
+    padding-top: 56px;
+  }
+  .footer {
+    padding-bottom: 44px;
+  }
+
+  /* Features: the pinned sideways carousel becomes a list of pages. */
+  .features {
+    height: auto;
+  }
+  .car-stop,
+  .car-bar {
+    display: none;
+  }
+  .car-view {
+    position: static;
+    height: auto;
+    overflow: visible;
+  }
+  .car-strip {
+    display: block;
+    transform: none;
+    will-change: auto;
+  }
+  .car-strip > .slide {
+    height: auto;
+    padding: 56px 0;
+    opacity: 1;
+    transform: none;
+  }
+  /* Every app frame takes the full content width; the two phones stack. */
+  .live[data-narrow],
+  .slide .live[data-narrow],
+  #history .feature-shot {
+    max-width: none;
+    margin-inline: 0;
+  }
+  .phones {
+    flex-direction: column;
+    gap: 28px;
+  }
+  .phones figure,
+  .slide .phones figure {
+    width: 100%;
+  }
+  .phones figure + figure {
+    margin-top: 0;
+  }
+  .band-phone,
+  .live.band-phone {
+    display: none;
+  }
+
+  /* Top bar */
+  :root {
+    --bar: 48px;
+  }
+  .rail,
+  .rail:hover,
+  .rail:has(:focus-visible) {
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: auto;
+    transform: none;
+    width: auto;
+    height: var(--bar);
+    max-height: none;
+    flex-direction: row;
+    align-items: center;
+    /* The burger's glyph ends on the content's right edge (20px). */
+    padding: 0 9px 0 0;
+    overflow: visible;
+    border: 0;
+    border-bottom: 1px solid rgba(var(--ink-rgb), 0.1);
+    background-color: rgba(9, 9, 11, 0.9);
+    box-shadow: none;
+  }
+  /* The logo starts on the content's left edge (20px, like .wrap). */
+  .rail-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: auto;
+    height: var(--bar);
+    margin: 0;
+    padding-left: 20px;
+    border: 0;
+  }
+  .rail-brand .brand-mark {
+    width: 22px;
+    height: 22px;
+  }
+  .rail-brand .rail-label,
+  .rail-list .rail-label {
+    display: inline-flex;
+    opacity: 1;
+    transform: none;
+  }
+  .rail-burger {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    margin-left: auto;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--text);
+    cursor: pointer;
+  }
+  .rail-burger:focus-visible {
+    outline-offset: -2px;
+  }
+  .rail-burger svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.75;
+    stroke-linecap: round;
+  }
+  .rail-burger .i-close,
+  .rail.open .rail-burger .i-open {
+    display: none;
+  }
+  .rail.open .rail-burger .i-close {
+    display: block;
+  }
+  .rail.open .rail-burger {
+    color: var(--accent);
+  }
+
+  /* The section list drops down under the bar. */
+  .rail-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    display: none;
+    flex-direction: column;
+    max-height: calc(100vh - var(--bar));
+    max-height: calc(100dvh - var(--bar));
+    padding: 8px 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    background: rgba(9, 9, 11, 0.97);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(var(--ink-rgb), 0.1);
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.6);
+  }
+  .rail.open .rail-list {
+    display: flex;
+  }
+  /* Icons line up with the logo on the content's left edge. */
+  .rail-list .rail-item {
+    width: 100%;
+    height: 48px;
+    grid-template-columns: 22px auto;
+    column-gap: 14px;
+    padding-left: 20px;
+  }
+  .rail-list .rail-label {
+    font-size: 15px;
+  }
+  .rail-mark {
+    left: 8px;
+    width: calc(100% - 16px);
+    box-shadow: none;
+  }
+  .rail-mark::before {
+    left: -6px;
+    right: auto;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    height: auto;
+  }
+
+  /* "Try Pause… click around" doesn't apply when the frame takes no input. */
+  .hero-hint {
+    display: none;
+  }
+  /* Frames are for watching: the overlay keeps touches on the page. */
+  .live.no-touch .live-screen > iframe {
+    pointer-events: none !important;
+  }
+  .live.no-touch .live-screen::after {
+    display: block !important;
+  }
+}
+
+/* ------------------------------------------------------------ checks list (Under the hood) */
+/* What every transfer goes through, as the app's readouts: numbered plates
+   with a hatched rule, and each check in mono beside a lit green square.
+   Lines wrap instead of scrolling sideways. */
+.spec {
+  display: grid;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(var(--ink-rgb), 0.06);
+}
+.spec-group {
+  padding: 18px 22px 20px;
+}
+.spec-group + .spec-group {
+  border-top: 1px solid rgba(var(--ink-rgb), 0.07);
+}
+.spec-h,
+.oss p.spec-h {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+  font-family: var(--hud-font);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.spec-h b {
+  display: inline-grid;
+  place-items: center;
+  min-width: 28px;
+  height: 20px;
+  padding: 0 5px;
+  background: var(--plate);
+  color: var(--plate-ink);
+  font-family: var(--hud-mono);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+.spec-h::after {
+  content: "";
+  flex: 1;
+  height: 8px;
+  min-width: 16px;
+  background: repeating-linear-gradient(-48deg, rgba(var(--ink-rgb), 0.12) 0 2px, transparent 2px 7px);
+}
+.spec ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 9px;
+}
+.spec li {
+  position: relative;
+  padding-left: 20px;
+  font: 14px/1.45 var(--hud-mono);
+  color: var(--text);
+}
+.spec li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 0.5em;
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+  box-shadow: 0 0 6px rgba(var(--accent-rgb), 0.6);
+}
+
+/* ------------------------------------------------------------ code windows (doc pages) */
+/* build-docs.mjs renders each code block as a window (.term.panel): the
+   header plate names the kind (SH Shell, CF Config), the lines sit in the
+   darker inset, and "#" comment lines are dimmed green. */
+.doc .term {
+  margin: 22px 0 26px;
+}
+.doc .term pre {
+  margin: 8px 10px 20px;
+  padding: 14px 16px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(var(--ink-rgb), 0.06);
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--ink-rgb), 0.28) transparent;
+}
+.doc .term pre code {
+  font: 13.5px/1.75 var(--hud-mono);
+  color: var(--text);
+}
+.doc .term .ln.c {
+  color: var(--accent);
+  opacity: 0.7;
+}
+.doc code {
+  font-family: var(--hud-mono);
+}
+.doc h1,
+.doc h2,
+.doc h3 {
+  font-family: var(--hud-font);
+}
+@media (max-width: 760px) {
+  /* Long commands wrap rather than scroll sideways. */
+  .doc .term pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    overflow-x: visible;
+  }
+  .doc .term pre code {
+    font-size: 12.5px;
+    line-height: 1.55;
+  }
+  /* Each line is a block that wraps with a hanging indent, so a wrapped
+     command can't be read as a new line. The newlines between the blocks
+     collapse (white-space: normal on the pre); spacing inside a line stays. */
+  .doc .term pre {
+    white-space: normal;
+  }
+  .doc .term .ln {
+    display: block;
+    min-height: 1.55em;
+    padding-left: 1.6em;
+    text-indent: -1.6em;
+    margin-bottom: 4px;
+    white-space: pre-wrap;
+  }
+  .spec-group {
+    padding: 16px 16px 18px;
+  }
+  .spec li {
+    font-size: 13px;
+  }
+}
+
+/* ------------------------------------------------------------ doc pages top bar */
+/* The same slim bar as the phone top bar: logo and name on the content's
+   left edge, one small Download key on the right. */
+.doc-top {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(9, 9, 11, 0.9);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(var(--ink-rgb), 0.1);
+}
+.doc-top-inner {
+  height: 56px;
+  padding: 0;
+}
+.doc-top .brand {
+  gap: 10px;
+  font-size: 15px;
+}
+.doc-top .brand-mark {
+  width: 22px;
+  height: 22px;
+}
+.doc-top .btn-sm {
+  height: 30px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+@media (max-width: 760px) {
+  .doc-top-inner {
+    height: 48px;
+  }
+}
+
+/* ------------------------------------------------------------ doc pages, HUD layout */
+/* changelog/, security/, relay/ (build-docs.mjs): the homepage's width, the
+   title and intro on top, then a sticky contents window beside one window
+   per section. The old single 760px column rules above are reset here. */
+.doc {
+  max-width: none;
+  padding: 0 0 96px;
+}
+.doc-head {
+  padding: clamp(40px, 7vh, 72px) 0 0;
+}
+.doc-head .lab {
+  display: flex;
+  max-width: 520px;
+}
+.doc-head .lab::after {
+  content: "";
+  flex: 1;
+  height: 10px;
+  min-width: 20px;
+  background: repeating-linear-gradient(-48deg, rgba(var(--ink-rgb), 0.12) 0 2px, transparent 2px 7px);
+}
+.doc .doc-head h1 {
+  margin: 16px 0 0;
+  font-size: clamp(36px, 4.6vw, 62px);
+  line-height: 1;
+  max-width: 20ch;
+}
+.doc-intro {
+  margin-top: 20px;
+  max-width: 62em;
+}
+.doc-intro p {
+  margin: 0 0 12px;
+  font-size: 17px;
+  color: var(--text-2);
+}
+.doc-grid {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+  margin-top: 40px;
+}
+.doc-grid.no-toc {
+  grid-template-columns: minmax(0, 1fr);
+}
+.doc-body {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+}
+
+/* Contents */
+/* Beats .panel:not(.rail) { position: relative } from the window style. */
+.doc-toc.panel:not(.rail) {
+  position: sticky;
+  top: 80px;
+}
+.doc .doc-toc ol {
+  list-style: none;
+  margin: 0;
+  padding: 10px 10px 24px;
+}
+.doc .doc-toc li + li {
+  margin-top: 2px;
+}
+.doc .doc-toc a {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 10px;
+  color: var(--text-2);
+  text-decoration: none;
+  font-family: var(--hud-font);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+  transition: background-color 0.15s, color 0.15s;
+}
+.doc .doc-toc a b {
+  flex: none;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-3);
+}
+.doc .doc-toc a:hover {
+  color: var(--text);
+  background: rgba(var(--ink-rgb), 0.06);
+}
+/* The section being read: the app's pale selection plate, green bar beside it. */
+.doc .doc-toc a[aria-current] {
+  color: var(--plate-ink);
+  background: var(--plate);
+}
+.doc .doc-toc a[aria-current] b {
+  color: var(--plate-ink);
+}
+.doc .doc-toc a[aria-current]::before {
+  content: "";
+  position: absolute;
+  left: -7px;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--accent);
+  box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.7);
+}
+
+/* Section windows: the heading is the window title and may wrap. */
+.doc-sec {
+  scroll-margin-top: 76px;
+}
+.doc-sec > .gw-head {
+  height: auto;
+  min-height: 36px;
+}
+.doc-sec .gw-plate {
+  max-width: 82%;
+  padding: 8px 24px 8px 12px;
+}
+.doc .doc-sec h2.gw-title {
+  margin: 0;
+  font-size: 15.5px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #e4e4e7;
+  white-space: normal;
+  overflow: visible;
+  max-width: none;
+}
+.doc-sec-body {
+  padding: 20px 28px 34px;
+}
+.doc-sec-body > :first-child {
+  margin-top: 0;
+}
+.doc-sec-body > :last-child {
+  margin-bottom: 0;
+}
+.doc .doc-sec-body p,
+.doc .doc-sec-body li {
+  font-size: 15.5px;
+  line-height: 1.65;
+  color: var(--text-2);
+}
+.doc .doc-sec-body p {
+  margin: 0 0 14px;
+}
+/* Sub-headings: uppercase HUD labels with a hatched rule. */
+.doc .doc-sec-body h3,
+.doc .doc-sec-body h4 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 30px 0 14px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text);
+  scroll-margin-top: 76px;
+}
+.doc .doc-sec-body h3::after,
+.doc .doc-sec-body h4::after {
+  content: "";
+  flex: 1;
+  height: 8px;
+  min-width: 20px;
+  background: repeating-linear-gradient(-48deg, rgba(var(--ink-rgb), 0.12) 0 2px, transparent 2px 7px);
+}
+.doc .doc-sec-body > h3:first-child {
+  margin-top: 4px;
+}
+/* Lists: lit green squares, like the checks on the homepage. */
+.doc .doc-sec-body ul {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+}
+.doc .doc-sec-body ul > li {
+  position: relative;
+  padding-left: 20px;
+}
+.doc .doc-sec-body ul > li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 0.68em;
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+  box-shadow: 0 0 6px rgba(var(--accent-rgb), 0.5);
+}
+.doc .doc-sec-body ol {
+  margin: 0 0 16px;
+  padding-left: 26px;
+}
+.doc .doc-sec-body ol > li::marker {
+  font-family: var(--hud-mono);
+  color: var(--accent);
+}
+.doc .doc-sec-body li + li {
+  margin-top: 8px;
+}
+.doc .doc-sec-body li > ul,
+.doc .doc-sec-body li > ol {
+  margin: 8px 0 0;
+}
+.doc .doc-sec-body code {
+  font-size: 0.9em;
+  padding: 1px 6px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(var(--ink-rgb), 0.12);
+  color: var(--text);
+}
+.doc .doc-sec-body .term code {
+  padding: 0;
+  background: none;
+  border: 0;
+}
+.doc .doc-sec-body blockquote {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border-left: 2px solid var(--accent);
+  background: rgba(var(--accent-rgb), 0.05);
+}
+.doc .doc-sec-body blockquote p:last-child {
+  margin-bottom: 0;
+}
+.doc .doc-sec-body table {
+  margin: 4px 0 18px;
+}
+.doc .doc-sec-body th {
+  font-family: var(--hud-font);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.doc .doc-sec-body th,
+.doc .doc-sec-body td {
+  border-color: rgba(var(--ink-rgb), 0.08);
+  font-size: 15px;
+}
+.doc .doc-sec-body hr {
+  height: 8px;
+  margin: 24px 0;
+  border: 0;
+  background: repeating-linear-gradient(-48deg, rgba(var(--ink-rgb), 0.12) 0 2px, transparent 2px 7px);
+}
+.doc .doc-sec-body .term {
+  margin: 20px 0 24px;
+}
+
+/* Top bar: the three pages between the logo and Download. */
+.doc-nav {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+  margin-right: 16px;
+}
+.doc-nav a {
+  padding: 6px 10px;
+  font-family: var(--hud-font);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  text-decoration: none;
+}
+.doc-nav a:hover {
+  color: var(--text);
+  background: rgba(var(--ink-rgb), 0.06);
+}
+.doc-nav a[aria-current] {
+  color: var(--plate-ink);
+  background: var(--plate);
+}
+/* Footer: the current page is lit. */
+.footer a[aria-current] {
+  color: var(--accent);
+}
+
+@media (max-width: 980px) {
+  .doc-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .doc-toc.panel:not(.rail) {
+    position: relative;
+    top: auto;
+  }
+}
+@media (max-width: 760px) {
+  .doc-nav {
+    display: none;
+  }
+  .doc-top .btn-sm {
+    margin-left: auto;
+  }
+  .doc-sec-body {
+    padding: 16px 16px 30px;
+  }
+  .doc-sec .gw-plate {
+    max-width: 88%;
+  }
+  .doc .doc-sec h2.gw-title {
+    font-size: 14px;
+  }
+  .doc .doc-sec-body p,
+  .doc .doc-sec-body li {
+    font-size: 15px;
+  }
+  .doc-intro p {
+    font-size: 16px;
   }
 }

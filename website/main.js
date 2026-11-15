@@ -1,4 +1,4 @@
-// Bifrost website: theme switch, hero transfer demo, full-screen sections
+// Bifrost website: theme, hero transfer demo, full-screen sections
 // (fit to the viewport, arrival animation), the section rail, and
 // platform-aware download links from the latest GitHub release. The live app
 // frames that replace the screenshots are in live.js.
@@ -15,41 +15,15 @@
   const fmtSize = (b) => (b >= GB ? `${(b / GB).toFixed(1)} GB` : `${Math.round(b / MB)} MB`);
 
   // ------------------------------------------------------------------ theme
+  // One palette, like the app's HUD build (src/main.tsx): always dark. An
+  // old light choice from the theme switch is dropped.
   const root = document.documentElement;
-  const toggle = $("[data-theme-toggle]");
-  const themeMeta = $('meta[name="theme-color"]');
-  const saved = () => {
-    try {
-      const t = localStorage.getItem(THEME_KEY);
-      return t === "light" || t === "dark" ? t : null;
-    } catch {
-      return null;
-    }
-  };
-  const applyTheme = (t) => {
-    root.dataset.theme = t;
-    if (themeMeta) themeMeta.content = t === "light" ? "#f6f6f4" : "#050506";
-    if (toggle) {
-      const next = t === "light" ? "dark" : "light";
-      toggle.setAttribute("aria-label", `Switch to ${next} theme`);
-      const label = $("[data-theme-label]", toggle);
-      if (label) label.textContent = `${next[0].toUpperCase()}${next.slice(1)} theme`;
-    }
-  };
-  applyTheme(root.dataset.theme === "light" ? "light" : "dark");
-  toggle?.addEventListener("click", () => {
-    const next = root.dataset.theme === "light" ? "dark" : "light";
-    applyTheme(next);
-    try {
-      localStorage.setItem(THEME_KEY, next);
-    } catch {
-      /* storage unavailable: the choice lasts for this visit */
-    }
-  });
-  // Follow the system theme until the visitor picks one here.
-  matchMedia("(prefers-color-scheme: light)").addEventListener?.("change", (e) => {
-    if (!saved()) applyTheme(e.matches ? "light" : "dark");
-  });
+  root.dataset.theme = "dark";
+  try {
+    localStorage.removeItem(THEME_KEY);
+  } catch {
+    /* storage unavailable */
+  }
 
   // ------------------------------------------------------------------ demo
   const card = $(".demo-card");
@@ -281,17 +255,16 @@
   const slidesAll = $$(".slide");
   const phoneMq = matchMedia("(max-width: 760px)");
   const MIN_FIT = 0.6;
-  const MIN_FIT_PHONE_PAGE = 0.55;
   const fitOne = (box) => {
     const fit = box.querySelector(":scope > .fit");
     if (!fit) return;
     let s = 1;
-    const isPage = box.classList.contains("slide");
-    if (!box.hasAttribute("data-nofit") && (isPage || !phoneMq.matches)) {
+    // Phones scroll continuously at natural size: nothing is scaled.
+    if (!box.hasAttribute("data-nofit") && !phoneMq.matches) {
       const cs = getComputedStyle(box);
       const avail = innerHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
       const h = fit.offsetHeight; // layout height: unaffected by the transform
-      if (h > avail) s = Math.max(isPage && phoneMq.matches ? MIN_FIT_PHONE_PAGE : MIN_FIT, avail / h);
+      if (h > avail) s = Math.max(MIN_FIT, avail / h);
     }
     fit.style.setProperty("--fit", s.toFixed(4));
     fit.style.setProperty("--fit-gap", `${(fit.offsetHeight * (1 - s)).toFixed(1)}px`);
@@ -375,6 +348,15 @@
     };
     const update = () => {
       queued = false;
+      // Phones: the pages are a plain list in the page's own scroll (style.css).
+      if (phoneMq.matches) {
+        pages.forEach((pg) => {
+          pg.inert = false;
+          pg.classList.add("in");
+        });
+        lastK = -1;
+        return;
+      }
       const { r, p } = progress();
       strip.style.setProperty("--p", p.toFixed(4));
       const inView = r.bottom > 1 && r.top < innerHeight - 1;
@@ -432,6 +414,7 @@
     addEventListener("keydown", (e) => {
       if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
       if (e.target.closest?.("input, textarea, select")) return;
+      if (phoneMq.matches) return;
       const { r, p } = progress();
       if (r.top > 1 || r.bottom < innerHeight - 1) return;
       e.preventDefault();
@@ -439,6 +422,7 @@
     });
     addEventListener("scroll", queue, { passive: true });
     addEventListener("resize", queue);
+    phoneMq.addEventListener?.("change", queue);
     update();
   }
 
@@ -471,11 +455,6 @@
       else a.removeAttribute("aria-current");
     }
     placeMark();
-    // Phone dock: keep the marked icon in view.
-    const a = railItems.find((x) => x.dataset.nav === id);
-    if (a && railList && railList.scrollWidth > railList.clientWidth + 1) {
-      railList.scrollTo({ left: a.offsetLeft - (railList.clientWidth - a.offsetWidth) / 2, behavior: "smooth" });
-    }
   };
   const middle = new IntersectionObserver(
     (entries) => {
@@ -485,9 +464,37 @@
   );
   [...screens, ...(car ? [car] : [])].forEach((el) => middle.observe(el));
   // The mark jumps into place the first time, then slides.
-  requestAnimationFrame(() => requestAnimationFrame(() => railMark?.classList.add("slide")));
+  // ("glide", not "slide": .slide is a carousel page.)
+  requestAnimationFrame(() => requestAnimationFrame(() => railMark?.classList.add("glide")));
   addEventListener("resize", placeMark);
   phoneMq.addEventListener?.("change", placeMark);
+
+  // Phones: the rail is a top bar (logo, name, menu button); the button opens
+  // the section list under it. Choosing a section, Escape, a tap outside or
+  // leaving the phone layout closes it.
+  const rail = $("[data-rail]");
+  const burger = $("[data-rail-toggle]");
+  const setMenu = (open) => {
+    if (!rail || !burger) return;
+    rail.classList.toggle("open", open);
+    burger.setAttribute("aria-expanded", String(open));
+    burger.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+    // The list was display: none, so the mark has no position yet.
+    if (open) placeMark();
+  };
+  burger?.addEventListener("click", () => setMenu(!rail.classList.contains("open")));
+  railItems.forEach((a) => a.addEventListener("click", () => setMenu(false)));
+  rail?.querySelector(".rail-brand")?.addEventListener("click", () => setMenu(false));
+  addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && rail?.classList.contains("open")) {
+      setMenu(false);
+      burger.focus();
+    }
+  });
+  document.addEventListener("pointerdown", (e) => {
+    if (rail?.classList.contains("open") && !rail.contains(e.target)) setMenu(false);
+  });
+  phoneMq.addEventListener?.("change", () => setMenu(false));
 
   // ------------------------------------------------------------------ wheel paging
   // Mandatory snapping picks the stop nearest to where a scroll would end, so
@@ -517,6 +524,7 @@
   addEventListener(
     "wheel",
     (e) => {
+      if (phoneMq.matches) return; // phones scroll continuously
       if (e.ctrlKey || Math.abs(e.deltaY) < Math.abs(e.deltaX) || e.deltaY === 0) return;
       lastWheel = performance.now();
       if (paging) {

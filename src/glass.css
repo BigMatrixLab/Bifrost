@@ -1596,3 +1596,48 @@ section.gw.has-foot-keys .gw-foot {
     box-shadow: inset 2px 0 0 transparent;
   }
 }
+
+/* ------------------------------------------------------------- phone tab bar */
+/* The desktop nav rules above (38px rows, the pale selection plate with dark
+   ink) don't fit the phone's bottom tab bar: they cut its labels off and
+   hide the current tab. On phones the tabs keep their full height, the
+   current tab stays bright with a green icon, and the selection is the
+   short green bar on its top edge. */
+@media (max-width: 760px) {
+  .nav-item {
+    height: 54px;
+    gap: 3px;
+    padding: 0 2px;
+    margin: 0;
+    border: 0;
+    font-size: 11.5px;
+    letter-spacing: 0.08em;
+  }
+  .nav-item:hover {
+    background: transparent;
+    border-color: transparent;
+  }
+  .nav-item.active,
+  .nav-item.active .nav-short {
+    color: var(--text);
+  }
+  .nav-item.active > svg {
+    color: var(--accent);
+  }
+  .nav.slides::after {
+    background: var(--accent);
+    box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.7);
+  }
+  /* Browse selection bar: as wide as the window bodies above it (content
+     padding 14px + the window's 10px inset), not the whole screen. */
+  .m-selbar {
+    left: 24px;
+    right: 24px;
+  }
+  /* While the selection bar shows, the list window ends above it instead of
+     running under it. */
+  .main:has(.m-selbar) .br-win .tbody {
+    height: calc(100dvh - 470px);
+    min-height: 200px;
+  }
+}

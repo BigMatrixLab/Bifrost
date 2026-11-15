@@ -11,6 +11,7 @@
   const root = document.documentElement;
   const reduce = matchMedia("(prefers-reduced-motion: reduce)");
   const narrowMq = matchMedia("(max-width: 640px)");
+  const phoneMq = matchMedia("(max-width: 760px)"); // the page's phone layout (main.js)
   const siteTheme = () => (root.dataset.theme === "light" ? "light" : "dark");
   const saveAppTheme = () => {
     try {
@@ -20,12 +21,31 @@
     }
   };
   saveAppTheme();
+  // The embeds are a showcase, not a first run: skip the app's first-run
+  // Windows Firewall prompt (src/firewall.tsx), which would cover every
+  // desktop frame. Same origin, so the demo reads the site's storage.
+  try {
+    localStorage.setItem("bifrost-fw-asked", "1");
+  } catch {
+    /* storage unavailable: the frames show the prompt */
+  }
 
   class Stop extends Error {}
   class Missing extends Error {}
 
   const DESKTOP = [1280, 800];
   const PHONE = [390, 844];
+  // Website-only trims to the embedded app (the posters in assets/screens are
+  // captured with the same CSS): no Send / Receive tiles on the phone Home,
+  // and on phones a plain top bar with no buttons in it.
+  const FRAME_CSS =
+    ".phome-actions { display: none !important; }" +
+    "@media (max-width: 760px) {" +
+    " .topbar { height: 44px; }" +
+    " .topbar-actions { display: none !important; }" +
+    // Browse hides its top bar on phones; keep the same empty bar as the other screens.
+    " .main.page-browse .topbar { display: flex !important; }" +
+    "}";
 
   // ------------------------------------------------------------------ driver
   // Moves the cursor and sends events into one embedded app.
@@ -454,7 +474,10 @@
       saveAppTheme();
       const f = document.createElement("iframe");
       f.src = `${DEMO}#${page}`;
-      if (this.interactive) {
+      // On phones every frame is for watching only, the hero one included.
+      const interactive = this.interactive && !phoneMq.matches;
+      this.fig.classList.toggle("no-touch", !interactive);
+      if (interactive) {
         f.title = "Bifrost demo";
       } else {
         f.title = "";
@@ -479,6 +502,11 @@
         await new Promise((r) => setTimeout(r, 100));
       }
       if (f !== this.frame) return;
+      // Website-only trims to the embedded app: no Send / Receive tiles on
+      // the phone Home (the page around it has its own download buttons).
+      const trim = doc.createElement("style");
+      trim.textContent = FRAME_CSS;
+      doc.head.append(trim);
       this.syncTheme();
       await new Promise((r) => setTimeout(r, 350));
       if (f !== this.frame) return;
@@ -556,6 +584,15 @@
     const vw = innerWidth;
     const vh = innerHeight;
     for (const l of lives) {
+      // A frame the layout hides (the hero phone on PC and on phones) never loads.
+      if (!l.fig.getClientRects().length) {
+        if (l.visible) {
+          l.visible = false;
+          l.stop();
+        }
+        if (l.frame) l.unmount();
+        continue;
+      }
       const r = l.fig.getBoundingClientRect();
       // Distance from the viewport, in screens, along each axis.
       const dy = r.bottom < 0 ? -r.bottom / vh : r.top > vh ? (r.top - vh) / vh : 0;
@@ -596,6 +633,15 @@
     saveAppTheme();
     for (const l of lives) if (l.ready) l.syncTheme();
   }).observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+  // Crossing the page's phone layout turns the hero frame's input off or on.
+  phoneMq.addEventListener?.("change", () => {
+    for (const l of lives) {
+      if (l.interactive && l.frame) {
+        l.unmount();
+        l.mount();
+      }
+    }
+  });
   // Crossing the phone breakpoint changes which layout a frame should show.
   narrowMq.addEventListener?.("change", () => {
     for (const l of lives) {

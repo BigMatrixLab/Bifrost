@@ -8,19 +8,11 @@
       name="description"
       content="Free app that sends files of any size directly between Macs, Windows PCs and Android phones. End-to-end encrypted, resumable, no account, no cloud copy, and a privacy receipt for every transfer."
     />
-    <meta name="color-scheme" content="dark light" />
+    <meta name="color-scheme" content="dark" />
     <meta name="theme-color" content="#050506" />
     <script>
-      // Apply the saved theme (or the system one) before anything paints.
-      (function () {
-        document.documentElement.classList.add("js");
-        var t;
-        try { t = localStorage.getItem("bifrost-site-theme"); } catch (e) {}
-        if (t !== "light" && t !== "dark") t = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
-        document.documentElement.dataset.theme = t;
-        var m = document.querySelector('meta[name="theme-color"]');
-        if (m) m.content = t === "light" ? "#f6f6f4" : "#050506";
-      })();
+      // One palette, like the app's HUD build: always dark.
+      document.documentElement.classList.add("js");
     </script>
     <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png" />
     <link rel="icon" type="image/svg+xml" href="assets/bifrost-mark.svg" />
@@ -32,6 +24,7 @@
     <meta property="og:url" content="https://getbifrost.pages.dev/" />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="preload" href="assets/fonts/space-grotesk-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="assets/fonts/rajdhani-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="style.css" />
     <script src="main.js" defer></script>
     <script src="live.js" defer></script>
@@ -58,7 +51,12 @@
         <svg class="brand-mark" width="24" height="24" aria-hidden="true"><use href="#mark" /></svg>
         <span class="rail-label brand-word">Bifrost</span>
       </a>
-      <div class="rail-list" data-rail-list>
+      <!-- Phones only: the rail is a top bar and this opens the section list. -->
+      <button class="rail-burger" type="button" data-rail-toggle aria-expanded="false" aria-controls="rail-menu" aria-label="Open menu">
+        <svg class="i-open" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+        <svg class="i-close" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+      </button>
+      <div class="rail-list" id="rail-menu" data-rail-list>
         <span class="rail-mark" data-rail-mark aria-hidden="true"></span>
         <a class="rail-item" href="#top" data-nav="top">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" /></svg>
@@ -101,13 +99,6 @@
           <span class="rail-label">FAQ</span>
         </a>
       </div>
-      <div class="rail-foot">
-        <button class="rail-item theme-toggle" type="button" data-theme-toggle aria-label="Switch to light theme">
-          <svg class="i-sun" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" /></svg>
-          <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.99 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.78 9.79z" /></svg>
-          <span class="rail-label" data-theme-label>Light theme</span>
-        </button>
-      </div>
     </nav>
 
     <main id="main">
@@ -133,18 +124,17 @@
                   </a>
                   <a class="btn btn-secondary btn-lg" href="#download">All platforms</a>
                 </div>
-                <p class="fineprint">Free · No account · No size limit · 0 bytes stored on servers</p>
               </div>
             </div>
 
             <div class="hero-stage">
               <div class="band">
                 <figure class="band-desktop panel live" data-live="overview" data-narrow="overview" data-interactive>
+                  <header class="gw-head" aria-hidden="true"><span class="gw-plate"><b class="gw-code">OV01</b><span class="gw-title">Bifrost desktop</span></span><span class="gw-hatch"></span><span class="gw-meta mint">Live</span><span class="gw-x deco"></span></header>
                   <div class="live-screen">
                     <img class="poster t-dark w-only" src="assets/screens/desktop-overview.webp" width="2560" height="1600" loading="lazy" alt="Bifrost Overview: the active transfer with its chunk ring, the network globe and a live throughput graph" />
                     <img class="poster t-light w-only" src="assets/screens/desktop-overview-light.webp" width="2560" height="1600" loading="lazy" alt="Bifrost Overview in the light theme: the active transfer with its chunk ring, the network globe and a live throughput graph" />
-                    <img class="poster t-dark n-only" src="assets/screens/phone-transfers.webp" width="1170" height="2532" loading="lazy" alt="Transfers on Android with live speeds and a throughput graph" />
-                    <img class="poster t-light n-only" src="assets/screens/phone-transfers-light.webp" width="1170" height="2532" loading="lazy" alt="Transfers on Android in the light theme" />
+                    <img class="poster t-dark n-only" src="assets/screens/phone-home.webp" width="1170" height="2532" loading="lazy" alt="Bifrost Home on Android: the active transfer with its chunk ring and live throughput" />
                   </div>
                 </figure>
                 <figure class="band-phone live phone" data-live="devices" data-phone data-script="browse">
@@ -173,6 +163,7 @@
               </p>
             </div>
             <div class="receipt panel" role="table" aria-label="Example privacy receipt">
+              <header class="gw-head" aria-hidden="true"><span class="gw-plate"><b class="gw-code">RC01</b><span class="gw-title">Privacy receipt</span></span><span class="gw-hatch"></span><span class="gw-meta mint">Verified</span><span class="gw-x deco"></span></header>
               <div class="rs-head" role="row">
                 <span class="rs-ico" role="cell" aria-hidden="true">
                   <svg viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M10 11.5v5l4-2.5z"/></svg>
@@ -224,11 +215,13 @@
           <div class="wrap words-section">
             <div class="device-pair" aria-label="Both devices show the same safety words">
               <div class="device panel">
+                <header class="gw-head" aria-hidden="true"><span class="gw-plate"><b class="gw-code">DV01</b><span class="gw-title">Safety words</span></span><span class="gw-hatch"></span><span class="gw-meta">05</span><span class="gw-x deco"></span></header>
                 <span class="lab">On Berlin-Studio</span>
                 <span class="words big"><i>cedar</i><i>lantern</i><i>otter</i><i>quartz</i><i>violet</i></span>
               </div>
               <div class="device-link" aria-hidden="true"><span></span><b class="tag tag-ok">Match</b><span></span></div>
               <div class="device panel">
+                <header class="gw-head" aria-hidden="true"><span class="gw-plate"><b class="gw-code">DV02</b><span class="gw-title">Safety words</span></span><span class="gw-hatch"></span><span class="gw-meta">05</span><span class="gw-x deco"></span></header>
                 <span class="lab">On Dhaka-Edit-Bay</span>
                 <span class="words big"><i>cedar</i><i>lantern</i><i>otter</i><i>quartz</i><i>violet</i></span>
               </div>
@@ -253,7 +246,9 @@
             <p class="lab"><span class="idx">03</span>How it works</p>
             <h2>Four steps, no uploads.</h2>
             <p class="section-lede">Each file travels once, from one disk to the other, and leaves a matching receipt on both devices.</p>
-            <ol class="steps panel">
+            <div class="steps-win panel">
+            <header class="gw-head" aria-hidden="true"><span class="gw-plate"><b class="gw-code">ST01</b><span class="gw-title">Pairing sequence</span></span><span class="gw-hatch"></span><span class="gw-meta">01-04</span><span class="gw-x deco"></span></header>
+            <ol class="steps">
               <li>
                 <span class="step-n num">01</span>
                 <h3>Share a folder</h3>
@@ -275,6 +270,7 @@
                 <p>Each megabyte is hash-verified on arrival, and the whole file once more before it gets its name.</p>
               </li>
             </ol>
+            </div>
           </div>
         </div>
       </section>
@@ -309,6 +305,7 @@
                       </ul>
                     </div>
                     <figure class="feature-shot panel live" data-live="transfers" data-narrow="transfers" data-script="transfers">
+                      <header class="gw-head" aria-hidden="true"><span class="gw-plate"><b class="gw-code">TR01</b><span class="gw-title">Transfers</span></span><span class="gw-hatch"></span><span class="gw-meta mint">Live</span><span class="gw-x deco"></span></header>
                       <div class="live-screen">
                         <img class="poster t-dark w-only" src="assets/screens/desktop-transfers.webp" width="2560" height="1600" loading="lazy" alt="Transfers: speeds, what's left to receive and send, a live throughput graph with dropped, direct and paused markers, and the transfer list" />
                         <img class="poster t-light w-only" src="assets/screens/desktop-transfers-light.webp" width="2560" height="1600" loading="lazy" alt="Transfers in the light theme, with a live throughput graph and the transfer list" />
@@ -338,9 +335,11 @@
                       </ul>
                     </div>
                     <figure class="feature-shot panel live" data-live="shares" data-narrow="shares" data-script="access">
+                      <header class="gw-head" aria-hidden="true"><span class="gw-plate"><b class="gw-code">SH01</b><span class="gw-title">Send</span></span><span class="gw-hatch"></span><span class="gw-meta mint">Live</span><span class="gw-x deco"></span></header>
                       <div class="live-screen">
                         <img class="poster t-dark w-only" src="assets/screens/desktop-shares.webp" width="2560" height="1600" loading="lazy" alt="Send page: a shared folder with three devices set to Both, Download and Upload, and its invitation codes" />
                         <img class="poster t-light w-only" src="assets/screens/desktop-shares-light.webp" width="2560" height="1600" loading="lazy" alt="Send page in the light theme: per-device access and invitation codes" />
+                        <img class="poster t-dark n-only" src="assets/screens/phone-shares.webp" width="1170" height="2532" loading="lazy" alt="Send page on Android: a shared folder with per-device access" />
                       </div>
                     </figure>
                   </article>
@@ -365,6 +364,7 @@
                       </ul>
                     </div>
                     <figure class="feature-shot panel live" data-live="devices" data-narrow="devices" data-script="browse">
+                      <header class="gw-head" aria-hidden="true"><span class="gw-plate"><b class="gw-code">BR01</b><span class="gw-title">Browse</span></span><span class="gw-hatch"></span><span class="gw-meta mint">Live</span><span class="gw-x deco"></span></header>
                       <div class="live-screen">
                         <img class="poster t-dark w-only" src="assets/screens/desktop-browse.webp" width="2560" height="1600" loading="lazy" alt="Remote folder browser with Upload folder and Upload files buttons, and files marked Yours" />
                         <img class="poster t-light w-only" src="assets/screens/desktop-browse-light.webp" width="2560" height="1600" loading="lazy" alt="Remote folder browser in the light theme" />
@@ -394,6 +394,7 @@
                       </ul>
                     </div>
                     <figure class="feature-shot panel live" data-live="history" data-narrow="history" data-script="history">
+                      <header class="gw-head" aria-hidden="true"><span class="gw-plate"><b class="gw-code">HS01</b><span class="gw-title">History</span></span><span class="gw-hatch"></span><span class="gw-meta mint">Live</span><span class="gw-x deco"></span></header>
                       <div class="live-screen">
                         <img class="poster t-dark w-only" src="assets/screens/desktop-history.webp" width="2560" height="1600" loading="lazy" alt="History: received, sent and relayed totals, a month calendar with a bar per day, and totals per device and per file type" />
                         <img class="poster t-light w-only" src="assets/screens/desktop-history-light.webp" width="2560" height="1600" loading="lazy" alt="History in the light theme: totals, a month calendar, and totals per device and per file type" />
@@ -514,7 +515,9 @@
               Two devices on the internet need a little help to find each other. Here is everything that help can see,
               and everything it can't.
             </p>
-            <div class="sees panel">
+            <div class="sees-win panel">
+              <header class="gw-head" aria-hidden="true"><span class="gw-plate"><b class="gw-code">SE01</b><span class="gw-title">Visibility map</span></span><span class="gw-hatch"></span><span class="gw-meta">03 zones</span><span class="gw-x deco"></span></header>
+              <div class="sees">
               <div class="sees-col">
                 <h3 class="lab accent">Only your two devices</h3>
                 <ul>
@@ -539,6 +542,7 @@
                 </ul>
               </div>
             </div>
+            </div>
             <ul class="sec-list">
               <li><strong>Invitations you control</strong><span>Random 128-bit keys that expire, can be limited to a number of devices, and can be revoked.</span></li>
               <li><strong>Short codes</strong><span>16 characters, stretched with Argon2id. They unlock an encrypted record, so the lookup service never sees the invitation.</span></li>
@@ -555,7 +559,9 @@
           <div class="wrap">
             <p class="lab"><span class="idx">06</span>Compare</p>
             <h2>How it compares.</h2>
-            <div class="table-wrap panel">
+            <div class="table-win panel">
+              <header class="gw-head" aria-hidden="true"><span class="gw-plate"><b class="gw-code">CM01</b><span class="gw-title">Comparison</span></span><span class="gw-hatch"></span><span class="gw-meta">06 rows</span><span class="gw-x deco"></span></header>
+              <div class="table-wrap">
               <table>
                 <thead>
                   <tr>
@@ -574,6 +580,7 @@
                   <tr><th scope="row">Both devices online</th><td class="us">Required</td><td>Not required</td><td>Not required</td></tr>
                 </tbody>
               </table>
+            </div>
             </div>
             <p class="fineprint">Bifrost trades the convenience of an always-on server for privacy and no size limits: the sender has to stay online while the receiver downloads.</p>
           </div>
@@ -649,18 +656,30 @@
                 <a class="btn btn-secondary btn-md" href="security/">Security policy</a>
               </div>
             </div>
-            <pre class="code" aria-label="What every transfer goes through"><code><span class="c"># Every connection</span>
-  QUIC with TLS 1.3 between Ed25519 device keys
-  Safety words derived from both device keys
-
-  <span class="c"># Every file</span>
-  BLAKE3 check of each 1 MiB block
-  BLAKE3 check of the finished file
-  Resumes from the last verified block
-
-  <span class="c"># Every share</span>
-  Approved devices reach only the shared folder
-  History kept on the device, nowhere else</code></pre>
+            <div class="spec" role="group" aria-label="What every transfer goes through">
+              <div class="spec-group">
+                <p class="spec-h"><b class="num">01</b>Every connection</p>
+                <ul>
+                  <li>QUIC with TLS 1.3 between Ed25519 device keys</li>
+                  <li>Safety words derived from both device keys</li>
+                </ul>
+              </div>
+              <div class="spec-group">
+                <p class="spec-h"><b class="num">02</b>Every file</p>
+                <ul>
+                  <li>BLAKE3 check of each 1 MiB block</li>
+                  <li>BLAKE3 check of the finished file</li>
+                  <li>Resumes from the last verified block</li>
+                </ul>
+              </div>
+              <div class="spec-group">
+                <p class="spec-h"><b class="num">03</b>Every share</p>
+                <ul>
+                  <li>Approved devices reach only the shared folder</li>
+                  <li>History kept on the device, nowhere else</li>
+                </ul>
+              </div>
+            </div>
           </div>
         </div>
       </section>

@@ -1,4 +1,4 @@
 {
-  "prompt": "Origin: screenshot of the Bifrost app UI captured with Playwright from the mock preview build (npm run dev:ui, fictional demo data), desktop-browse view, dark theme.",
-  "createdAt": "2026-11-02T23:34:16.886Z"
+  "prompt": "Origin: screenshot of the Bifrost app UI (HUD build) captured with Playwright from the demo build (npm run build:demo, fictional demo data), desktop-browse view, with the website's frame CSS from website/live.js.",
+  "createdAt": "2026-11-15T20:46:57.682Z"
 }
