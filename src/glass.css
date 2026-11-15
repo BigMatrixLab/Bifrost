@@ -337,6 +337,7 @@ body {
   letter-spacing: 0.05em;
 }
 .gx-clock-v em {
+  margin-left: 6px;
   font-style: normal;
   color: #ffd6d7;
 }

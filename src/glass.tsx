@@ -240,19 +240,16 @@ function useNow() {
   }, []);
   return now;
 }
-const STARTED = Date.now();
-
-/** The red time tag: local time, then the session's minutes. */
+/** The red time tag: local time on a 12-hour clock with AM/PM. */
 export function ClockTag() {
-  const now = useNow();
-  const d = new Date(now);
-  const up = Math.max(0, Math.floor((now - STARTED) / 1000));
+  const d = new Date(useNow());
+  const h = d.getHours() % 12 || 12;
   return (
     <div className="gx-clock" role="timer" aria-label={`Local time ${d.toLocaleTimeString()}`}>
       <span className="gx-clock-lab">System time</span>
       <span className="gx-clock-v num">
-        {pad(d.getHours())}:{pad(d.getMinutes())}:{pad(d.getSeconds())}
-        <em aria-hidden="true">:{pad((up / 60) % 1000, 3)}</em>
+        {pad(h)}:{pad(d.getMinutes())}:{pad(d.getSeconds())}
+        <em>{d.getHours() < 12 ? "AM" : "PM"}</em>
       </span>
     </div>
   );
