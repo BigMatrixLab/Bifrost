@@ -108,6 +108,18 @@ export function FocusTransfer({
     }
   };
 
+  const actions = (
+    <>
+      {isActive(job.status) && (
+        <Button size="sm" loading={busy} onClick={() => run(() => api.pauseJob(job.id))}>Pause</Button>
+      )}
+      {job.status === "paused" && (
+        <Button size="sm" variant="primary" loading={busy} onClick={() => run(() => api.resumeJob(job.id))}>Resume</Button>
+      )}
+      <Button size="sm" variant="ghost" onClick={() => setPage("transfers")}>Details</Button>
+    </>
+  );
+
   const pager = paged ? (
     <span className="focus-pager">
       <button type="button" className="pager-btn" onClick={onPrev} aria-label="Previous transfer" title="Previous (←)">
@@ -140,6 +152,8 @@ export function FocusTransfer({
           </>
         }
         foot={head}
+        // Desktop: Pause and Details sit in the foot line, like other cards' keys.
+        keys={compact ? undefined : actions}
         className={`focus-win ftone-${tone}`}
       >
       <section
@@ -215,15 +229,7 @@ export function FocusTransfer({
             </dl>
             <div className="focus-foot">
               <LinkLine local={settings?.deviceName || "This device"} peer={job.peerName} kind={job.route} moving={moving} />
-              <div className="focus-actions">
-                {isActive(job.status) && (
-                  <Button size="sm" loading={busy} onClick={() => run(() => api.pauseJob(job.id))}>Pause</Button>
-                )}
-                {job.status === "paused" && (
-                  <Button size="sm" variant="primary" loading={busy} onClick={() => run(() => api.resumeJob(job.id))}>Resume</Button>
-                )}
-                <Button size="sm" variant="ghost" onClick={() => setPage("transfers")}>Details</Button>
-              </div>
+              {compact && <div className="focus-actions">{actions}</div>}
             </div>
           </div>
         </div>
