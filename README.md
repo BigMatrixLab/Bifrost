@@ -229,7 +229,7 @@ Ideas and votes are welcome in [Issues](https://github.com/BigMatrixLab/Bifrost/
 
 ## Contributing
 
-Contributions of every size are welcome: bug reports, translations, docs and code. Start with [CONTRIBUTING.md](CONTRIBUTING.md), and please follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+Contributions of every size are welcome: bug reports, translations, docs and code. Start with [CONTRIBUTING.md](CONTRIBUTING.md), and please follow  the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## License
 
