@@ -2485,7 +2485,7 @@ main,
   --band-rgb: 229, 72, 77;
   --glass: rgba(16, 16, 19, 0.62);
   /* Window outline tone and corner cut; keep --cut equal to the app's (12px). */
-  --ol: rgba(255, 255, 255, 0.3);
+  --ol: rgba(255, 255, 255, 0.06);
   --cut: 12px;
   --code-bg: rgba(0, 0, 0, 0.35);
 }
@@ -2708,7 +2708,7 @@ h3 {
   pointer-events: none;
   background:
     /* top, with a brighter run from the left like the app's brushed edge */
-    linear-gradient(90deg, rgba(255, 255, 255, 0.5), var(--ol) 40%) left top / 100% 1px no-repeat,
+    linear-gradient(90deg, rgba(255, 255, 255, 0.16), var(--ol) 40%) left top / 100% 1px no-repeat,
     /* right */
     linear-gradient(var(--ol), var(--ol)) right top / 1px 100% no-repeat,
     /* left, down to the cut */
@@ -2814,7 +2814,7 @@ h3 {
   display: flow-root;
 }
 .panel.live > .live-screen {
-  margin: 8px 10px 16px;
+  margin: 8px 10px 10px;
   border: 1px solid rgba(var(--ink-rgb), 0.06);
 }
 .band-desktop {
@@ -3038,7 +3038,7 @@ thead .us {
   background-color: rgba(9, 9, 11, 0.82);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(var(--ink-rgb), 0.1);
+  border: 1px solid rgba(var(--ink-rgb), 0.06);
   box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.03), 0 18px 48px rgba(0, 0, 0, 0.6);
 }
 .rail:hover,

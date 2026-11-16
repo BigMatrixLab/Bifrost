@@ -207,13 +207,14 @@ export function Outline() {
       {paths && size && (
         <svg width={size.w} height={size.h} focusable="false">
           <defs>
-            {/* Brushed-metal sheen: bright at the top left, dim, a second highlight, dim. */}
+            {/* Brushed-metal sheen, kept faint (the dim runs match --card-line):
+                brighter at the top left, dim, a second highlight, dim. */}
             <linearGradient id={`${gid}-m`} gradientUnits="userSpaceOnUse" x1="0" y1="0" x2={size.w} y2={size.h}>
-              <stop offset="0" stopColor="#fff" stopOpacity="0.5" />
-              <stop offset="0.2" stopColor="#fff" stopOpacity="0.2" />
-              <stop offset="0.5" stopColor="#fff" stopOpacity="0.32" />
-              <stop offset="0.75" stopColor="#fff" stopOpacity="0.14" />
-              <stop offset="1" stopColor="#fff" stopOpacity="0.26" />
+              <stop offset="0" stopColor="#fff" stopOpacity="0.16" />
+              <stop offset="0.2" stopColor="#fff" stopOpacity="0.06" />
+              <stop offset="0.5" stopColor="#fff" stopOpacity="0.1" />
+              <stop offset="0.75" stopColor="#fff" stopOpacity="0.06" />
+              <stop offset="1" stopColor="#fff" stopOpacity="0.08" />
             </linearGradient>
           </defs>
           <path className="ol-outer" d={paths.outer} stroke={`url(#${gid}-m)`} />

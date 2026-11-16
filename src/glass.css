@@ -215,7 +215,7 @@ body {
   font-size: 12.5px;
 }
 .side-notice {
-  border: 1px solid rgba(var(--ink-rgb), 0.12);
+  border: 1px solid var(--card-line);
   background: var(--glass);
 }
 .sidebar-foot {
@@ -832,7 +832,7 @@ section.gw.gw-off { --tn: rgba(var(--ink-rgb), 0.35); }
   flex-direction: column;
   margin: 8px 10px 0;
   background: rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(var(--ink-rgb), 0.06);
+  border: 1px solid var(--card-line);
 }
 .gw-body > * {
   flex: 1 1 auto;
@@ -1014,7 +1014,7 @@ section.gw.has-foot-keys .gw-foot {
 
 /* Notices sit between windows: give them the window edge */
 .notice {
-  border: 1px solid rgba(var(--ink-rgb), 0.12);
+  border: 1px solid var(--card-line);
   background: var(--glass);
   border-radius: 0;
 }
@@ -1221,7 +1221,7 @@ section.gw.has-foot-keys .gw-foot {
 /* Hero tiles (no transfer running): the board's large menu plates */
 .hero-tile {
   --cm-img: none;
-  border: 1px solid rgba(var(--ink-rgb), 0.14);
+  border: 1px solid var(--card-line);
   background: var(--key) !important;
 }
 .hero-tile:hover {
@@ -1245,7 +1245,7 @@ section.gw.has-foot-keys .gw-foot {
   flex-direction: column;
   gap: 10px;
   padding: 12px 14px;
-  border: 1px solid rgba(var(--ink-rgb), 0.1);
+  border: 1px solid var(--card-line);
   background: rgba(0, 0, 0, 0.25);
 }
 .space-check.lv-ok { --lv: var(--ok); --lv-rgb: var(--ok-rgb); }
@@ -1568,7 +1568,7 @@ section.gw.has-foot-keys .gw-foot {
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
-  border: 1px solid rgba(var(--ink-rgb), 0.14);
+  border: 1px solid var(--card-line);
   background: rgba(0, 0, 0, 0.25);
   font-family: var(--hud-font);
   font-size: 14px;
