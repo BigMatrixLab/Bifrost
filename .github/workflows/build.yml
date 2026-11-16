@@ -42,7 +42,7 @@ jobs:
     name: Core tests (Linux)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
@@ -55,9 +55,9 @@ jobs:
     name: Windows installer
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -131,7 +131,7 @@ jobs:
           }
           Write-Host "::notice title=Smoke test passed::$summary"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: Bifrost-Windows-installer
           path: |
@@ -141,7 +141,7 @@ jobs:
 
       - name: Publish GitHub release
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: v0.1.0-build${{ github.run_number }}
           name: Bifrost 0.1.0 (build ${{ github.run_number }})
@@ -155,9 +155,9 @@ jobs:
     name: macOS app
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -206,7 +206,7 @@ jobs:
           echo "file=$dest" >> "$GITHUB_OUTPUT"
           echo "Built $dest ($(du -h "$dest" | awk '{print $1}')) sha256=$(awk '{print $1}' "$dest.sha256")"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: Bifrost-macOS-dmg
           path: |
@@ -216,7 +216,7 @@ jobs:
 
       - name: Publish GitHub release
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: v0.1.0-build${{ github.run_number }}
           name: Bifrost 0.1.0 (build ${{ github.run_number }})
@@ -230,7 +230,7 @@ jobs:
     name: Android APK
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       # The Rust and Gradle builds plus the emulator system image don't fit in
       # the runner's free space (the emulator step failed with "No space left
@@ -245,12 +245,12 @@ jobs:
           sudo docker image prune --all --force > /dev/null 2>&1 || true
           df -h /
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
 
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 21
@@ -301,7 +301,7 @@ jobs:
         run: npm ci
 
       # Keep the same signing key across runs so new builds install over old ones.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.relayless-signing
           key: relayless-signing-key-v1
@@ -375,7 +375,7 @@ jobs:
             sleep 45
             bash .github/scripts/android-smoke.sh
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: Bifrost-Android-APK
           path: out/*
@@ -383,7 +383,7 @@ jobs:
 
       - name: Publish GitHub release
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: v0.1.0-build${{ github.run_number }}
           name: Bifrost 0.1.0 (build ${{ github.run_number }})
@@ -414,15 +414,15 @@ jobs:
             echo "::warning title=Downloads not published::Add the CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID repository secrets to publish installers to Cloudflare R2 (see docs/DOWNLOADS.md)."
           fi
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         if: steps.cf.outputs.ok == 'true'
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         if: steps.cf.outputs.ok == 'true'
         with:
           node-version: 22
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         if: steps.cf.outputs.ok == 'true'
         with:
           pattern: Bifrost-*
