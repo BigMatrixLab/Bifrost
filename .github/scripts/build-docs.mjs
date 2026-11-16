@@ -1,4 +1,5 @@
-// Builds the website's document pages (changelog/, security/, relay/) from the
+// Builds the website's document pages (changelog/, security/, relay/, and the
+// legal pages privacy/, terms/, refund/, delivery/, contact/) from the
 // repository's own Markdown, so the public site never links into the private
 // repository. Run by the Website workflow before deploying, or locally with
 // `npm run build:docs`. The output folders are generated, not committed.
@@ -39,7 +40,60 @@ const PAGES = [
     nav: "Relay guide",
     description: "Get full speed when a direct connection is blocked: router settings, or your own relay server.",
   },
+  // Legal and business pages: listed in the footer only, not the top bar.
+  {
+    src: "docs/legal/PRIVACY.md",
+    out: "privacy",
+    title: "Privacy policy",
+    nav: "Privacy",
+    legal: true,
+    description: "What the Bifrost app and website send, to whom and why, and what never leaves your device.",
+  },
+  {
+    src: "docs/legal/TERMS.md",
+    out: "terms",
+    title: "Terms and conditions",
+    nav: "Terms",
+    legal: true,
+    description: "The terms for using Bifrost, its website and the Pro subscription.",
+  },
+  {
+    src: "docs/legal/REFUND.md",
+    out: "refund",
+    title: "Refund and cancellation policy",
+    nav: "Refunds",
+    legal: true,
+    description: "How to cancel Bifrost Pro and when you can get your money back.",
+  },
+  {
+    src: "docs/legal/DELIVERY.md",
+    out: "delivery",
+    title: "Delivery policy",
+    nav: "Delivery",
+    legal: true,
+    description: "How the Bifrost app and the Pro subscription are delivered.",
+  },
+  {
+    src: "docs/legal/CONTACT.md",
+    out: "contact",
+    title: "Contact",
+    nav: "Contact",
+    legal: true,
+    description: "How to reach the people behind Bifrost for support, billing, privacy and security.",
+  },
 ];
+
+// Business details used by the legal pages ({{key}} in their Markdown).
+// Until a value is filled in, the page shows the bracketed placeholder and
+// the build prints a warning.
+const BUSINESS = {
+  company: "Big-Matrix Solutions",
+  address: "[Registered address]",
+  email: "[support email address]",
+  processor: "[payment provider]",
+  jurisdiction: "[country or state]",
+  refund_days: "[number of]",
+};
 
 // Repository files with a page on the site. A link to any other file in the
 // private repository keeps its text and loses the link.
@@ -47,6 +101,8 @@ const HOSTED = Object.fromEntries(PAGES.map((p) => [p.src, `../${p.out}/`]));
 
 function target(href, from) {
   if (href.startsWith("#") || href.startsWith("mailto:")) return href;
+  // "site:#pricing" points into the home page.
+  if (href.startsWith("site:")) return `../${href.slice(5)}`;
   let path = null;
   if (href.startsWith(`${REPO}/blob/main/`)) path = href.slice(`${REPO}/blob/main/`.length);
   else if (href === REPO || href.startsWith(`${REPO}/`) || href.startsWith(`${REPO}#`)) return null;
@@ -75,14 +131,25 @@ function page({ title, description, out }, body) {
     <link rel="preload" href="../assets/fonts/space-grotesk-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="../assets/fonts/rajdhani-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="../style.css" />
+    <script src="../glide.js" defer></script>
   </head>
   <body>
     <a class="skip" href="#main">Skip to content</a>
     <header class="doc-top">
       <div class="wrap doc-top-inner">
         <a class="brand" href="../" aria-label="Bifrost home"><img class="brand-mark" src="../assets/bifrost-mark.svg" width="24" height="24" alt="" /><span>Bifrost</span></a>
-        <nav class="doc-nav" aria-label="Pages">
+        <nav class="doc-nav" aria-label="Pages" data-glide=":scope > a, :scope > .doc-more > summary">
+          <a href="../#pricing">Pricing</a>
 ${navLinks(out, "          ")}
+          <details class="doc-more"${PAGES.some((q) => q.legal && q.out === out) ? " data-current" : ""}>
+            <summary>Legal</summary>
+            <div class="doc-more-menu panel">
+              <header class="gw-head" aria-hidden="true"><span class="gw-plate"><b class="gw-code">LG01</b><span class="gw-title">Legal</span></span><span class="gw-hatch"></span></header>
+              <div class="hud-menu" data-glide="a">
+${navLinks(out, "                ", true)}
+              </div>
+            </div>
+          </details>
         </nav>
         <a class="btn btn-primary btn-sm" href="../#download">Download</a>
       </div>
@@ -90,17 +157,15 @@ ${navLinks(out, "          ")}
     <main class="wrap doc" id="main">
 ${body}
     </main>
-    <footer class="footer">
-      <div class="wrap footer-inner">
-        <span class="brand small"><img class="brand-mark" src="../assets/bifrost-mark.svg" width="20" height="20" alt="" /><span>Bifrost</span></span>
-        <span>Your files, your devices, nobody in between.</span>
-        <nav aria-label="Footer">
-          <a href="../#download">Download</a>
-${navLinks(out, "          ")}
-        </nav>
-      </div>
-    </footer>
+${footer(out)}
     <script>
+      // Legal menu: closes on Escape or a click outside it.
+      (function () {
+        var m = document.querySelector(".doc-more");
+        if (!m) return;
+        document.addEventListener("click", function (e) { if (m.open && !m.contains(e.target)) m.open = false; });
+        document.addEventListener("keydown", function (e) { if (e.key === "Escape" && m.open) { m.open = false; m.querySelector("summary").focus(); } });
+      })();
       // Contents: mark the section being read.
       (function () {
         var links = document.querySelectorAll(".doc-toc a");
@@ -122,9 +187,52 @@ ${navLinks(out, "          ")}
 `;
 }
 
-/** The three doc pages, the current one marked. */
-function navLinks(current, pad) {
-  return PAGES.map((q) => `${pad}<a href="../${q.out}/"${q.out === current ? ' aria-current="page"' : ""}>${esc(q.nav)}</a>`).join("\n");
+/**
+ * The site footer, the same on the home page (website/index.html, kept in
+ * step by hand) and every doc page: brand and maker, then Product, Help and
+ * Legal columns, then the copyright line.
+ */
+function footer(current) {
+  const link = (href, text, out) => `<a href="${href}"${out === current ? ' aria-current="page"' : ""}>${text}</a>`;
+  const legal = PAGES.filter((q) => q.legal && q.out !== "contact").map((q) => `          ${link(`../${q.out}/`, esc(q.nav), q.out)}`);
+  return `    <footer class="footer">
+      <div class="wrap footer-grid">
+        <div class="footer-brand">
+          <span class="brand small"><img class="brand-mark" src="../assets/bifrost-mark.svg" width="20" height="20" alt="" /><span>Bifrost</span></span>
+          <p>Your files, your devices, nobody in between.</p>
+        </div>
+        <nav class="footer-col" aria-label="Product">
+          <p class="lab">Product</p>
+          <a href="../#pricing">Pricing</a>
+          <a href="../#download">Download</a>
+          ${link("../changelog/", "Changelog", "changelog")}
+        </nav>
+        <nav class="footer-col" aria-label="Help">
+          <p class="lab">Help</p>
+          ${link("../relay/", "Relay guide", "relay")}
+          ${link("../security/", "Security", "security")}
+          <a href="../#faq">FAQ</a>
+          <a href="../#contact">Contact</a>
+        </nav>
+        <nav class="footer-col" aria-label="Legal">
+          <p class="lab">Legal</p>
+${legal.join("\n")}
+        </nav>
+      </div>
+      <div class="wrap footer-base">
+        <a class="footer-maker" href="https://big-matrix.com/" target="_blank" rel="noopener"><span>Developed and powered by</span><img src="../assets/big-matrix-logo.png" width="480" height="126" alt="Big-Matrix Solutions" /></a>
+        <span>© ${new Date().getFullYear()} Big-Matrix Solutions. All rights reserved.</span>
+      </div>
+    </footer>`;
+}
+
+/** The doc pages (or, with `legal`, the legal pages), the current one marked. */
+function navLinks(current, pad, legal = false) {
+  // The menu's entries are numbered like the app's lists.
+  const num = (n) => (legal ? `<span class="opt-n">${String(n + 1).padStart(2, "0")}</span>` : "");
+  return PAGES.filter((q) => !!q.legal === legal)
+    .map((q, n) => `${pad}<a href="../${q.out}/"${q.out === current ? ' aria-current="page"' : ""}>${num(n)}${esc(q.nav)}</a>`)
+    .join("\n");
 }
 
 /** GitHub-style heading anchor, so links to #sections keep working. */
@@ -159,7 +267,7 @@ function layout(p, h1, html) {
   const toc = secs.length
     ? `      <nav class="doc-toc panel" aria-label="On this page">
         <div class="gw-head" aria-hidden="true"><span class="gw-plate"><b class="gw-code">IX</b><span class="gw-title">Contents</span></span><span class="gw-hatch"></span><span class="gw-meta">${pad2(secs.length)}</span></div>
-        <ol>
+        <ol data-glide="a">
 ${secs.map((s, k) => `          <li><a href="#${s.id}"><b class="num" aria-hidden="true">S${pad2(k + 1)}</b><span>${s.text}</span></a></li>`).join("\n")}
         </ol>
       </nav>`
@@ -189,6 +297,10 @@ ${windows}
 
 for (const p of PAGES) {
   let md = readFileSync(join(root, p.src), "utf8");
+  md = md.replace(/\{\{(\w+)\}\}/g, (m, key) => {
+    if (!(key in BUSINESS)) throw new Error(`${p.src}: unknown placeholder ${m}; add it to BUSINESS in build-docs.mjs`);
+    return BUSINESS[key];
+  });
   for (const [find, repl] of p.replace || []) {
     if (!find.test(md)) throw new Error(`${p.src}: expected text not found for ${find}; update build-docs.mjs`);
     md = md.replace(find, repl);
@@ -238,4 +350,10 @@ for (const p of PAGES) {
   mkdirSync(join(root, "website", p.out), { recursive: true });
   writeFileSync(join(root, "website", p.out, "index.html"), page(p, body));
   console.log(`website/${p.out}/index.html  <-  ${p.src}`);
+}
+
+const unfilled = Object.entries(BUSINESS).filter(([, v]) => /^\[.*\]$/.test(v));
+if (unfilled.length) {
+  const msg = `Legal pages still show placeholders for: ${unfilled.map(([k]) => k).join(", ")} (BUSINESS in .github/scripts/build-docs.mjs).`;
+  console.log(process.env.GITHUB_ACTIONS ? `::warning title=Legal placeholders::${msg}` : `warning: ${msg}`);
 }

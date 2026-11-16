@@ -7,10 +7,11 @@ on:
     # in mock/), so changes there republish the site too.
     paths:
       - "website/**"
-      # The changelog, security and relay pages are built from these.
+      # The changelog, security, relay and legal pages are built from these.
       - "CHANGELOG.md"
       - "SECURITY.md"
       - "docs/RELAY.md"
+      - "docs/legal/**"
       - ".github/scripts/build-docs.mjs"
       - "src/**"
       - "mock/**"

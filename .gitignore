@@ -7,6 +7,11 @@
 /website/changelog
 /website/security
 /website/relay
+/website/privacy
+/website/terms
+/website/refund
+/website/delivery
+/website/contact
 # Local `wrangler pages dev` state
 .wrangler/
 /src-tauri/gen/schemas

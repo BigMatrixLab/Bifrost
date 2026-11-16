@@ -550,7 +550,7 @@
     // Past the first/last slide they leave the carousel for the neighbouring section.
     addEventListener("keydown", (e) => {
       if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-      if (e.target.closest?.("input, textarea, select")) return;
+      if (e.target.closest?.("input, textarea, select, [data-select]")) return;
       if (phoneMq.matches) return;
       const { r, p } = progress();
       if (r.top > 1 || r.bottom < innerHeight - 1) return;
@@ -755,6 +755,91 @@
     sbThumb.addEventListener("pointercancel", up);
   });
   sbSync();
+
+  // ------------------------------------------------------------------ contact form
+  // Not connected yet: checks the fields and says the form isn't live, so
+  // nothing typed here is sent anywhere. Replace with a real submit later.
+  const contact = $("[data-contact]");
+  if (contact) {
+    const status = $("[data-contact-status]", contact);
+    contact.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const bad = [...contact.elements].find((f) => f.willValidate && !f.checkValidity());
+      status.classList.add("warn");
+      if (bad) {
+        status.textContent = "Please fill in your name, a valid email and a message.";
+        bad.focus();
+        return;
+      }
+      status.textContent = "The form isn't connected yet, so this message wasn't sent.";
+    });
+  }
+
+  // Topic listbox: the button opens it, arrows move the active option (shown
+  // by glide.js's ghost), Enter/Space or a click choose, Escape/Tab or a
+  // click outside close. The choice goes into the hidden "topic" input.
+  for (const box of $$("[data-select]")) {
+    const btn = $(".cf-select-btn", box);
+    const menu = $(".cf-select-menu", box);
+    const list = $("[role=listbox]", box);
+    const opts = $$("[role=option]", box);
+    const input = $("input[type=hidden]", box);
+    const value = $("[data-select-value]", box);
+    let active = -1;
+    const label = (o) => o.lastChild.textContent.trim();
+    const setActive = (i) => {
+      active = Math.max(0, Math.min(opts.length - 1, i));
+      opts.forEach((o, n) => o.toggleAttribute("data-active", n === active));
+      list.setAttribute("aria-activedescendant", opts[active].id);
+      opts[active].scrollIntoView({ block: "nearest" });
+    };
+    const open = () => {
+      menu.hidden = false;
+      btn.setAttribute("aria-expanded", "true");
+      setActive(Math.max(0, opts.findIndex((o) => o.getAttribute("aria-selected") === "true")));
+      list.focus({ preventScroll: true });
+    };
+    const close = (refocus) => {
+      if (menu.hidden) return;
+      menu.hidden = true;
+      btn.setAttribute("aria-expanded", "false");
+      opts.forEach((o) => o.removeAttribute("data-active"));
+      list.removeAttribute("aria-activedescendant");
+      if (refocus) btn.focus();
+    };
+    const choose = (i) => {
+      opts.forEach((o, n) => o.setAttribute("aria-selected", String(n === i)));
+      input.value = value.textContent = label(opts[i]);
+      close(true);
+    };
+    btn.addEventListener("click", () => (menu.hidden ? open() : close(true)));
+    btn.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        open();
+      }
+    });
+    list.addEventListener("keydown", (e) => {
+      const k = e.key;
+      if (k === "ArrowDown") setActive(active + 1);
+      else if (k === "ArrowUp") setActive(active - 1);
+      else if (k === "Home") setActive(0);
+      else if (k === "End") setActive(opts.length - 1);
+      else if (k === "Enter" || k === " ") choose(active);
+      else if (k === "Escape") close(true);
+      else if (k === "Tab") return close(false);
+      else return;
+      e.preventDefault();
+      e.stopPropagation();
+    });
+    opts.forEach((o, i) => o.addEventListener("click", () => choose(i)));
+    box.addEventListener("focusout", (e) => {
+      if (!box.contains(e.relatedTarget)) close(false);
+    });
+    document.addEventListener("pointerdown", (e) => {
+      if (!box.contains(e.target)) close(false);
+    });
+  }
 
   // ------------------------------------------------------------------ platform
   const ua = navigator.userAgent;

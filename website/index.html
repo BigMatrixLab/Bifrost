@@ -28,6 +28,7 @@
     <link rel="stylesheet" href="style.css" />
     <script src="main.js" defer></script>
     <script src="live.js" defer></script>
+    <script src="glide.js" defer></script>
   </head>
   <body>
     <svg width="0" height="0" style="position: absolute" aria-hidden="true">
@@ -56,7 +57,7 @@
         <svg class="i-open" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
         <svg class="i-close" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
       </button>
-      <div class="rail-list" id="rail-menu" data-rail-list>
+      <div class="rail-list" id="rail-menu" data-rail-list data-glide=".rail-item" data-glide-hover>
         <span class="rail-mark" data-rail-mark aria-hidden="true"></span>
         <a class="rail-item" href="#top" data-nav="top">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" /></svg>
@@ -86,6 +87,10 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 7h18M6 7l-3 7a3 3 0 0 0 6 0zM18 7l-3 7a3 3 0 0 0 6 0z" /></svg>
           <span class="rail-label">Compare</span>
         </a>
+        <a class="rail-item" href="#pricing" data-nav="pricing">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L2 12V2h10l8.6 8.6a2 2 0 0 1 0 2.8zM7 7h.01" /></svg>
+          <span class="rail-label">Pricing</span>
+        </a>
         <a class="rail-item accent" href="#download" data-nav="download">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 21h16" /></svg>
           <span class="rail-label">Download</span>
@@ -97,6 +102,10 @@
         <a class="rail-item" href="#faq" data-nav="faq">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01" /></svg>
           <span class="rail-label">FAQ</span>
+        </a>
+        <a class="rail-item" href="#contact" data-nav="contact">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v14H3zM3 6l9 7 9-7" /></svg>
+          <span class="rail-label">Contact</span>
         </a>
       </div>
     </nav>
@@ -621,11 +630,67 @@
         </div>
       </section>
 
+      <!-- ============================================================ pricing -->
+      <!-- Two plans that differ only in the route: each card draws it as a
+           meter (solid green for direct, dashed amber for relayed, open-ended
+           because neither plan caps the total). -->
+      <section class="section screen" id="pricing">
+        <div class="fit">
+          <div class="wrap">
+            <p class="lab"><span class="idx">07</span>Pricing</p>
+            <h2>No cap on data, on either plan.</h2>
+            <p class="section-lede">
+              Both plans move as much as you like, with the same encryption, verification and receipts. They differ in
+              the route your data takes.
+            </p>
+            <div class="plans">
+              <article class="plan panel" aria-labelledby="plan-free">
+                <header class="gw-head" aria-hidden="true"><span class="gw-plate"><b class="gw-code">PL01</b><span class="gw-title">Free</span></span><span class="gw-hatch"></span><span class="gw-meta">No cap</span><span class="gw-x deco"></span></header>
+                <div class="plan-body">
+                  <h3 class="plan-name" id="plan-free">Free</h3>
+                  <p class="plan-price"><span class="num">$0</span><span class="plan-per">forever</span></p>
+                  <div class="route-meter free" role="img" aria-label="The first 50 GB travel direct, then every transfer is relayed, with no total cap">
+                    <span class="rm-track"><i class="rm-direct"></i><i class="rm-relay"></i></span>
+                    <span class="rm-scale"><span class="num">0</span><span class="num rm-mark">50 GB</span><span>No cap</span></span>
+                  </div>
+                  <ul class="plan-list">
+                    <li><b>Your first 50 GB travel direct</b>, device to device</li>
+                    <li>After that, every transfer goes through an <span class="relay">encrypted relay</span> that can't read or keep it</li>
+                    <li>No limit on total data transferred</li>
+                    <li>End-to-end encryption, block-by-block checks and a receipt for every file</li>
+                  </ul>
+                  <a class="btn btn-secondary btn-lg plan-cta" href="#download">Download free</a>
+                </div>
+              </article>
+              <article class="plan plan-pro panel" aria-labelledby="plan-pro">
+                <header class="gw-head" aria-hidden="true"><span class="gw-plate"><b class="gw-code">PL02</b><span class="gw-title">Pro</span></span><span class="gw-hatch"></span><span class="gw-meta mint">Direct</span><span class="gw-x deco"></span></header>
+                <div class="plan-body">
+                  <h3 class="plan-name" id="plan-pro">Pro</h3>
+                  <p class="plan-price"><span class="num">$5</span><span class="plan-per">per month</span></p>
+                  <div class="route-meter pro" role="img" aria-label="Every transfer travels direct, with no total cap">
+                    <span class="rm-track"><i class="rm-direct"></i></span>
+                    <span class="rm-scale"><span class="num">0</span><span>No cap</span></span>
+                  </div>
+                  <ul class="plan-list">
+                    <li><b>Every transfer travels direct</b>, device to device, however much you send</li>
+                    <li>A relay steps in only when routers block a direct path, and the receipt says so</li>
+                    <li>No limit on total data transferred</li>
+                    <li>End-to-end encryption, block-by-block checks and a receipt for every file</li>
+                  </ul>
+                  <a class="btn btn-primary btn-lg plan-cta" href="#download">Get Pro</a>
+                </div>
+              </article>
+            </div>
+            <p class="fineprint">Relayed bytes stay end-to-end encrypted: the relay passes them on and never stores them. Every receipt shows how much of a file went direct and how much was relayed.</p>
+          </div>
+        </div>
+      </section>
+
       <!-- ============================================================ download -->
       <section class="section screen" id="download">
         <div class="fit">
           <div class="wrap">
-            <p class="lab"><span class="idx">07</span>Download</p>
+            <p class="lab"><span class="idx">08</span>Download</p>
             <h2>Download Bifrost.</h2>
             <p class="section-lede"><span data-version>Latest release</span>. Free, no account needed. New versions install over the old one and keep your devices and history.</p>
             <div class="dl-grid">
@@ -678,7 +743,7 @@
         <div class="fit">
           <div class="wrap oss panel">
             <div>
-              <p class="lab"><span class="idx">08</span>Under the hood</p>
+              <p class="lab"><span class="idx">09</span>Under the hood</p>
               <h2>Tested where transfers break.</h2>
               <p>
                 The transfer engine is a Rust library on iroh, with end-to-end tests for pauses, crashes, corruption,
@@ -723,7 +788,7 @@
         <div class="fit">
           <div class="wrap faq">
             <div>
-              <p class="lab"><span class="idx">09</span>FAQ</p>
+              <p class="lab"><span class="idx">10</span>FAQ</p>
               <h2>Questions.</h2>
             </div>
             <div class="faq-list">
@@ -769,24 +834,93 @@
               </details>
               <details name="faq">
                 <summary>Does it cost anything?</summary>
-                <p>No. Bifrost is free. There is no account and no paid tier.</p>
+                <p>The Free plan costs nothing and has no cap on data: your first 50 GB travel direct, then transfers go through an encrypted relay. Pro is $5 a month and keeps every transfer direct. See <a href="#pricing">Pricing</a>.</p>
               </details>
             </div>
           </div>
         </div>
       </section>
+
+      <!-- ============================================================ contact -->
+      <!-- The form isn't connected yet: main.js stops the submit and says so.
+           Point it at a real endpoint (action/method, or a fetch in main.js). -->
+      <section class="section screen" id="contact">
+        <div class="fit">
+          <div class="wrap contact-section">
+            <div>
+              <p class="lab"><span class="idx">11</span>Contact</p>
+              <h2>Write to us.</h2>
+              <p class="section-lede">Questions about the app, Pro, a payment or your privacy. We read every message and reply by email.</p>
+            </div>
+            <form class="contact-form panel" data-contact novalidate>
+              <header class="gw-head" aria-hidden="true"><span class="gw-plate"><b class="gw-code">CT01</b><span class="gw-title">Message</span></span><span class="gw-hatch"></span><span class="gw-x deco"></span></header>
+              <div class="cf-body">
+                <div class="cf-row">
+                  <label class="cf-field"><span class="lab">Name</span><input type="text" name="name" autocomplete="name" required /></label>
+                  <label class="cf-field"><span class="lab">Email</span><input type="email" name="email" autocomplete="email" required /></label>
+                </div>
+                <!-- Topic: a listbox in the page's window style (a native select
+                     can't style its list). main.js ("contact form") runs it and
+                     keeps the hidden input in step. -->
+                <div class="cf-field"><span class="lab" id="cf-topic-lab">Topic</span>
+                  <div class="cf-select" data-select>
+                    <input type="hidden" name="topic" value="Help with the app" />
+                    <button class="cf-select-btn" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="cf-topic-list" aria-labelledby="cf-topic-lab cf-topic-val"><span id="cf-topic-val" data-select-value>Help with the app</span></button>
+                    <div class="cf-select-menu panel" hidden>
+                      <header class="gw-head" aria-hidden="true"><span class="gw-plate"><b class="gw-code">TP01</b><span class="gw-title">Topic</span></span><span class="gw-hatch"></span></header>
+                      <ul class="hud-menu" id="cf-topic-list" role="listbox" tabindex="-1" aria-labelledby="cf-topic-lab" data-glide="[role=option]">
+                        <li role="option" id="cf-topic-1" aria-selected="true"><span class="opt-n">01</span>Help with the app</li>
+                        <li role="option" id="cf-topic-2" aria-selected="false"><span class="opt-n">02</span>Pro and billing</li>
+                        <li role="option" id="cf-topic-3" aria-selected="false"><span class="opt-n">03</span>Refund</li>
+                        <li role="option" id="cf-topic-4" aria-selected="false"><span class="opt-n">04</span>Privacy request</li>
+                        <li role="option" id="cf-topic-5" aria-selected="false"><span class="opt-n">05</span>Something else</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                <label class="cf-field"><span class="lab">Message</span><textarea name="message" rows="5" required></textarea></label>
+                <div class="cf-foot">
+                  <p class="cf-status" data-contact-status role="status" aria-live="polite"></p>
+                  <button class="btn btn-primary btn-lg" type="submit">Send message</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
     </main>
 
+    <!-- Same footer as the doc pages (footer() in .github/scripts/build-docs.mjs). -->
     <footer class="footer">
-      <div class="wrap footer-inner">
-        <span class="brand small"><svg class="brand-mark" width="20" height="20" aria-hidden="true"><use href="#mark" /></svg><span>Bifrost</span></span>
-        <span>Your files, your devices, nobody in between.</span>
-        <nav aria-label="Footer">
+      <div class="wrap footer-grid">
+        <div class="footer-brand">
+          <span class="brand small"><svg class="brand-mark" width="20" height="20" aria-hidden="true"><use href="#mark" /></svg><span>Bifrost</span></span>
+          <p>Your files, your devices, nobody in between.</p>
+        </div>
+        <nav class="footer-col" aria-label="Product">
+          <p class="lab">Product</p>
+          <a href="#pricing">Pricing</a>
           <a href="#download">Download</a>
           <a href="changelog/">Changelog</a>
-          <a href="security/">Security</a>
-          <a href="relay/">Relay guide</a>
         </nav>
+        <nav class="footer-col" aria-label="Help">
+          <p class="lab">Help</p>
+          <a href="relay/">Relay guide</a>
+          <a href="security/">Security</a>
+          <a href="#faq">FAQ</a>
+          <a href="#contact">Contact</a>
+        </nav>
+        <nav class="footer-col" aria-label="Legal">
+          <p class="lab">Legal</p>
+          <a href="privacy/">Privacy</a>
+          <a href="terms/">Terms</a>
+          <a href="refund/">Refunds</a>
+          <a href="delivery/">Delivery</a>
+        </nav>
+      </div>
+      <div class="wrap footer-base">
+        <a class="footer-maker" href="https://big-matrix.com/" target="_blank" rel="noopener"><span>Developed and powered by</span><img src="assets/big-matrix-logo.png" width="480" height="126" loading="lazy" alt="Big-Matrix Solutions" /></a>
+        <span>© 2026 Big-Matrix Solutions. All rights reserved.</span>
       </div>
     </footer>
   </body>

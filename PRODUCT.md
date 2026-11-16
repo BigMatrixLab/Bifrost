@@ -36,6 +36,13 @@ No account, no cloud copy, no upload step. Files go device to device over QUIC w
 - Local history: per-transfer receipts, calendar of activity, totals per device pair and per file category. Default retention 1 year; options forever, 90 days, 30 days, off; option to keep history without file names.
 - No telemetry and no server-side storage of files or history.
 
+## Pricing
+
+Announced on the website; the app doesn't enforce it yet.
+
+- Free: $0. The first 50 GB travel direct; after that every transfer is relayed (end-to-end encrypted, never stored). No cap on total data.
+- Pro: $5 per month. Every transfer direct (a relay only when routers block a direct path). No cap on total data.
+
 ## Brand Commitments
 
 - Name: Bifrost. Independent open-source project (MIT), package `app.relayless`; not tied to any company brand.
