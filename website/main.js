@@ -267,15 +267,13 @@
     const out = {};
     for (const k of ["state", "local", "peer", "file", "pct", "speed", "route"]) out[k] = $(`[data-b-${k}]`, bridge);
     const ROUTE = { direct: "Direct", relay: "Relay", none: "No path" };
-    const CELLS = 32;
-    const cells = Array.from({ length: CELLS }, () => cellsEl.appendChild(document.createElement("i")));
-    let cellsKey = -1;
-    const paintCells = (v, moving) => {
-      const n = Math.max(0, Math.min(CELLS, Math.floor(v * CELLS)));
-      const key = n * 2 + (moving ? 1 : 0);
-      if (key === cellsKey) return;
-      cellsKey = key;
-      cells.forEach((c, i) => (c.className = i < n ? "v" : i === n && moving ? "f" : ""));
+    // The app's segmented meter: the fill's share of the track is --p.
+    let shownP = "";
+    const paintMeter = (v) => {
+      const p = Math.max(0, Math.min(1, v)).toFixed(4);
+      if (p === shownP) return;
+      shownP = p;
+      cellsEl.style.setProperty("--p", p);
     };
     const set = (el, text) => {
       if (!el || text == null) return;
@@ -312,7 +310,7 @@
       set(out.speed, speedDt?.nextElementSibling?.textContent);
       set(out.route, ROUTE[route]);
       set(tag, state === "paused" ? `${ROUTE[route]} · Paused` : ROUTE[route]);
-      paintCells((parseFloat(pct) || 0) / 100, moving);
+      paintMeter((parseFloat(pct) || 0) / 100);
       const ring = focus.querySelector(".ring")?.getBoundingClientRect();
       const h = doc.defaultView?.innerHeight;
       if (ring && ring.height && h) ringY = Math.min(0.9, Math.max(0.1, (ring.top + ring.height / 2) / h));

@@ -2815,9 +2815,14 @@ h3 {
     linear-gradient(var(--accent), var(--accent)) 18px 50% / 5px 5px no-repeat;
 }
 
-/* Bodies: live app frames sit in the app's darker inset, clear of the cut. */
+/* Bodies: live app frames sit in the app's darker inset, clear of the cut.
+   flow-root keeps the bottom margin inside the window (the window has no
+   bottom border, so the margin would otherwise collapse out of it). */
+.panel.live {
+  display: flow-root;
+}
 .panel.live > .live-screen {
-  margin: 8px 10px 20px;
+  margin: 8px 10px 16px;
   border: 1px solid rgba(var(--ink-rgb), 0.06);
 }
 .band-desktop {
@@ -3875,14 +3880,16 @@ thead .us {
     "title"
     "copy"
     "tx"
-    "stage"
-    "hint";
+    "stage";
 }
 .hero-kicker {
   grid-area: kick;
 }
-.hero-title {
+.hero-mast {
   grid-area: title;
+  position: relative;
+}
+.hero-title {
   margin: 14px 0 0;
   max-width: none;
   /* Sized to the hero's width so the first line spans most of it. */
@@ -3890,22 +3897,90 @@ thead .us {
   line-height: 0.9;
   letter-spacing: 0.005em;
 }
-.hero-title > span {
-  display: block;
-}
 .hero-title > span + span {
-  text-align: right;
   color: var(--text-2);
+}
+
+/* The headline's free space carries one beam of light from "size," to
+   "device": it leaves a node after the comma and fades out at the right
+   edge, then comes in faint from the left edge of line 2 and lands, bright,
+   on a node before the first word. A hairline rail runs under each half.
+   Inline SVG in px units (x and widths in %), so nothing stretches. Static. */
+.hero-title > span {
+  display: flex;
+  align-items: center;
+  gap: 0.2em;
+}
+.hero-title .beam {
+  /* Basis 0: the drawing takes only what the words leave. */
+  flex: 1 1 0;
+  min-width: 0;
+  align-self: stretch;
+  height: 0.9em;
+  margin-top: -0.04em;
+  overflow: hidden;
+}
+/* Room for the glow, above and below the ray. */
+.beam .ray {
+  filter: drop-shadow(0 0 4px rgba(var(--accent-rgb), 0.9)) drop-shadow(0 0 14px rgba(var(--accent-rgb), 0.45));
+}
+.beam .node {
+  fill: var(--bg);
+  stroke: rgba(var(--ink-rgb), 0.9);
+  stroke-width: 1.5;
+}
+.beam .core {
+  fill: var(--accent);
+  filter: drop-shadow(0 0 6px rgba(var(--accent-rgb), 0.9));
+}
+
+/* The subheader: one paragraph, a size up from body text in a light
+   weight. The words fade from white on the first line to silver on the
+   last (a vertical gradient clipped to the text), and the three things
+   that matter stay solid white, one step heavier, so they read first. Without
+   background-clip: text it is plain silver with the same white phrases. */
+.hero3 .lede {
+  position: relative;
+  margin: 0;
+  padding-left: 20px;
+  max-width: 34em;
+  color: var(--text-2);
+  font-size: clamp(17px, 1.3vw, 19.5px);
+  font-weight: 350;
+  line-height: 1.55;
+  letter-spacing: -0.01em;
+  text-wrap: pretty;
+}
+.hero3 .lede b {
+  font-weight: 450;
+  color: var(--text);
+}
+/* A green bar down the left, as tall as the paragraph, fading with the
+   words. Its own box, so the text gradient's clip doesn't touch it. */
+.hero3 .lede::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.3em;
+  bottom: 0.3em;
+  width: 3px;
+  background: linear-gradient(180deg, var(--accent), rgba(var(--accent-rgb), 0.25));
+  box-shadow: 0 0 10px rgba(var(--accent-rgb), 0.35);
+}
+@supports ((background-clip: text) or (-webkit-background-clip: text)) {
+  .hero3 .lede {
+    background: linear-gradient(180deg, #f2f2f2 0%, #a3a3a3 55%, #7c7c80 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero3 .lede b {
+    -webkit-text-fill-color: var(--text);
+  }
 }
 .hero-copy {
   grid-area: copy;
   margin-top: clamp(24px, 4vh, 44px);
-}
-.hero3 .lede {
-  margin: 0;
-  font-size: 16.5px;
-  line-height: 1.55;
-  max-width: 34em;
 }
 .hero3 .cta-row {
   margin-top: 22px;
@@ -3957,26 +4032,65 @@ thead .us {
   white-space: nowrap;
   text-overflow: ellipsis;
 }
-/* The app's cell progress bar: white cells are delivered and verified, the
-   leading green cell is the one arriving. */
-.tx-cells {
-  display: grid;
-  grid-template-columns: repeat(32, minmax(0, 1fr));
-  gap: 2px;
-  height: 10px;
+/* The app's segmented meter (src/styles.css, "segmented meter"): a solid
+   glowing fill with a taller marker on its end, over grey ticks for what is
+   left. Green while data moves, amber while paused, grey while waiting,
+   like the app's active transfer card. --p comes from main.js. */
+.tx-meter {
+  --tick: 3px;
+  --pitch: 5px;
+  --track: 8px;
+  --mark-w: 3px;
+  --mark-h: 14px;
+  --tone: var(--accent);
+  --tone-rgb: var(--accent-rgb);
+  position: relative;
+  display: block;
+  height: var(--mark-h);
 }
-.tx-cells i {
-  background: rgba(var(--ink-rgb), 0.1);
+[data-bridge][data-state="paused"] .tx-meter {
+  --tone: var(--warn);
+  --tone-rgb: var(--warn-rgb);
 }
-.tx-cells i.v {
-  background: var(--text);
+[data-bridge][data-state="waiting"] .tx-meter {
+  --tone: rgba(var(--ink-rgb), 0.4);
+  --tone-rgb: var(--ink-rgb);
 }
-.tx-cells i.f {
-  background: var(--accent);
-  box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.6);
+.tx-meter::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc((var(--mark-h) - var(--track)) / 2);
+  height: var(--track);
+  background: repeating-linear-gradient(90deg, rgba(var(--ink-rgb), 0.11) 0 var(--tick), transparent var(--tick) var(--pitch));
 }
-[data-bridge][data-state="paused"] .tx-cells i.v {
-  background: rgba(var(--ink-rgb), 0.5);
+.tx-meter i {
+  position: absolute;
+  left: 0;
+  top: calc((var(--mark-h) - var(--track)) / 2);
+  height: var(--track);
+  width: calc(var(--p, 0) * 100%);
+  background: var(--tone);
+  border-radius: 2px 0 0 2px;
+  box-shadow: 0 0 10px rgba(var(--tone-rgb), 0.18);
+  transition: width 0.75s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s;
+}
+/* Snap the end to a whole tick where the browser can round. */
+@supports (width: round(nearest, 10px, 5px)) {
+  .tx-meter i {
+    width: round(nearest, calc(var(--p, 0) * 100%), var(--pitch));
+  }
+}
+.tx-meter i::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: calc((var(--track) - var(--mark-h)) / 2);
+  width: var(--mark-w);
+  height: var(--mark-h);
+  background: var(--tone);
+  box-shadow: 0 0 8px rgba(var(--tone-rgb), 0.5);
 }
 .tx-kv,
 .tx-proof {
@@ -4051,22 +4165,38 @@ thead .us {
 .hero-stage .band-desktop {
   margin: 0;
 }
+/* The hint is a window's top bar: grey plate (code, title), the sentence,
+   hatching, and the two-square mark. It wraps rather than truncates. */
 .hero3 .hero-hint {
-  grid-area: hint;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 12px 0 0;
-  color: var(--text-3);
-  font-size: 13.5px;
+  height: auto;
+  min-height: 32px;
+  margin: 10px 0 0;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid rgba(var(--ink-rgb), 0.1);
 }
-.hero3 .hero-hint::before {
-  content: "";
+.hero-hint .gw-plate {
   flex: none;
-  width: 7px;
-  height: 7px;
-  background: var(--accent);
-  box-shadow: 0 0 8px rgba(var(--accent-rgb), 0.6);
+}
+.hero-hint .gw-plate .gw-code {
+  font-size: 14px;
+}
+.hero-hint .gw-plate .gw-title {
+  font-size: 13px;
+  color: var(--accent);
+}
+.hint-text {
+  flex: 0 1 auto;
+  align-self: center;
+  min-width: 0;
+  padding: 6px 4px 6px 14px;
+  color: var(--text-2);
+  font-family: var(--font);
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+.hero-hint .gw-hatch {
+  min-width: 24px;
+  align-self: stretch;
 }
 
 /* ---- the wire */
@@ -4176,7 +4306,7 @@ thead .us {
     column-gap: 28px;
     align-items: start;
   }
-  .tx-cells,
+  .tx-meter,
   .tx-kv {
     grid-column: 1;
   }
@@ -4193,13 +4323,12 @@ thead .us {
   .hero3 {
     width: min(1560px, calc(100vw - 2 * var(--rail-space)));
     grid-template-columns: var(--tx-w) var(--gap-x) minmax(0, 1fr);
-    grid-template-rows: auto auto auto 1fr auto;
+    grid-template-rows: auto auto auto 1fr;
     grid-template-areas:
       "kick  kick  kick"
       "title title title"
       "copy  .     stage"
-      "tx    .     stage"
-      ".     .     hint";
+      "tx    .     stage";
   }
   .hero-copy {
     margin-top: clamp(28px, 4.5vh, 52px);
@@ -4218,6 +4347,9 @@ thead .us {
   .tx-proof {
     display: none;
   }
+  .hint-text {
+    font-size: 12.5px;
+  }
   /* Both download buttons still fit on one line from about 1280px. */
   .hero3 .cta-row .btn-lg {
     height: 46px;
@@ -4233,8 +4365,12 @@ thead .us {
     font-size: clamp(26px, 9.6cqi, 60px);
     line-height: 0.95;
   }
-  .hero-title > span + span {
-    text-align: left;
+  /* No empty starts or ends on a phone: both lines sit left, unadorned. */
+  .hero-title > span {
+    display: block;
+  }
+  .hero-title .beam {
+    display: none;
   }
   .hero3 .cta-row .btn-lg {
     flex: 1 1 100%;

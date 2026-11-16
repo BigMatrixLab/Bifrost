@@ -113,12 +113,16 @@
                it in the app stops the link here too. -->
           <div class="wrap hero3" data-bridge data-route="direct">
             <p class="lab accent hero-kicker"><span class="live-dot" aria-hidden="true"></span>File sharing · macOS · Windows · Android</p>
-            <h1 class="hero-title"><span>Send files of any size,</span> <span>device to device.</span></h1>
+            <div class="hero-mast">
+              <!-- A beam of light leaves "size," and lands on "device" (two
+                   inline SVG halves, drawings only). -->
+              <h1 class="hero-title"><span>Send files of any size,<svg class="beam out" aria-hidden="true" focusable="false"><defs><linearGradient id="beam-out"><stop offset="0" stop-color="#4ade80" /><stop offset=".45" stop-color="#4ade80" stop-opacity=".35" /><stop offset="1" stop-color="#4ade80" stop-opacity="0" /></linearGradient><linearGradient id="rail-out"><stop offset="0" stop-color="#f2f2f2" stop-opacity=".32" /><stop offset="1" stop-color="#f2f2f2" stop-opacity="0" /></linearGradient></defs><rect x="6" y="50%" width="100%" height="1" fill="url(#rail-out)" transform="translate(0 9)" /><rect class="ray" x="12" y="50%" width="100%" height="2" fill="url(#beam-out)" transform="translate(0 -1)" /><svg y="50%" overflow="visible"><rect class="node" x="0.75" y="-5.25" width="10.5" height="10.5" /><rect class="core" x="3.5" y="-2.5" width="5" height="5" /></svg></svg></span> <span><svg class="beam in" aria-hidden="true" focusable="false"><defs><linearGradient id="beam-in"><stop offset="0" stop-color="#4ade80" stop-opacity="0" /><stop offset=".55" stop-color="#4ade80" stop-opacity=".35" /><stop offset="1" stop-color="#4ade80" /></linearGradient><linearGradient id="rail-in"><stop offset="0" stop-color="#f2f2f2" stop-opacity="0" /><stop offset="1" stop-color="#f2f2f2" stop-opacity=".32" /></linearGradient></defs><rect x="0" y="50%" width="100%" height="1" fill="url(#rail-in)" transform="translate(-6 9)" /><rect class="ray" x="0" y="50%" width="100%" height="2" fill="url(#beam-in)" transform="translate(-12 -1)" /><svg x="100%" y="50%" overflow="visible"><rect class="node" x="-11.25" y="-5.25" width="10.5" height="10.5" /><rect class="core" x="-8.5" y="-2.5" width="5" height="5" /></svg></svg>device to device.</span></h1>
+            </div>
 
             <div class="hero-copy">
               <p class="lede">
-                Bifrost sends files over the internet straight from one device to another, end-to-end encrypted.
-                Nothing is uploaded to a cloud, and an interrupted transfer picks up where it stopped.
+                Bifrost sends files over the internet <b>straight from one device to another</b>, <b>end-to-end encrypted</b>.
+                Nothing is uploaded to a cloud, and an interrupted transfer <b>picks up where it stopped</b>.
               </p>
               <div class="cta-row">
                 <a class="btn btn-primary btn-lg" data-primary-dl href="#download">
@@ -138,7 +142,7 @@
                   <strong class="tx-name" data-b-peer>Dhaka-Edit-Bay</strong>
                   <span class="tx-file" data-b-file>feature-film-master-4k.mov</span>
                 </div>
-                <span class="tx-cells" data-b-cells aria-hidden="true"></span>
+                <span class="tx-meter" data-b-cells aria-hidden="true"><i></i></span>
                 <dl class="tx-kv">
                   <div><dt class="lab">Delivered</dt><dd class="num" data-b-pct>–</dd></div>
                   <div><dt class="lab">Speed</dt><dd class="num" data-b-speed>–</dd></div>
@@ -169,8 +173,13 @@
                   <img class="poster t-dark n-only" src="assets/screens/phone-home.webp" width="1170" height="2532" loading="lazy" alt="Bifrost Home on Android: the active transfer with its chunk ring and live throughput" />
                 </div>
               </figure>
+              <p class="hero-hint gw-head">
+                <span class="gw-plate" aria-hidden="true"><span class="gw-title">Interactive</span></span>
+                <span class="hint-text">It's the real app. Click around and navigate.</span>
+                <span class="gw-hatch" aria-hidden="true"></span>
+                <span class="gw-x deco" aria-hidden="true"></span>
+              </p>
             </div>
-            <p class="hero-hint">This is the real app, running. The sender and the link follow its active transfer: press Pause, or page to the next one.</p>
           </div>
         </div>
       </section>
