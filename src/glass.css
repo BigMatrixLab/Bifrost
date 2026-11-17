@@ -627,7 +627,8 @@ section.gw.gw-off { --tn: rgba(var(--ink-rgb), 0.35); }
   align-items: stretch;
   height: 34px;
   min-width: 0;
-  background: rgba(0, 0, 0, 0.3);
+  /* No tint of its own: the header shows the same glass as the body. */
+  background: transparent;
 }
 .gw-plate {
   flex: 0 1 auto;
@@ -996,8 +997,9 @@ section.gw.has-foot-keys .gw-foot {
   padding: 0;
   border: 0 !important;
   clip-path: var(--gw-shape);
-  background: rgba(14, 14, 17, 0.92) !important;
-  backdrop-filter: blur(12px);
+  /* The same glass as the cards. */
+  background: var(--glass) !important;
+  backdrop-filter: blur(8px) saturate(1.2);
 }
 .modal-head.gw-head {
   padding: 0;

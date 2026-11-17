@@ -2735,7 +2735,8 @@ h3 {
   align-items: stretch;
   height: 32px;
   min-width: 0;
-  background: rgba(0, 0, 0, 0.3);
+  /* No tint of its own: the header shows the same glass as the body. */
+  background: transparent;
   font-family: var(--hud-font);
   line-height: 1;
 }
