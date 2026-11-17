@@ -3823,12 +3823,6 @@ thead .us {
   }
 }
 @media (max-width: 760px) {
-  .doc-nav {
-    display: none;
-  }
-  .doc-top .btn-sm {
-    margin-left: auto;
-  }
   .doc-sec-body {
     padding: 16px 16px 30px;
   }
@@ -4570,15 +4564,16 @@ thead .us {
 }
 
 /* ------------------------------------------------------------ footer */
-/* Brand and maker on the left, then Product, Help and Legal columns, and a
-   copyright line under a hairline. Shared by the home page and the doc
-   pages (footer() in build-docs.mjs). */
+/* Brand and maker on the left, then every home page section (Product, Get
+   Bifrost) and every page (Guides, Legal), and a copyright line under a
+   hairline. Shared by the home page and the doc pages (footer() in
+   build-docs.mjs). */
 .footer {
   padding: 44px 0 28px;
 }
 .footer-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.4fr) repeat(4, minmax(0, 1fr));
   gap: 32px;
   align-items: start;
 }
@@ -4640,21 +4635,34 @@ thead .us {
   color: var(--text-3);
   font-size: 13px;
 }
-@media (max-width: 760px) {
+/* Tablets: the brand on its own row over the four columns. */
+@media (max-width: 1100px) {
   .footer-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 28px 20px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
   .footer-brand {
     grid-column: 1 / -1;
   }
 }
+/* Phones: two columns of links. */
+@media (max-width: 760px) {
+  .footer-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 28px 20px;
+  }
+}
 
 /* ------------------------------------------------------------ doc pages: top bar */
-/* Pricing, the three guides, and a Legal menu holding the legal pages, so
-   every page is one click away. On phones the links wrap onto a second row. */
+/* The three guides and a Legal menu holding the legal pages, so every page
+   is one click away. On phones they move into a menu under the bar, opened
+   by the menu button, like the home page's menu. */
 .doc-nav {
   align-items: center;
+}
+/* Phones only: the menu button, and the legal pages as a plain group. */
+.doc-burger,
+.doc-legal {
+  display: none;
 }
 .doc-more {
   position: relative;
@@ -4715,28 +4723,116 @@ thead .us {
   letter-spacing: 0.12em;
 }
 @media (max-width: 760px) {
+  /* Bar: logo, Download, menu button (its glyph on the content's right edge). */
   .doc-top-inner {
-    flex-wrap: wrap;
-    height: auto;
-    min-height: 48px;
-    row-gap: 0;
+    gap: 6px;
   }
-  .doc-nav {
-    display: flex;
-    order: 3;
-    flex-basis: 100%;
-    flex-wrap: wrap;
-    margin: 0 0 8px -10px;
-    gap: 2px;
+  .doc-top .btn-sm {
+    margin-left: auto;
   }
-  .doc-nav a,
-  .doc-more summary {
-    font-size: 12px;
-    padding: 6px 8px;
+  .doc-burger {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    margin-right: -10px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--text);
+    cursor: pointer;
   }
-  .doc-more-menu.panel:not(.rail) {
+  .doc-burger:focus-visible {
+    outline-offset: -2px;
+  }
+  .doc-burger svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.75;
+    stroke-linecap: round;
+  }
+  .doc-burger .i-close,
+  .doc-top.open .doc-burger .i-open {
+    display: none;
+  }
+  .doc-top.open .doc-burger .i-close {
+    display: block;
+  }
+  .doc-top.open .doc-burger {
+    color: var(--accent);
+  }
+
+  /* The page list drops down under the bar, full width (the sticky bar is
+     its containing block), as on the home page. Scoped to .doc-top so the
+     shared `.doc-nav { position: relative }` further down can't undo it. */
+  .doc-top .doc-nav {
+    position: absolute;
+    top: 100%;
     left: 0;
+    right: 0;
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    margin: 0;
+    max-height: calc(100vh - 48px);
+    max-height: calc(100dvh - 48px);
+    padding: 8px 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    background: rgba(9, 9, 11, 0.97);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(var(--ink-rgb), 0.1);
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.6);
+  }
+  .doc-top.open .doc-nav {
+    display: flex;
+  }
+  .doc-top .doc-nav > a {
+    flex: none;
+  }
+  .doc-nav a {
+    display: flex;
+    align-items: center;
+    height: 48px;
+    padding: 0 20px;
+    font-size: 15px;
+    letter-spacing: 0.11em;
+  }
+  /* The Legal dropdown becomes a labelled group in the list. */
+  .doc-more {
+    display: none;
+  }
+  .doc-legal {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    margin-top: 8px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(var(--ink-rgb), 0.07);
+  }
+  .doc-legal > .lab {
+    margin: 0 0 2px;
+    padding: 0 20px;
+  }
+  /* The selection plate as in the home page's menu: inset, the green bar on its left. */
+  .doc-nav > .glide-sel,
+  .doc-nav > .glide-hov,
+  .doc-legal > .glide-sel,
+  .doc-legal > .glide-hov {
+    margin-left: 8px;
+    max-width: calc(100% - 16px);
+  }
+  .doc-nav > .glide-sel::before {
+    left: -6px;
     right: auto;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    height: auto;
   }
 }
 

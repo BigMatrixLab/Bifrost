@@ -24,6 +24,8 @@ const PAGES = [
     out: "security",
     title: "Security policy",
     nav: "Security",
+    // The footer also links to the home page's Security section.
+    footer: "Security policy",
     description: "How Bifrost protects your files, and how to report a security problem.",
     // The repository's reporting form is private; the site can't send people there.
     replace: [
@@ -46,6 +48,7 @@ const PAGES = [
     out: "privacy",
     title: "Privacy policy",
     nav: "Privacy",
+    footer: "Privacy policy",
     legal: true,
     description: "What the Bifrost app and website send, to whom and why, and what never leaves your device.",
   },
@@ -78,7 +81,10 @@ const PAGES = [
     out: "contact",
     title: "Contact",
     nav: "Contact",
+    footer: "Contact details",
     legal: true,
+    // Not in the top bar's menu; the footer lists it with the legal pages.
+    navHidden: true,
     description: "How to reach the people behind Bifrost for support, billing, privacy and security.",
   },
 ];
@@ -138,10 +144,11 @@ function page({ title, description, out }, body) {
     <header class="doc-top">
       <div class="wrap doc-top-inner">
         <a class="brand" href="../" aria-label="Bifrost home"><img class="brand-mark" src="../assets/bifrost-mark.svg" width="24" height="24" alt="" /><span>Bifrost</span></a>
-        <nav class="doc-nav" aria-label="Pages" data-glide=":scope > a, :scope > .doc-more > summary">
-          <a href="../#pricing">Pricing</a>
+        <!-- PCs: the pages sit in the bar. Phones: the menu button opens them
+             as a list under the bar, like the home page's menu. -->
+        <nav class="doc-nav" id="doc-menu" aria-label="Pages" data-glide=":scope > a, :scope > .doc-more > summary">
 ${navLinks(out, "          ")}
-          <details class="doc-more"${PAGES.some((q) => q.legal && q.out === out) ? " data-current" : ""}>
+          <details class="doc-more"${PAGES.some((q) => q.legal && q.out === out && !q.navHidden) ? " data-current" : ""}>
             <summary>Legal</summary>
             <div class="doc-more-menu panel">
               <header class="gw-head" aria-hidden="true"><span class="gw-plate"><b class="gw-code">LG01</b><span class="gw-title">Legal</span></span><span class="gw-hatch"></span></header>
@@ -150,8 +157,16 @@ ${navLinks(out, "                ", true)}
               </div>
             </div>
           </details>
+          <div class="doc-legal" data-glide="a">
+            <p class="lab">Legal</p>
+${navLinks(out, "            ", true, false)}
+          </div>
         </nav>
         <a class="btn btn-primary btn-sm" href="../#download">Download</a>
+        <button class="doc-burger" type="button" data-doc-toggle aria-expanded="false" aria-controls="doc-menu" aria-label="Open menu">
+          <svg class="i-open" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+          <svg class="i-close" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+        </button>
       </div>
     </header>
     <main class="wrap doc" id="main">
@@ -165,6 +180,24 @@ ${footer(out)}
         if (!m) return;
         document.addEventListener("click", function (e) { if (m.open && !m.contains(e.target)) m.open = false; });
         document.addEventListener("keydown", function (e) { if (e.key === "Escape" && m.open) { m.open = false; m.querySelector("summary").focus(); } });
+      })();
+      // Phones: the menu button opens the page list under the bar. Choosing a
+      // page, Escape, a tap outside or leaving the phone layout closes it.
+      (function () {
+        var top = document.querySelector(".doc-top");
+        var btn = document.querySelector("[data-doc-toggle]");
+        if (!top || !btn) return;
+        var set = function (open) {
+          top.classList.toggle("open", open);
+          btn.setAttribute("aria-expanded", String(open));
+          btn.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+        };
+        btn.addEventListener("click", function () { set(!top.classList.contains("open")); });
+        top.querySelectorAll(".doc-nav a").forEach(function (a) { a.addEventListener("click", function () { set(false); }); });
+        document.addEventListener("keydown", function (e) { if (e.key === "Escape" && top.classList.contains("open")) { set(false); btn.focus(); } });
+        document.addEventListener("pointerdown", function (e) { if (top.classList.contains("open") && !top.contains(e.target)) set(false); });
+        var mq = matchMedia("(max-width: 760px)");
+        if (mq.addEventListener) mq.addEventListener("change", function () { set(false); });
       })();
       // Contents: mark the section being read.
       (function () {
@@ -189,12 +222,39 @@ ${footer(out)}
 
 /**
  * The site footer, the same on the home page (website/index.html, kept in
- * step by hand) and every doc page: brand and maker, then Product, Help and
- * Legal columns, then the copyright line.
+ * step by hand) and every doc page: brand and maker, then every home page
+ * section (Product, Get Bifrost) and every page (Guides, Legal), then the
+ * copyright line.
  */
+// The home page's sections, in the rail's order and with the rail's names,
+// split over the footer's first two columns.
+const SECTIONS = [
+  [
+    ["top", "Overview"],
+    ["privacy", "Privacy"],
+    ["words", "Safety words"],
+    ["how", "How it works"],
+    ["features", "Features"],
+    ["security", "Security"],
+  ],
+  [
+    ["compare", "Compare"],
+    ["pricing", "Pricing"],
+    ["download", "Download"],
+    ["engine", "Under the hood"],
+    ["faq", "FAQ"],
+    ["contact", "Contact"],
+  ],
+];
+
 function footer(current) {
   const link = (href, text, out) => `<a href="${href}"${out === current ? ' aria-current="page"' : ""}>${text}</a>`;
-  const legal = PAGES.filter((q) => q.legal && q.out !== "contact").map((q) => `          ${link(`../${q.out}/`, esc(q.nav), q.out)}`);
+  // Every page, under the name it has in the footer (`footer`, else `nav`).
+  const pages = (legal) =>
+    PAGES.filter((q) => !!q.legal === legal)
+      .map((q) => `          ${link(`../${q.out}/`, esc(q.footer || q.nav), q.out)}`)
+      .join("\n");
+  const sections = (list) => list.map(([id, name]) => `          <a href="../#${id}">${esc(name)}</a>`).join("\n");
   return `    <footer class="footer">
       <div class="wrap footer-grid">
         <div class="footer-brand">
@@ -203,20 +263,19 @@ function footer(current) {
         </div>
         <nav class="footer-col" aria-label="Product">
           <p class="lab">Product</p>
-          <a href="../#pricing">Pricing</a>
-          <a href="../#download">Download</a>
-          ${link("../changelog/", "Changelog", "changelog")}
+${sections(SECTIONS[0])}
         </nav>
-        <nav class="footer-col" aria-label="Help">
-          <p class="lab">Help</p>
-          ${link("../relay/", "Relay guide", "relay")}
-          ${link("../security/", "Security", "security")}
-          <a href="../#faq">FAQ</a>
-          <a href="../#contact">Contact</a>
+        <nav class="footer-col" aria-label="Get Bifrost">
+          <p class="lab">Get Bifrost</p>
+${sections(SECTIONS[1])}
+        </nav>
+        <nav class="footer-col" aria-label="Guides">
+          <p class="lab">Guides</p>
+${pages(false)}
         </nav>
         <nav class="footer-col" aria-label="Legal">
           <p class="lab">Legal</p>
-${legal.join("\n")}
+${pages(true)}
         </nav>
       </div>
       <div class="wrap footer-base">
@@ -227,10 +286,11 @@ ${legal.join("\n")}
 }
 
 /** The doc pages (or, with `legal`, the legal pages), the current one marked. */
-function navLinks(current, pad, legal = false) {
-  // The menu's entries are numbered like the app's lists.
-  const num = (n) => (legal ? `<span class="opt-n">${String(n + 1).padStart(2, "0")}</span>` : "");
-  return PAGES.filter((q) => !!q.legal === legal)
+function navLinks(current, pad, legal = false, numbered = legal) {
+  // The dropdown's entries are numbered like the app's lists.
+  const num = (n) => (numbered ? `<span class="opt-n">${String(n + 1).padStart(2, "0")}</span>` : "");
+  // Pages marked navHidden (Contact) are in the footer only.
+  return PAGES.filter((q) => !!q.legal === legal && !q.navHidden)
     .map((q, n) => `${pad}<a href="../${q.out}/"${q.out === current ? ' aria-current="page"' : ""}>${num(n)}${esc(q.nav)}</a>`)
     .join("\n");
 }
