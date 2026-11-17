@@ -392,6 +392,8 @@
   const slidesAll = $$(".slide");
   const phoneMq = matchMedia("(max-width: 760px)");
   const MIN_FIT = 0.6;
+  // The width of every section's content (.wrap: --wrap, less 20px a side).
+  const wrapWidth = (fit) => Math.min(parseFloat(getComputedStyle(root).getPropertyValue("--wrap")) || 1200, fit.clientWidth - 40);
   const fitOne = (box) => {
     const fit = box.querySelector(":scope > .fit");
     if (!fit) return;
@@ -402,6 +404,10 @@
       const avail = innerHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
       const h = fit.offsetHeight; // layout height: unaffected by the transform
       if (h > avail) s = Math.max(MIN_FIT, avail / h);
+      // The PC hero is laid out at a fixed width (--hero-w in style.css):
+      // scale it to the width of the other sections, never wider.
+      const hero = fit.querySelector(":scope > .hero3");
+      if (hero && hero.offsetWidth > 0) s = Math.min(s, wrapWidth(fit) / hero.offsetWidth);
     }
     fit.style.setProperty("--fit", s.toFixed(4));
     fit.style.setProperty("--fit-gap", `${(fit.offsetHeight * (1 - s)).toFixed(1)}px`);

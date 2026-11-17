@@ -4307,10 +4307,19 @@ thead .us {
 }
 
 /* PC: copy and sender in a column on the left, the app on the right, and
-   the wire across the gap between them. */
+   the wire across the gap between them. The layout is drawn once at a fixed
+   width (--hero-w) and main.js scales the whole of it, headline and beam,
+   sender, live app and wire alike, to the width of the other sections
+   (.wrap), so nothing reflows from one screen size to the next. Centred
+   with negative margins while it is wider than its box. */
 @media (min-width: 1200px) {
   .hero3 {
-    width: min(1560px, calc(100vw - 2 * var(--rail-space)));
+    --hero-w: 1248px;
+    --tx-w: 395px;
+    --gap-x: 72px;
+    width: var(--hero-w);
+    max-width: none;
+    margin-inline: calc((100% - var(--hero-w)) / 2);
     grid-template-columns: var(--tx-w) var(--gap-x) minmax(0, 1fr);
     grid-template-rows: auto auto auto 1fr;
     grid-template-areas:
@@ -4328,23 +4337,9 @@ thead .us {
   .tx {
     align-self: end;
   }
-}
-/* Narrower PCs: the app window is shorter than the copy and the full sender,
-   so the sender drops its proof rows (the app beside it shows the same
-   route, encryption and "Stored on servers"). */
-@media (min-width: 1200px) and (max-width: 1439px) {
-  .tx-proof {
-    display: none;
-  }
-  .hint-text {
-    font-size: 12.5px;
-  }
-  /* Both download buttons still fit on one line from about 1280px. */
-  .hero3 .cta-row .btn-lg {
-    height: 46px;
-    padding: 0 12px;
-    font-size: 12.5px;
-    letter-spacing: 0.08em;
+  /* Fixed with the layout; the scale does the rest. */
+  .hero3 .lede {
+    font-size: 18.7px;
   }
 }
 
